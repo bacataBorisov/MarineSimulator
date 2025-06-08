@@ -1,0 +1,556 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		06B4B2A52DF50AB8005DC523 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06B4B2892DF50AB6005DC523 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 06B4B2902DF50AB6005DC523;
+			remoteInfo = NMEASimulator;
+		};
+		06B4B2AF2DF50AB8005DC523 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06B4B2892DF50AB6005DC523 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 06B4B2902DF50AB6005DC523;
+			remoteInfo = NMEASimulator;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		06B4B2912DF50AB6005DC523 /* NMEASimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NMEASimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		06B4B2A42DF50AB8005DC523 /* NMEASimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NMEASimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		06B4B2AE2DF50AB8005DC523 /* NMEASimulatorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NMEASimulatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		06B4B2932DF50AB6005DC523 /* NMEASimulator */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NMEASimulator;
+			sourceTree = "<group>";
+		};
+		06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NMEASimulatorTests;
+			sourceTree = "<group>";
+		};
+		06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NMEASimulatorUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		06B4B28E2DF50AB6005DC523 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06B4B2A12DF50AB8005DC523 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06B4B2AB2DF50AB8005DC523 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		06B4B2882DF50AB6005DC523 = {
+			isa = PBXGroup;
+			children = (
+				06B4B2932DF50AB6005DC523 /* NMEASimulator */,
+				06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */,
+				06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */,
+				06B4B2922DF50AB6005DC523 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		06B4B2922DF50AB6005DC523 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				06B4B2912DF50AB6005DC523 /* NMEASimulator.app */,
+				06B4B2A42DF50AB8005DC523 /* NMEASimulatorTests.xctest */,
+				06B4B2AE2DF50AB8005DC523 /* NMEASimulatorUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		06B4B2902DF50AB6005DC523 /* NMEASimulator */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06B4B2B82DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulator" */;
+			buildPhases = (
+				06B4B28D2DF50AB6005DC523 /* Sources */,
+				06B4B28E2DF50AB6005DC523 /* Frameworks */,
+				06B4B28F2DF50AB6005DC523 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				06B4B2932DF50AB6005DC523 /* NMEASimulator */,
+			);
+			name = NMEASimulator;
+			packageProductDependencies = (
+			);
+			productName = NMEASimulator;
+			productReference = 06B4B2912DF50AB6005DC523 /* NMEASimulator.app */;
+			productType = "com.apple.product-type.application";
+		};
+		06B4B2A32DF50AB8005DC523 /* NMEASimulatorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06B4B2BB2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorTests" */;
+			buildPhases = (
+				06B4B2A02DF50AB8005DC523 /* Sources */,
+				06B4B2A12DF50AB8005DC523 /* Frameworks */,
+				06B4B2A22DF50AB8005DC523 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				06B4B2A62DF50AB8005DC523 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */,
+			);
+			name = NMEASimulatorTests;
+			packageProductDependencies = (
+			);
+			productName = NMEASimulatorTests;
+			productReference = 06B4B2A42DF50AB8005DC523 /* NMEASimulatorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		06B4B2AD2DF50AB8005DC523 /* NMEASimulatorUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06B4B2BE2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorUITests" */;
+			buildPhases = (
+				06B4B2AA2DF50AB8005DC523 /* Sources */,
+				06B4B2AB2DF50AB8005DC523 /* Frameworks */,
+				06B4B2AC2DF50AB8005DC523 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				06B4B2B02DF50AB8005DC523 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */,
+			);
+			name = NMEASimulatorUITests;
+			packageProductDependencies = (
+			);
+			productName = NMEASimulatorUITests;
+			productReference = 06B4B2AE2DF50AB8005DC523 /* NMEASimulatorUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		06B4B2892DF50AB6005DC523 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					06B4B2902DF50AB6005DC523 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					06B4B2A32DF50AB8005DC523 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 06B4B2902DF50AB6005DC523;
+					};
+					06B4B2AD2DF50AB8005DC523 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 06B4B2902DF50AB6005DC523;
+					};
+				};
+			};
+			buildConfigurationList = 06B4B28C2DF50AB6005DC523 /* Build configuration list for PBXProject "NMEASimulator" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 06B4B2882DF50AB6005DC523;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 06B4B2922DF50AB6005DC523 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				06B4B2902DF50AB6005DC523 /* NMEASimulator */,
+				06B4B2A32DF50AB8005DC523 /* NMEASimulatorTests */,
+				06B4B2AD2DF50AB8005DC523 /* NMEASimulatorUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		06B4B28F2DF50AB6005DC523 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06B4B2A22DF50AB8005DC523 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06B4B2AC2DF50AB8005DC523 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		06B4B28D2DF50AB6005DC523 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06B4B2A02DF50AB8005DC523 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		06B4B2AA2DF50AB8005DC523 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		06B4B2A62DF50AB8005DC523 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 06B4B2902DF50AB6005DC523 /* NMEASimulator */;
+			targetProxy = 06B4B2A52DF50AB8005DC523 /* PBXContainerItemProxy */;
+		};
+		06B4B2B02DF50AB8005DC523 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 06B4B2902DF50AB6005DC523 /* NMEASimulator */;
+			targetProxy = 06B4B2AF2DF50AB8005DC523 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		06B4B2B62DF50AB8005DC523 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		06B4B2B72DF50AB8005DC523 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		06B4B2B92DF50AB8005DC523 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = NMEASimulator/NMEASimulator.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"NMEASimulator/Preview Content\"";
+				DEVELOPMENT_TEAM = V73TDMAF88;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulator;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		06B4B2BA2DF50AB8005DC523 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = NMEASimulator/NMEASimulator.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"NMEASimulator/Preview Content\"";
+				DEVELOPMENT_TEAM = V73TDMAF88;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulator;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		06B4B2BC2DF50AB8005DC523 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V73TDMAF88;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NMEASimulator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NMEASimulator";
+			};
+			name = Debug;
+		};
+		06B4B2BD2DF50AB8005DC523 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V73TDMAF88;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NMEASimulator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NMEASimulator";
+			};
+			name = Release;
+		};
+		06B4B2BF2DF50AB8005DC523 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V73TDMAF88;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = NMEASimulator;
+			};
+			name = Debug;
+		};
+		06B4B2C02DF50AB8005DC523 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V73TDMAF88;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = NMEASimulator;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		06B4B28C2DF50AB6005DC523 /* Build configuration list for PBXProject "NMEASimulator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06B4B2B62DF50AB8005DC523 /* Debug */,
+				06B4B2B72DF50AB8005DC523 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		06B4B2B82DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulator" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06B4B2B92DF50AB8005DC523 /* Debug */,
+				06B4B2BA2DF50AB8005DC523 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		06B4B2BB2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06B4B2BC2DF50AB8005DC523 /* Debug */,
+				06B4B2BD2DF50AB8005DC523 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		06B4B2BE2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06B4B2BF2DF50AB8005DC523 /* Debug */,
+				06B4B2C02DF50AB8005DC523 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 06B4B2892DF50AB6005DC523 /* Project object */;
+}
