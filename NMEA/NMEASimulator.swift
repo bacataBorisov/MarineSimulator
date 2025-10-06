@@ -12,12 +12,18 @@ import CoreLocation
 @Observable
 class NMEASimulator {
     
+    //MARK: - Sensors & Sentences States
+    
     var sentenceToggles = SentenceToggleStates()
     var sensorToggles = SensorToggleStates()
     
     //MARK: - Network & Connectivity
+    
     var ip: String = "127.0.0.1"
     var port: UInt16 = 4950
+    var talkerID: String = "II"
+
+    private var timer: Timer?
     var isTimerSelected = true
     var interval: Double = 1.0 {
         didSet {
@@ -25,66 +31,68 @@ class NMEASimulator {
                 restartTimer()
             }
         }
-    }    
-    var talkerID: String = "II"
-    
-    //MARK: - Hydro
-
-    var speed = SimulatedValue(type: .speedLog)
-    var depth = SimulatedValue(type: .depth)
-    var seaTemp = SimulatedValue(type: .seaTemp)
-    
-
-    //MARK: - Wind
-
-    var twd = SimulatedValue(type: .windDirection)
-    var tws = SimulatedValue(type: .windSpeed)
-
-    /// used to alternate between T and R while sending the message
-
-    private var sendRelativeWind = true
-    //MARK: - Compass
-
-    var heading = SimulatedValue(type: .magneticCompass)
-    var gyroHeading = SimulatedValue(type: .gyroCompass)
-
-    //MARK: - GPS & Positioning
-    /// GPS Variables
-    var gps = GPSData(latitude: 43.0, longitude: 28.0, speedOverGround: 6, courseOverGround: 90)
-    let testPosition = CLLocationCoordinate2D(latitude: 43.0, longitude: 28.0)
-    // for the dashboard indicator
-    var isTransmitting: Bool = false
-
-    // sending to the console log
-    var outputMessages: [String] = []
+    }
     
     //this is the only reference to the UDPClient
     private var udpClient: UDPClient?
-    private var timer: Timer?
     
     func configureUDP(ip: String, port: UInt16) {
         self.ip = ip
         self.port = port
         self.udpClient = UDPClient(ip: ip, port: port)
     }
-    
-    // mechanism to display "--" when value is not selected
-    func maskedValue(_ value: Double?, isEnabled: Bool) -> Double? {
-        return isEnabled ? value : nil
-    }
-    
-    
-    //TODO: - Here, there must be a better way of that to be written
-    func generateRandomValues() {
-        speed.value = speed.generateRandomValue(shouldGenerate: hasBoatSpeed)
-        depth.value = depth.generateRandomValue(shouldGenerate: sensorToggles.hasEchoSounder)
-        seaTemp.value = seaTemp.generateRandomValue(shouldGenerate: sensorToggles.hasWaterTempSensor)
 
+    
+    //MARK: - Wind
+    
+    var twd = SimulatedValue(type: .windDirection)
+    var tws = SimulatedValue(type: .windSpeed)
+    
+    /// used to alternate between T and R while sending the message
+    
+    private var sendRelativeWind = true
+    
+    //MARK: - Hydro
+    
+    var speed = SimulatedValue(type: .speedLog)
+    var depth = SimulatedValue(type: .depth)
+    var depthOffsetMeters: Double = 0.0
+    var seaTemp = SimulatedValue(type: .seaTemp)
+    
+    
+
+    //MARK: - Compass
+    
+    var heading = SimulatedValue(type: .magneticCompass)
+    var gyroHeading = SimulatedValue(type: .gyroCompass)
+    
+    //MARK: - GPS & Positioning
+    
+    var gpsData = GPSData(latitude: 43.19542, longitude: 27.89615, speedOverGround: 6, courseOverGround: 90)
+    //let testPosition = CLLocationCoordinate2D(latitude: 43.0, longitude: 28.0)
+    
+    
+    //MARK: - Dashboard Indicator
+    var isTransmitting: Bool = false
+    
+    //MARK: - Console (resizable)
+    var outputMessages: [String] = []
+    
+
+    //TODO: - Here, there must be a better way of that to be written
+    // If the sensor is ON, generate random value
+    func generateRandomValues() {
+        
         twd.value = twd.generateRandomValue()
         tws.value = tws.generateRandomValue()
+        
         heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
         gyroHeading.value = gyroHeading.generateRandomValue(shouldGenerate: sensorToggles.hasGyro)
-
+        
+        seaTemp.value = seaTemp.generateRandomValue(shouldGenerate: sensorToggles.hasWaterTempSensor)
+        depth.value = depth.generateRandomValue(shouldGenerate: sensorToggles.hasEchoSounder)
+        speed.value = speed.generateRandomValue(shouldGenerate: hasBoatSpeed)
+        
     }
     
     func sendAllSelectedNMEA() {
@@ -126,7 +134,7 @@ class NMEASimulator {
                 }
             }
         }
-                
+        
         if sensorToggles.hasCompass {
             sendNMEA(talkerID: talkerID, type: .hdg)
         }
@@ -136,9 +144,9 @@ class NMEASimulator {
         }
         
         if sensorToggles.hasGPS {
-
-            gps.updatePosition(deltaTime: interval, sog: speed.value ?? 0, cog: heading.value ?? 0)
-                sendNMEA(talkerID: talkerID, type: .gps)
+            
+            gpsData.updatePosition(deltaTime: interval, sog: speed.value ?? 0, cog: heading.value ?? 0)
+            sendNMEA(talkerID: talkerID, type: .gps)
             
         }
     }
@@ -194,26 +202,27 @@ class NMEASimulator {
 }
 
 // MARK: - Interlock Helpers
+// TODO: - Move them in a different file, or refactor the code
 
 extension NMEASimulator {
     
     var hasAnemometer: Bool {
         sensorToggles.hasAnemometer
     }
-
+    
     var hasBoatSpeed: Bool {
         // Consider SOG (GPS) or speed log
         sensorToggles.hasSpeedLog || sensorToggles.hasGPS
     }
-
+    
     var hasTrueHeading: Bool {
         sensorToggles.hasGyro || sensorToggles.hasCompass
     }
-
+    
     var canSendTrueWind: Bool {
         hasAnemometer && hasBoatSpeed
     }
-
+    
     var canSendFullWindData: Bool {
         canSendTrueWind && hasTrueHeading
     }

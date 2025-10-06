@@ -1,4 +1,14 @@
-private struct RMCHelpView: View {
+//
+//  RMCHelpView.swift
+//  NMEASimulator
+//
+//  Created by Vasil Borisov on 1.07.25.
+//
+
+import SwiftUI
+
+struct RMCHelpView: View {
+    
     @State private var showDetails: Bool = false
 
     let fields: [(String, String)] = [

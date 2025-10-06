@@ -69,11 +69,7 @@ struct CompassView: View {
         .onDisappear {
             lastKnownHeading = displayedHeading
         }
-        .onChange(of: nmeaManager.heading.value) { _, newValue in
-            guard let newValue = newValue else {
-                hasValidHeading = false
-                return
-            }
+        .onChange(of: nmeaManager.heading.value ?? 0) { _, newValue in
             updateCompassRotation(to: newValue)
         }
     }

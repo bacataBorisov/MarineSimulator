@@ -17,19 +17,17 @@ struct FullControlView: View {
                 
                 SectionHeader(title: "Wind")
                 
-                //WindRawControlView(nmeaManager: nmeaManager)
+                WindRawControlView(nmeaManager: nmeaManager)
                 
                 SectionHeader(title: "GPS")
                 EmptyView()
                 //GPSRawControlView(nmeaManager: nmeaManager)
 
                 SectionHeader(title: "Hydro")
-                EmptyView()
+                HydroRawControllerView(nmeaManager: nmeaManager)
 
-                //HydroRawControlView(nmeaManager: nmeaManager)
-
-                SectionHeader(title: "Compass")
-                HeadingConfig(nmeaManager: nmeaManager)
+                SectionHeader(title: "Heading")
+                HeadingRawControllerView(nmeaManager: nmeaManager)
                 
 
                 SectionHeader(title: "System")
@@ -37,7 +35,6 @@ struct FullControlView: View {
 
                 //SystemStatusView(nmeaManager: nmeaManager)
             }
-            .padding()
         }
         .navigationTitle("Full Control")
     }
@@ -59,5 +56,5 @@ struct SectionHeader: View {
 #Preview {
     FullControlView(nmeaManager: NMEASimulator())
         .environment(NMEASimulator())
-        .frame(width: halfScreen, height: minAppWindowHeight)
+        .frame(width: UIConstants.halfScreen, height: UIConstants.minAppWindowHeight)
 }

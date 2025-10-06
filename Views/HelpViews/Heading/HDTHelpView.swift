@@ -2,7 +2,7 @@
 //  HDTHelpView.swift
 //  NMEASimulator
 //
-//  Created by ChatGPT on 20.06.25.
+//  Created by Vasil Borisov on 24.06.25.
 //
 
 import SwiftUI

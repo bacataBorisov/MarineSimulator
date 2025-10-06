@@ -6,6 +6,7 @@
 //
 import Foundation
 import AppKit
+import SwiftUI
 
 public enum RoundingPrecision {
     
@@ -34,8 +35,43 @@ public struct UIConstants {
     static let minAppWindowHeight = 520 + (3 * spacing)
     static let tabBarHeight: CGFloat = 32
     static let bottomBarHeight: CGFloat = 24
-
     
+}
+
+public enum UIStrings {
+
+    enum Warnings {
+        
+        static let enableAnemometer = "Enable Anemometer in Configuration to activate sentences."
+        static let enableEchoSounder = "Enable Echo Sounder in Configuration to activate sentences."
+        static let invalidDepthOffset = "Please enter a valid non-zero depth offset (e.g., 0.30 or -0.70) to activate DPT."
+        static let enableWaterTempSensor = "Enable Water Temp Sensor in Configuration to activate sentences."
+        static let enableMagneticCompass = "Enable Compass in Configuration to activate sentences."
+        static let enableGyroCompass = "Enable Gyro Compass in Configuration to activate sentences."
+        static let enableSpeedLog = "Enable Speed Log in Configuration to activate sentences."
+        static let enableGPS = "Enable GPS in Configuration to activate sentences."
+
+    }
+    
+    enum InfoMessage {
+        static let compassInfoNote = "Compass is disabled – heading fields will be blank."
+        static let speedLogInfoNote = "Speed Log is disabled – speed fields will be blank."
+        static let sogInfoNote = "GPS is disabled – ground speed fields will be blank."
+    }
+
+    enum Labels {
+        static let seaWaterTemperature = "Sea Water Temperature"
+        static let hydroSpeedGroup = "Hydro & Speed Sentences"
+    }
+}
+
+import SwiftUI
+
+enum AppColors {
+    static let warning = Color.orange.opacity(0.8)
+    static let info = Color.blue.opacity(0.7)
+    static let danger = Color.red.opacity(0.7)
+    static let success = Color.green.opacity(0.7)
 }
 
 

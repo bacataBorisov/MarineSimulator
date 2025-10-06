@@ -1,12 +1,4 @@
 //
-//  import.swift
-//  NMEASimulator
-//
-//  Created by Vasil Borisov on 13.06.25.
-//
-
-
-//
 //  MathUtilities.swift
 //  ExtasyCompleteNavigation
 //
@@ -87,6 +79,11 @@ public func calculateBearing(from start: CLLocationCoordinate2D, to end: CLLocat
     
     let initialBearing = atan2(y, x)
     return normalizeAngle(toDegrees(initialBearing)) // Convert to degrees and normalize
+}
+
+public func calculateShortestRotation(from sourceAngle: Double, to targetAngle: Double) -> Double {
+    let delta = (targetAngle - sourceAngle).truncatingRemainder(dividingBy: 360)
+    return delta > 180 ? delta - 360 : (delta < -180 ? delta + 360 : delta)
 }
 
 //VMG to a waypoint formula - VMG=speed x COSINE(course-bearing to mark), SOG, COG to be used

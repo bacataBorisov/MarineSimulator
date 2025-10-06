@@ -5,17 +5,30 @@ extension NMEASimulator {
     // MARK: - Wind Derived Outputs
 
     var calculatedTWA: Double? {
-        guard let twd = twd.value, let heading = heading.value else { return nil }
+        guard let twd = twd.value else { return nil }
+
+        // If boat is not moving or speed unavailable → heading irrelevant
+        if speed.value == nil || speed.value == 0 {
+            return twd
+        }
+
+        guard let heading = heading.value else { return twd }
         return normalizeAngle(twd - heading)
     }
 
     var calculatedAWS: Double? {
+        guard let tws = tws.value else { return nil }
+
+        // If boat is stationary or missing data → AWS = TWS
+        if speed.value == nil || speed.value == 0 {
+            return tws
+        }
+
         guard
             let twd = twd.value,
             let heading = heading.value,
-            let tws = tws.value,
             let boatSpeed = speed.value
-        else { return nil }
+        else { return tws }
 
         let awaRad = toRadians(normalizeAngle(twd - heading))
         let windX = tws * cos(awaRad)
@@ -24,14 +37,29 @@ extension NMEASimulator {
         let awsX = windX + boatSpeed
         let awsY = windY
 
-        return sqrt(pow(awsX, 2) + pow(awsY, 2))
+        return sqrt(awsX * awsX + awsY * awsY)
     }
 
     var calculatedAWA: Double? {
+        // If we have no wind data at all
+        guard let tws = tws.value else { return nil }
+
+        // Case 1: boat speed missing or zero → AWA = TWA (or TWD if heading missing)
+        if speed.value == nil || speed.value == 0 {
+            if let twd = twd.value, let heading = heading.value {
+                return normalizeAngle(twd - heading)
+            } else if let twd = twd.value {
+                // no heading → use absolute wind direction
+                return twd
+            } else {
+                return nil
+            }
+        }
+
+        // Case 2: moving → do full calculation
         guard
             let twd = twd.value,
             let heading = heading.value,
-            let tws = tws.value,
             let boatSpeed = speed.value
         else { return nil }
 
@@ -48,7 +76,6 @@ extension NMEASimulator {
         let degrees = toDegrees(awaRad)
         return normalizeAngle(degrees)
     }
-
     var calculatedAWD: Double? {
         guard let heading = heading.value, let awa = calculatedAWA else { return nil }
         return normalizeAngle(heading + awa)

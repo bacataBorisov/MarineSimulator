@@ -185,7 +185,7 @@ public struct LabelView: View {
         
         VStack {
             Text(marker.label)
-                .foregroundColor(Color(UIColor.systemBackground))
+                .foregroundColor(.primary) // Adjusts automatically for light/dark mode
                 .font(Font.custom("AppleSDGothicNeo-Bold", size: fontSize))
                 .rotationEffect(Angle(degrees: -self.marker.degrees))
                 .padding(.bottom, paddingValue)
@@ -237,5 +237,45 @@ public struct BoatShape: Shape {
         path.closeSubpath() // Close the triangle
 
         return path
+    }
+}
+
+struct CustomSlider: NSViewRepresentable {
+    @Binding var value: Double
+    var range: ClosedRange<Double>
+    
+    func makeNSView(context: Context) -> NSSlider {
+        let slider = NSSlider(value: value,
+                              minValue: range.lowerBound,
+                              maxValue: range.upperBound,
+                              target: context.coordinator,
+                              action: #selector(Coordinator.valueChanged(_:)))
+        
+        slider.isContinuous = true
+        slider.controlSize = .regular
+        slider.wantsLayer = true
+
+
+        return slider
+    }
+
+    func updateNSView(_ nsView: NSSlider, context: Context) {
+        nsView.doubleValue = value
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject {
+        var parent: CustomSlider
+
+        init(_ parent: CustomSlider) {
+            self.parent = parent
+        }
+
+        @objc func valueChanged(_ sender: NSSlider) {
+            parent.value = sender.doubleValue
+        }
     }
 }

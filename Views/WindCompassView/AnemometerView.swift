@@ -9,9 +9,9 @@
 import SwiftUI
 
 struct AnemometerView: View {
+    
     let trueWindAngle: Double
     let apparentWindAngle: Double
-    let width: CGFloat
 
     @AppStorage("storedTrueWindAngle") private var storedTrueWindAngle: Double = 0.0
     @AppStorage("storedApparentWindAngle") private var storedApparentWindAngle: Double = 0.0
@@ -21,58 +21,62 @@ struct AnemometerView: View {
     @State private var displayedApparentWindAngle: Double = 0.0
 
     var body: some View {
-        ZStack {
-            // Dial Gauge Base
-            Circle()
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color("dial_gauge_start"), Color("dial_gauge_end")]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: width / 14
+        GeometryReader { geometry in
+            let width = min(geometry.size.width, geometry.size.height)
+            ZStack {
+                // Dial Gauge Base
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color("dial_gauge_start"), Color("dial_gauge_end")]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: width / 14
+                    )
+                    .padding(width / 20 / 2)
+                
+                // STBD Sector
+                SectorView(
+                    gradientColors: [Color.green.opacity(0.7), Color.teal.opacity(0.7)],
+                    startAngle: 270,
+                    lineWidth: width / 14,
+                    padding: width / 20 / 2
                 )
-                .padding(width / 20 / 2)
-
-            // STBD Sector
-            SectorView(
-                gradientColors: [Color.green.opacity(0.7), Color.teal.opacity(0.7)],
-                startAngle: 270,
-                lineWidth: width / 14,
-                padding: width / 20 / 2
-            )
-
-            // PORT Sector
-            SectorView(
-                gradientColors: [Color.red.opacity(0.7), Color.purple.opacity(0.7)],
-                startAngle: 210,
-                lineWidth: width / 14,
-                padding: width / 20 / 2
-            )
-
-            // Dial Gauge Indicators
-            DialGaugeIndicators(width: width)
-
-            // True Wind Arrow
-            WindArrow(
-                label: "T",
-                color: Color(.systemBlue),
-                delta: displayedTrueWindAngle,
-                fontSize: width / 13,
-                offset: width / 2.15,
-                shouldAnimate: shouldAnimate
-            )
-
-            // Apparent Wind Arrow
-            WindArrow(
-                label: "A",
-                color: Color(.systemPink),
-                delta: displayedApparentWindAngle,
-                fontSize: width / 13,
-                offset: width / 2.15,
-                shouldAnimate: shouldAnimate
-            )
+                
+                // PORT Sector
+                SectorView(
+                    gradientColors: [Color.red.opacity(0.7), Color.purple.opacity(0.7)],
+                    startAngle: 210,
+                    lineWidth: width / 14,
+                    padding: width / 20 / 2
+                )
+                
+                // Dial Gauge Indicators
+                DialGaugeIndicators(width: width)
+                
+                // True Wind Arrow
+                WindArrow(
+                    label: "T",
+                    color: Color(.systemBlue),
+                    delta: displayedTrueWindAngle,
+                    fontSize: width / 13,
+                    offset: width / 2.15,
+                    shouldAnimate: shouldAnimate
+                )
+                
+                // Apparent Wind Arrow
+                WindArrow(
+                    label: "A",
+                    color: Color(.systemPink),
+                    delta: displayedApparentWindAngle,
+                    fontSize: width / 13,
+                    offset: width / 2.15,
+                    shouldAnimate: shouldAnimate
+                )
+            }
         }
+        .aspectRatio(1, contentMode: .fit)
         .onAppear {
             // Restore last known values when view appears
             displayedTrueWindAngle = storedTrueWindAngle
@@ -181,9 +185,8 @@ struct WindArrow: View {
 #Preview {
     AnemometerView(
         trueWindAngle: 350,
-        apparentWindAngle: 10,
-        width: 300
+        apparentWindAngle: 10
     )
-    .frame(width: 300, height: 300)
+    .frame(width: 400, height: 400)
     .padding()
 }

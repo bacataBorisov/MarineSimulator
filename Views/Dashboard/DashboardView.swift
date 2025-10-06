@@ -1,53 +1,47 @@
-//
-//  DashboardView.swift
-//  NMEASimulator
-//
-//  Created by Vasil Borisov on 14.06.25.
-//
-
-
-//  DashboardView.swift
-//  NMEASimulator
-
 import SwiftUI
 import MapKit
 
+enum DashboardTab: String, CaseIterable {
+    case overview = "Overview"
+    case fullcontrol = "Full Control" //this is just a working heading
+    case map = "Map"
+    case advanced = "Advanced"
+    case system = "System"
+}
+
 struct DashboardView: View {
+    
     @Environment(NMEASimulator.self) private var nmeaManager
+        
+    // panel visibility
+    @State private var showLeftDock = true
+    @State private var showRightInspector = true
+    @State private var showConsole = true
+
+    // panel sizes
+    @State private var rightWidth: CGFloat = 340
+    @State private var bottomHeight: CGFloat = 180
     
     var body: some View {
-        GeometryReader { geometry in
+        ZStack(alignment: .top) {
+            BoatMapPreview(nmeaManager: nmeaManager)
+                .ignoresSafeArea()
             
-            HStack(alignment: .top, spacing: spacing) {
-                
-                VStack (alignment: .trailing, spacing: spacing){
-                    GroupBox(label: Label("Sailing Instruments", systemImage: "safari")) {
-                        DashboardWindCompassCard()
-                            
-                    }
-                    .frame(width: 260, height: 260)
-                    GroupBox(label: Label("Metrics", systemImage: "safari")) {
-                        DashboardMetricsCard()
-                            
-                    }
-                    .frame(width: 260, height: 260)
-                }
-                GroupBox(label: Label("Position", systemImage: "map")) {
-                    BoatMapPreview(coordinate: CLLocationCoordinate2D(
-                        latitude: nmeaManager.gps.latitude,
-                        longitude: nmeaManager.gps.longitude
-                    ))
-                }
-            }
-            .padding(spacing)
+            // Top interactive toolbar
+            TopControlBar(showLeft: $showLeftDock,
+                          showRight: $showRightInspector,
+                          showBottom: $showConsole)
+                .environment(nmeaManager)
+                .padding(.horizontal, 10)
+                .padding(.top, 8)
+                .frame(maxWidth: .infinity, alignment: .top)
+                .zIndex(10)
         }
     }
 }
 
-#Preview(traits: .sizeThatFitsLayout) {
+#Preview {
     DashboardView()
         .environment(NMEASimulator())
-        .frame(width: 864, height: 600)
+        .frame(width: UIConstants.halfScreen, height: UIConstants.minAppWindowHeight)
 }
-
-

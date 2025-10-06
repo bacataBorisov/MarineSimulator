@@ -1,8 +1,9 @@
 import Foundation
 
 /// Enum to represent different types of navigational metrics
-enum MetricType: String, CaseIterable, Codable, Identifiable {
+enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
     case magneticCompass
+    case gyroCompass
     case windDirection
     case windSpeed
     case speedLog
@@ -17,6 +18,7 @@ enum MetricType: String, CaseIterable, Codable, Identifiable {
     var displayName: String {
         switch self {
         case .magneticCompass: return "Magnetic Heading"
+        case .gyroCompass: return "Gyro Heading"
         case .windDirection: return "Wind Direction"
         case .windSpeed: return "Wind Speed"
         case .speedLog: return "Speed Log"
@@ -37,13 +39,15 @@ enum MetricType: String, CaseIterable, Codable, Identifiable {
             return 0...1000
         case .seaTemp:
             return 0...40
+        case .gyroCompass:
+            return 0...359.9
         }
     }
 
     /// Default offset to be used in random generation
     var defaultOffset: Double {
         switch self {
-        case .magneticCompass, .windDirection:
+        case .magneticCompass, .gyroCompass, .windDirection:
             return 10
         case .windSpeed, .speedLog, .speedOverGround:
             return 3
@@ -64,7 +68,7 @@ struct SimulatedValue: Codable {
 
     /// Initializes a metric using a MetricType and optional overrides
     init(
-        type: MetricType,
+        type: SimulatedValueType,
         center: Double? = nil,
         offset: Double? = nil,
         value: Double? = nil

@@ -5,20 +5,13 @@
 //  Created by Vasil Borisov on 7.06.25.
 //
 
-
-//
-//  UDPClient.swift
-//  NMEASimulator
-//
-//  Created by Vasil Borisov on 7.06.25.
-//
-
 import Foundation
 import Network
 
 class UDPClient {
-    private let ip: String
-    private let port: UInt16
+    
+    let ip: String
+    let port: UInt16
     private let queue = DispatchQueue(label: "udp.client.queue")
 
     init(ip: String, port: UInt16) {

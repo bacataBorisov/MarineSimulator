@@ -1,53 +1,50 @@
 import SwiftUI
 import AppKit
 
+@available(macOS 15.0, *)
 struct ConsolePanelView: View {
-    @Binding var showConsole: Bool
+    
+    @Bindable var nmeaManager: NMEASimulator
     @Binding var consoleHeight: CGFloat
-    let minHeight: CGFloat
-    let maxHeight: CGFloat
-
+    
+    let geometryHeight: CGFloat
+    
+    private let spacing: CGFloat = 8
+    
     var body: some View {
         VStack(spacing: 0) {
-            if showConsole {
-                // Drag handle
-                Rectangle()
-                    .fill(Color.gray.opacity(0.4))
-                    .frame(height: 4)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                let newHeight = consoleHeight - value.translation.height
-                                consoleHeight = min(max(newHeight, minHeight), maxHeight)
-                            }
-                    )
-                    .onHover { _ in
-                        NSCursor.resizeUpDown.set()
-                    }
-
-                // Console output
-                ConsoleView()
-                    .frame(height: consoleHeight)
-                    .frame(maxWidth: .infinity)
-                    .background(.bar)
-                    .border(Color.gray.opacity(0.3), width: 1)
-            }
-
-            // Toggle button bar
+            // Drag handle + Trash button
             HStack {
+                Spacer()
+                Divider()
                 Button {
-                    showConsole.toggle()
+                    nmeaManager.outputMessages.removeAll()
                 } label: {
-                    Label("", systemImage: "menubar.rectangle")
-                        .rotationEffect(.degrees(180))
+                    Label("", systemImage: "trash")
                 }
                 .buttonStyle(PlainButtonStyle())
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .frame(height: 24) // Adjust as needed
+                .padding(.horizontal, spacing)
+                .padding(.bottom, 4)
             }
+            .frame(height: UIConstants.bottomBarHeight)
+            .frame(maxWidth: .infinity)
+            .background(.black)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        let newHeight = consoleHeight - value.translation.height
+                        let maxHeight = geometryHeight - UIConstants.tabBarHeight //tab bar in the DashboardView
+                        consoleHeight = min(max(newHeight, UIConstants.bottomBarHeight), maxHeight)
+                        NSCursor.rowResize(directions: [.up, .down]).set()
+                    }
+                
+            )
+            
+            ConsoleView()
+                .frame(height: consoleHeight)
+                .frame(maxWidth: .infinity)
+                .background(.bar)
         }
-        .animation(.easeInOut(duration: 0.3), value: consoleHeight)
-        .transition(.move(edge: .bottom))
     }
 }

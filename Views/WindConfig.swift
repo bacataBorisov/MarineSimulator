@@ -4,124 +4,137 @@
 import SwiftUI
 
 struct WindConfig: View {
+    
     @Bindable var nmeaManager: NMEASimulator
     
+    @State var showMWV: Bool = false
+    @State var showMWD: Bool = false
+    @State var showVPW: Bool = false
+    
     var body: some View {
-
-            GroupBox(label: Label("Wind Data", systemImage: "wind.snow")) {
-                Grid(horizontalSpacing: 12, verticalSpacing: 10) {
-                    
-                    GridRow {
-                        Toggle("", isOn: $nmeaManager.sendTWD)
-                            .gridColumnAlignment(.center)
-                            .toggleStyle(.switch)
-                        Text("TWD")
-                        TextField("min", value: $nmeaManager.twd.min, format: .number)
-                        Stepper("", value: $nmeaManager.twd.min, step: 5)
-                        TextField("max", value: $nmeaManager.twd.max, format: .number)
-                        Stepper("", value: $nmeaManager.twd.max, step: 5)
-                    }
-                    
-                    GridRow {
-                        Toggle("", isOn: $nmeaManager.sendTWS)
-                            .gridColumnAlignment(.center)
-                            .toggleStyle(.switch)
-                        Text("TWS")
-                        TextField("min", value: $nmeaManager.tws.min, format: .number)
-                        Stepper("", value: $nmeaManager.tws.min, step: 1)
-                        TextField("max", value: $nmeaManager.tws.max, format: .number)
-                        Stepper("", value: $nmeaManager.tws.max, step: 1)
-                    }
-                    
-                    GridRow {
-                        Toggle("", isOn: $nmeaManager.sendHeading)
-                            .toggleStyle(.switch)
-                        Text("HDG")
-                        HeadingSliderView(
-                            centerValue: $nmeaManager.heading.centerValue,
-                            offset: $nmeaManager.heading.randomOffset
-                        )
-                        .frame(maxWidth: .infinity)
-                        .gridCellColumns(4)
-                    }
-                    
-                    Divider().gridCellUnsizedAxes(.horizontal)
-                    
-                    GridRow {
-                        LabelText("AWA")
-                        ValueText(nmeaManager.formattedAWA)
-                        LabelText("AWS")
-                        ValueText(nmeaManager.formattedAWS)
-                        LabelText("AWD")
-                        ValueText(nmeaManager.formattedAWD)
-                    }
-                    
-                    GridRow {
-                        LabelText("TWA")
-                        ValueText(nmeaManager.formattedTWA)
-                        LabelText("TWS")
-                        ValueText(nmeaManager.formattedTWS)
-                        LabelText("TWD")
-                        ValueText(nmeaManager.formattedTWD)
-                    }
-                    GridRow {
-                        LabelText("HDG")
-                        ValueText(FormatKit.formattedValue(nmeaManager.heading.value, decimals: 0))
-                        
-                    }
+        GeometryReader { _ in
+            HStack (alignment: .top, spacing: UIConstants.spacing * 2) {
+                VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                    WindSentencesSection(
+                        shouldSendMWV: $nmeaManager.sentenceToggles.shouldSendMWV,
+                        shouldSendMWD: $nmeaManager.sentenceToggles.shouldSendMWD,
+                        shouldSendVPW: $nmeaManager.sentenceToggles.shouldSendVPW,
+                        showMWV: $showMWV,
+                        showMWD: $showMWD,
+                        showVPW: $showVPW,
+                        nmeaManager: nmeaManager
+                    )
                 }
-                .textFieldStyle(.roundedBorder)
+                .padding()
             }
-            .padding()
-        
+        }
     }
 }
 
-// Reusable label styling
-@ViewBuilder
-public func LabelText(_ text: String) -> some View {
-    Text(text)
-        .fontWeight(.medium)
-        .frame(width: 40, alignment: .trailing)
-}
-
-// Reusable fixed-width value styling
-@ViewBuilder
-public func ValueText(_ value: String) -> some View {
-    Text(value)
-        .frame(width: 50, alignment: .trailing)
-        .monospacedDigit()
-        .font(.system(.body, design: .monospaced))
-}
-
 #Preview {
-    WindConfig(nmeaManager: NMEASimulator())
+    WindConfig(nmeaManager: PreviewData.nmeaManager)
+        .frame(width: UIConstants.halfScreen / 1.2, height: UIConstants.minAppWindowHeight)
 }
 
-struct HeadingSliderView: View {
-    @Binding var centerValue: Double
-    @Binding var offset: Double
+//MARK: - Subviews
+
+private struct WindSentencesSection: View {
+    @Binding var shouldSendMWV: Bool
+    @Binding var shouldSendMWD: Bool
+    @Binding var shouldSendVPW: Bool
+    
+    @Binding var showMWV: Bool
+    @Binding var showMWD: Bool
+    @Binding var showVPW: Bool
+    
+    @Bindable var nmeaManager: NMEASimulator
     
     var body: some View {
-        HStack(spacing: 12) {
-            
-            CustomSlider(value: $centerValue, range: 0...360)
-                .frame(minWidth: 150, maxWidth: .infinity)
-                .tint(Color.red)
+        GroupBox(label: Label("Wind Sentences", systemImage: "list.bullet.rectangle")) {
+            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                
+                // MWV – Wind Speed & Angle
+                ViewKit.ToggleRowWithInfo(
+                    "MWV - Wind Speed & Angle",
+                    isOn: $shouldSendMWV,
+                    showInfo: $showMWV,
+                    infoView: { AnyView(MWVHelpView().font(.caption)) }
+                )
+                .disabled(!WindUIConditions.isMWVEnabled(nmeaManager))
+                
+                if !WindUIConditions.isMWVEnabled(nmeaManager) {
+                    Text(UIStrings.Warnings.enableAnemometer)
+                        .font(.caption2)
+                        .foregroundStyle(AppColors.warning)
+                        .padding(.leading, 4)
+                }
+                
+                // MWD – Wind Direction & Speed
+                ViewKit.ToggleRowWithInfo(
+                    "MWD - Wind Direction & Speed",
+                    isOn: $shouldSendMWD,
+                    showInfo: $showMWD,
+                    infoView: { AnyView(MWDHelpView().font(.caption)) }
+                )
+                .disabled(!WindUIConditions.isMWDEnabled(nmeaManager))
 
-            TextField("°", value: $centerValue, format: .number.precision(.fractionLength(0)))
-                .frame(width: 60)
-                .textFieldStyle(.roundedBorder)
-                .multilineTextAlignment(.center)
-                .font(.system(.body, design: .monospaced))
-                .monospacedDigit()
-            
-            Stepper("±\(Int(offset))°", value: $offset, in: 0...45, step: 1)
-            //.labelsHidden()
-                .frame(width: 70)
-                .monospacedDigit()
-                .font(.system(.body, design: .monospaced))
+                if WindUIConditions.showMWDDependencyWarning(nmeaManager) {
+                    Text("Enable Compass / Gyro and Boat Speed to activate MWD.")
+                        .foregroundStyle(AppColors.warning)
+                        .font(.caption2)
+                        .padding(.leading, 4)
+                }
+
+                // VPW – Speed Parallel to Wind
+                ViewKit.ToggleRowWithInfo(
+                    "VPW - Speed Parallel to Wind",
+                    isOn: $shouldSendVPW,
+                    showInfo: $showVPW,
+                    infoView: { AnyView(VPWHelpView().font(.caption)) }
+                )
+                .disabled(!WindUIConditions.isVPWEnabled(nmeaManager))
+
+                if WindUIConditions.showVPWDependencyWarning(nmeaManager) {
+                    Text("Enable Compass / Gyro and Boat Speed to activate VPW.")
+                        .foregroundStyle(AppColors.warning)
+                        .font(.caption2)
+                        .padding(.leading, 4)
+                }
+            }
+            .toggleStyle(.switch)
         }
-        .padding(.horizontal)
+    }
+}
+
+private struct WindUIConditions {
+    
+    static func isMWVEnabled(_ nmea: NMEASimulator) -> Bool {
+        nmea.sensorToggles.hasAnemometer
+    }
+    
+    static func isMWDEnabled(_ nmea: NMEASimulator) -> Bool {
+        nmea.sensorToggles.hasAnemometer &&
+        nmea.hasTrueHeading &&
+        nmea.hasBoatSpeed
+    }
+    
+    static func isVPWEnabled(_ nmea: NMEASimulator) -> Bool {
+        nmea.sensorToggles.hasAnemometer &&
+        nmea.hasTrueHeading &&
+        nmea.hasBoatSpeed
+    }
+    
+    static func showAnemometerWarning(_ nmea: NMEASimulator) -> Bool {
+        !nmea.sensorToggles.hasAnemometer
+    }
+    
+    static func showMWDDependencyWarning(_ nmea: NMEASimulator) -> Bool {
+        nmea.sensorToggles.hasAnemometer &&
+        (!nmea.hasTrueHeading || !nmea.hasBoatSpeed)
+    }
+    
+    static func showVPWDependencyWarning(_ nmea: NMEASimulator) -> Bool {
+        nmea.sensorToggles.hasAnemometer &&
+        (!nmea.hasTrueHeading || !nmea.hasBoatSpeed)
     }
 }

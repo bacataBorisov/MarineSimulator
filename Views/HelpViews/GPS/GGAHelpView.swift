@@ -1,3 +1,11 @@
+//
+//  GGAHelpView.swift
+//  NMEASimulator
+//
+//  Created by Vasil Borisov on 1.07.25.
+//
+
+
 import SwiftUI
 
 struct GGAHelpView: View {

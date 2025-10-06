@@ -1,75 +1,69 @@
+//
+//  OverviewDashboard.swift
+//  NMEASimulator
+//
+//  Created by Vasil Borisov on 20.06.25.
+//
+
+
 import SwiftUI
 import MapKit
 
 struct OverviewDashboard: View {
+    
     @Environment(NMEASimulator.self) private var nmeaManager
 
-    let gridItems = [GridItem(.adaptive(minimum: 100), spacing: 12)]
-
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                
-                // MARK: - Wind & Compass
-                DashboardMetricsCard(title: "Wind & Compass", systemImage: "wind") {
-                    DashboardWindCompassCard()
-                        .frame(height: 250)
-                }
+        GeometryReader { geo in
+            ZStack {
+                HStack {
+                    VStack() {
 
-                // MARK: - Hydro Metrics
-                DashboardMetricsCard(title: "Speed / Depth / Temp", systemImage: "drop") {
-                    LazyVGrid(columns: gridItems, spacing: 12) {
-                        MetricPill(label: "Speed", value: format(nmeaManager.hydro.speedLog, precision: 1), systemImage: "speedometer")
-                        MetricPill(label: "Depth", value: format(nmeaManager.hydro.depth, precision: 1), systemImage: "ruler")
-                        MetricPill(label: "Temp", value: format(nmeaManager.hydro.waterTemp, precision: 1) + "°C", systemImage: "thermometer")
+                            // MARK: - Cluster Cards (Top Left)
+                        ZStack {
+                            DashboardMetricsCard(nmeaManager: nmeaManager,color: .purple)
+                            BoatMapPreview(nmeaManager: nmeaManager)
+                                .padding(UIConstants.spacing)
+                        }
+
+                            // MARK: - Cluster Cards (Top Left)
+                        DashboardMetricsCard(nmeaManager: nmeaManager,color: .pink)
+
+
+                    }
+                    VStack() {
+
+                            // MARK: - Cluster Cards (Top Left)
+                        DashboardMetricsCard(nmeaManager: nmeaManager, color: .blue)
+
+                            // MARK: - Cluster Cards (Top Left)
+                        DashboardMetricsCard(nmeaManager: nmeaManager, color: .teal)
+
                     }
                 }
 
-                // MARK: - GPS / Position
-                DashboardMetricsCard(title: "Positioning", systemImage: "location") {
-                    LazyVGrid(columns: gridItems, spacing: 12) {
-                        MetricPill(label: "SOG", value: format(nmeaManager.gps.speedOverGround, precision: 1), systemImage: "gauge")
-                        MetricPill(label: "COG", value: format(nmeaManager.gps.courseOverGround, precision: 0), systemImage: "location.north.line")
-                        MetricPill(label: "UTC", value: nmeaManager.gps.utcTime ?? "--", systemImage: "clock")
-                    }
-                }
 
-                // MARK: - Status Indicators
-                DashboardMetricsCard(title: "System Status", systemImage: "checkmark.circle") {
-                    HStack(spacing: 16) {
-                        StatusLight(label: "Wind", isActive: !nmeaManager.shouldSendMWV)
-                        StatusLight(label: "Compass", isActive: !nmeaManager.shouldSendHDG)
-                        StatusLight(label: "GPS", isActive: !nmeaManager.shouldSendRMC)
-                        StatusLight(label: "Hydro", isActive: !nmeaManager.shouldSendDBT)
-                    }
-                }
+                // MARK: - Center Compass + Wind
+                DashboardWindCompassCard()
+                    .frame(width: geo.size.width * 0.4, height: geo.size.width * 0.4)
+                    .background(
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .shadow(radius: 20)
+                    )
+                    .clipShape(Circle())
+                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
             }
-            .padding()
         }
-    }
-
-    private func format(_ value: Double?, precision: Int = 0) -> String {
-        guard let value else { return "--" }
-        return String(format: "%.\(precision)f", value)
     }
 }
 
-// MARK: - Status Light View
-struct StatusLight: View {
-    var label: String
-    var isActive: Bool
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(isActive ? Color.green : Color.gray)
-                .frame(width: 10, height: 10)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(6)
-        .background(.thinMaterial)
-        .clipShape(Capsule())
-    }
+#Preview {
+    OverviewDashboard()
+        .environment(NMEASimulator())
+        .frame(width: UIConstants.halfScreen, height: UIConstants.minAppWindowHeight)
 }
+
+
+
+

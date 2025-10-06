@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import CoreLocation
 
 struct MapWithRightClick: NSViewRepresentable {
     @Binding var coordinate: CLLocationCoordinate2D?
@@ -12,12 +13,33 @@ struct MapWithRightClick: NSViewRepresentable {
         }
 
         @objc func handleRightClick(_ gestureRecognizer: NSClickGestureRecognizer) {
-            guard gestureRecognizer.buttonMask.contains(.init(2)), // right-click
-                  let mapView = gestureRecognizer.view as? MKMapView else { return }
+            print("Right-click detected")
+
+            guard gestureRecognizer.buttonMask == 2,
+                  let mapView = gestureRecognizer.view as? MKMapView else {
+                print("Failed right-click guard")
+                return
+            }
 
             let location = gestureRecognizer.location(in: mapView)
             let coordinate = mapView.convert(location, toCoordinateFrom: mapView)
+            print("Selected coordinate: \(coordinate)")
             parent.coordinate = coordinate
+        }
+
+        // ✅ This must be here inside Coordinator
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            let identifier = "SelectedLocation"
+
+            var view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+            if view == nil {
+                view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                view?.canShowCallout = true
+            } else {
+                view?.annotation = annotation
+            }
+
+            return view
         }
     }
 
@@ -39,7 +61,7 @@ struct MapWithRightClick: NSViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.handleRightClick(_:))
         )
-        rightClickRecognizer.buttonMask = 0x2 // right mouse button
+        rightClickRecognizer.buttonMask = 2
         mapView.addGestureRecognizer(rightClickRecognizer)
 
         return mapView
@@ -51,8 +73,10 @@ struct MapWithRightClick: NSViewRepresentable {
         if let coord = coordinate {
             let annotation = MKPointAnnotation()
             annotation.coordinate = coord
-            annotation.title = "Selected"
+            annotation.title = "Starting Point"
+            annotation.subtitle = String(format: "%.5f, %.5f", coord.latitude, coord.longitude)
             nsView.addAnnotation(annotation)
-        }
-    }
+            
+            nsView.selectAnnotation(annotation, animated: true)
+        }    }
 }
