@@ -10,35 +10,35 @@ import Foundation
 struct SensorToggleStates: Codable {
     
     // Wind
-    var hasAnemometer: Bool = false
+    var hasAnemometer: Bool = true
 
     
     // Compass / Gyro
-    var hasCompass: Bool = false
-    var hasGyro: Bool = false
+    var hasCompass: Bool = true
+    var hasGyro: Bool = true
 
 
     // GPS
-    var hasGPS: Bool = false
+    var hasGPS: Bool = true
     var hasAIS: Bool = false
 
     //MARK: - Hydro Data
     // Depth
-    var hasEchoSounder = false
+    var hasEchoSounder = true
     
     // Speed / Log
-    var hasSpeedLog = false
+    var hasSpeedLog = true
     
     // Sea Water Temperature
-    var hasWaterTempSensor = false
+    var hasWaterTempSensor = true
     
     //MARK: - Environmental Sensors
-    var hasAirTempSensor: Bool = false
-    var hasHumidtySensor: Bool = false
-    var hasBarometer: Bool = false
+    var hasAirTempSensor = false
+    var hasHumidtySensor = false
+    var hasBarometer = false
     
     //MARK: - Satellite & Communication
-    var shouldSendGNSS: Bool = false
-    var shouldSendDSC: Bool = false
+    var shouldSendGNSS = false
+    var shouldSendDSC = false
     
 }

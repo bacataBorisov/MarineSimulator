@@ -8,16 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		06212DC52E024F9E007A4537 /* VPWHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DC42E024F9E007A4537 /* VPWHelpView.swift */; };
-		06212DC92E0639DE007A4537 /* OverviewDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DC82E0639DE007A4537 /* OverviewDashboard.swift */; };
-		06212DCB2E086439007A4537 /* FullControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DCA2E086430007A4537 /* FullControlView.swift */; };
-		06212DCE2E0A1BFD007A4537 /* HeadingRawControllerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DCD2E0A1BFD007A4537 /* HeadingRawControllerView.swift */; };
-		06212DD02E0A1DB2007A4537 /* WindRawControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DCF2E0A1DAD007A4537 /* WindRawControlView.swift */; };
 		06212DD22E0B65D2007A4537 /* SentenceToggleStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */; };
 		06212DD42E0B66FD007A4537 /* SensorToggleStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */; };
 		06212DD72E0B6B1C007A4537 /* HDGHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD62E0B6B1C007A4537 /* HDGHelpView.swift */; };
 		06212DD92E0B6B59007A4537 /* HDTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD82E0B6B59007A4537 /* HDTHelpView.swift */; };
 		06212DDB2E0B6B83007A4537 /* ROTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DDA2E0B6B83007A4537 /* ROTHelpView.swift */; };
-		06212DDD2E0CBE15007A4537 /* HydroRawControllerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DDC2E0CBE0F007A4537 /* HydroRawControllerView.swift */; };
 		06212DDF2E0CCE27007A4537 /* ConsolePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DDE2E0CCE27007A4537 /* ConsolePanelView.swift */; };
 		06212DE52E10D9DD007A4537 /* WorkPlaygroundStuff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DE42E10D9CE007A4537 /* WorkPlaygroundStuff.swift */; };
 		06212DEA2E10DE31007A4537 /* DBTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DE92E10DE31007A4537 /* DBTHelpView.swift */; };
@@ -35,7 +30,9 @@
 		06212E9E2E149DCF007A4537 /* ZDAHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212E9D2E149DCF007A4537 /* ZDAHelpView.swift */; };
 		06212EA02E149F49007A4537 /* GPSMapSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212E9F2E149F49007A4537 /* GPSMapSelectorView.swift */; };
 		06212EA22E14A0A4007A4537 /* MapWithRightClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212EA12E14A0A4007A4537 /* MapWithRightClick.swift */; };
-		0648D2202DFFA8F5000DC7E3 /* DashboardMetricsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D21F2DFFA8F5000DC7E3 /* DashboardMetricsCard.swift */; };
+		063AADE52E9469FA003B2A7A /* TrailingSidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */; };
+		063AADE82E946F2A003B2A7A /* LeadingSidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */; };
+		063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADF02E947A71003B2A7A /* ControlCategory.swift */; };
 		0648D2252E00F1FA000DC7E3 /* HeadingConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */; };
 		0648D25A2E010520000DC7E3 /* ViewKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2592E010520000DC7E3 /* ViewKit.swift */; };
 		0648D25D2E02326A000DC7E3 /* NMEASimulator+SentenceBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D25C2E023240000DC7E3 /* NMEASimulator+SentenceBuilder.swift */; };
@@ -87,16 +84,11 @@
 
 /* Begin PBXFileReference section */
 		06212DC42E024F9E007A4537 /* VPWHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPWHelpView.swift; sourceTree = "<group>"; };
-		06212DC82E0639DE007A4537 /* OverviewDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewDashboard.swift; sourceTree = "<group>"; };
-		06212DCA2E086430007A4537 /* FullControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullControlView.swift; sourceTree = "<group>"; };
-		06212DCD2E0A1BFD007A4537 /* HeadingRawControllerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadingRawControllerView.swift; sourceTree = "<group>"; };
-		06212DCF2E0A1DAD007A4537 /* WindRawControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindRawControlView.swift; sourceTree = "<group>"; };
 		06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceToggleStates.swift; sourceTree = "<group>"; };
 		06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorToggleStates.swift; sourceTree = "<group>"; };
 		06212DD62E0B6B1C007A4537 /* HDGHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HDGHelpView.swift; sourceTree = "<group>"; };
 		06212DD82E0B6B59007A4537 /* HDTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HDTHelpView.swift; sourceTree = "<group>"; };
 		06212DDA2E0B6B83007A4537 /* ROTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROTHelpView.swift; sourceTree = "<group>"; };
-		06212DDC2E0CBE0F007A4537 /* HydroRawControllerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HydroRawControllerView.swift; sourceTree = "<group>"; };
 		06212DDE2E0CCE27007A4537 /* ConsolePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePanelView.swift; sourceTree = "<group>"; };
 		06212DE42E10D9CE007A4537 /* WorkPlaygroundStuff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkPlaygroundStuff.swift; sourceTree = "<group>"; };
 		06212DE92E10DE31007A4537 /* DBTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBTHelpView.swift; sourceTree = "<group>"; };
@@ -114,7 +106,9 @@
 		06212E9D2E149DCF007A4537 /* ZDAHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZDAHelpView.swift; sourceTree = "<group>"; };
 		06212E9F2E149F49007A4537 /* GPSMapSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPSMapSelectorView.swift; sourceTree = "<group>"; };
 		06212EA12E14A0A4007A4537 /* MapWithRightClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapWithRightClick.swift; sourceTree = "<group>"; };
-		0648D21F2DFFA8F5000DC7E3 /* DashboardMetricsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardMetricsCard.swift; sourceTree = "<group>"; };
+		063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingSidePanel.swift; sourceTree = "<group>"; };
+		063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadingSidePanel.swift; sourceTree = "<group>"; };
+		063AADF02E947A71003B2A7A /* ControlCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCategory.swift; sourceTree = "<group>"; };
 		0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadingConfig.swift; sourceTree = "<group>"; };
 		0648D2592E010520000DC7E3 /* ViewKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewKit.swift; sourceTree = "<group>"; };
 		0648D25C2E023240000DC7E3 /* NMEASimulator+SentenceBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+SentenceBuilder.swift"; sourceTree = "<group>"; };
@@ -203,17 +197,6 @@
 			path = Wind;
 			sourceTree = "<group>";
 		};
-		06212DCC2E0A1BF3007A4537 /* FullControlView */ = {
-			isa = PBXGroup;
-			children = (
-				06212DCA2E086430007A4537 /* FullControlView.swift */,
-				06212DCF2E0A1DAD007A4537 /* WindRawControlView.swift */,
-				06212DCD2E0A1BFD007A4537 /* HeadingRawControllerView.swift */,
-				06212DDC2E0CBE0F007A4537 /* HydroRawControllerView.swift */,
-			);
-			path = FullControlView;
-			sourceTree = "<group>";
-		};
 		06212DD52E0B6B14007A4537 /* Heading */ = {
 			isa = PBXGroup;
 			children = (
@@ -255,10 +238,11 @@
 			isa = PBXGroup;
 			children = (
 				06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */,
+				066372F82DFF83E000B7348E /* BoatMapPreview.swift */,
 				06D349022E91ED6C005F76A4 /* TopControlBar.swift */,
-				06212DC82E0639DE007A4537 /* OverviewDashboard.swift */,
-				06212DCC2E0A1BF3007A4537 /* FullControlView */,
-				0648D21F2DFFA8F5000DC7E3 /* DashboardMetricsCard.swift */,
+				063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */,
+				063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */,
+				063AADF02E947A71003B2A7A /* ControlCategory.swift */,
 				0682C7672DFE653B00AD0C0B /* DashboardWindCompassCard.swift */,
 			);
 			path = Dashboard;
@@ -292,7 +276,6 @@
 				06B4B2D12DF52FE8005DC523 /* GPSConfig.swift */,
 				06212E9F2E149F49007A4537 /* GPSMapSelectorView.swift */,
 				06212EA12E14A0A4007A4537 /* MapWithRightClick.swift */,
-				066372F82DFF83E000B7348E /* BoatMapPreview.swift */,
 			);
 			path = GPS;
 			sourceTree = "<group>";
@@ -479,7 +462,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					06B4B2902DF50AB6005DC523 = {
 						CreatedOnToolsVersion = 16.0;
@@ -545,19 +528,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				06212DEE2E10DF0E007A4537 /* MTWHelpView.swift in Sources */,
-				06212DCE2E0A1BFD007A4537 /* HeadingRawControllerView.swift in Sources */,
 				06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */,
 				06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */,
 				0648D2642E02433E000DC7E3 /* MWVHelpView.swift in Sources */,
-				06212DCB2E086439007A4537 /* FullControlView.swift in Sources */,
 				06212DD42E0B66FD007A4537 /* SensorToggleStates.swift in Sources */,
 				06B4B2CC2DF52E09005DC523 /* ConfigurationView.swift in Sources */,
 				06B4B2D02DF52FCD005DC523 /* HydroConfig.swift in Sources */,
-				06212DDD2E0CBE15007A4537 /* HydroRawControllerView.swift in Sources */,
 				06212DD92E0B6B59007A4537 /* HDTHelpView.swift in Sources */,
 				06212EA22E14A0A4007A4537 /* MapWithRightClick.swift in Sources */,
 				06212E942E149CCC007A4537 /* GGAHelpView.swift in Sources */,
-				06212DD02E0A1DB2007A4537 /* WindRawControlView.swift in Sources */,
 				06212DDF2E0CCE27007A4537 /* ConsolePanelView.swift in Sources */,
 				06212DEC2E10DE87007A4537 /* DPTHelpView.swift in Sources */,
 				0648D25F2E0233A0000DC7E3 /* NMEASimulator+WindCalculations.swift in Sources */,
@@ -582,18 +561,19 @@
 				0682C76E2DFE66D100AD0C0B /* CompassLabelView.swift in Sources */,
 				0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */,
 				0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */,
-				0648D2202DFFA8F5000DC7E3 /* DashboardMetricsCard.swift in Sources */,
+				063AADE52E9469FA003B2A7A /* TrailingSidePanel.swift in Sources */,
 				0682C7682DFE653B00AD0C0B /* DashboardWindCompassCard.swift in Sources */,
 				06B4B2D22DF52FEB005DC523 /* GPSConfig.swift in Sources */,
 				06212DF22E10DF4F007A4537 /* VBWHelpView.swift in Sources */,
 				0648D2662E024807000DC7E3 /* MWDHelpView.swift in Sources */,
+				063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */,
 				06B4B2D42DFA5391005DC523 /* SimulatedValue.swift in Sources */,
 				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
 				06B4B2952DF50AB6005DC523 /* NMEASimulatorApp.swift in Sources */,
 				06212DF02E10DF3B007A4537 /* VHWHelpView.swift in Sources */,
-				06212DC92E0639DE007A4537 /* OverviewDashboard.swift in Sources */,
 				06212DE52E10D9DD007A4537 /* WorkPlaygroundStuff.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
+				063AADE82E946F2A003B2A7A /* LeadingSidePanel.swift in Sources */,
 				06B4B2DC2DFCFEBA005DC523 /* GPSData.swift in Sources */,
 				06212E9C2E149D98007A4537 /* GSVHelpView.swift in Sources */,
 				06212DD22E0B65D2007A4537 /* SentenceToggleStates.swift in Sources */,
@@ -670,7 +650,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = V73TDMAF88;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -694,6 +676,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -733,7 +716,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = V73TDMAF88;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -750,6 +735,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -763,10 +749,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"NMEASimulator/Preview Content\"";
-				DEVELOPMENT_TEAM = V73TDMAF88;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -791,10 +781,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"NMEASimulator/Preview Content\"";
-				DEVELOPMENT_TEAM = V73TDMAF88;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -816,7 +810,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V73TDMAF88;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -834,7 +828,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V73TDMAF88;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -851,7 +845,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V73TDMAF88;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorUITests;
@@ -867,7 +861,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V73TDMAF88;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorUITests;

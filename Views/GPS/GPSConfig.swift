@@ -177,7 +177,6 @@ private struct GPSSentencesSection: View {
                 }
                 Divider().padding(.vertical, 4)
                 GPSMapSelectorView(selectedCoordinate: selectedCoordinateBinding)
-                .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
