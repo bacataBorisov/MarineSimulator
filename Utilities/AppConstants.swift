@@ -1,0 +1,42 @@
+//
+//  Constants.swift
+//  ExtasyCompleteNavigation
+//
+//  Created by Vasil Borisov on 18.11.24.
+//
+import Foundation
+import AppKit
+
+public enum RoundingPrecision {
+    
+    case whole
+    case tenths
+    case hundredths
+}
+
+//coeff. for converting to nautical miles
+public let toNauticalMiles = 0.000539956803
+public let toNauticalCables = 0.0053961007775
+public let toBoatLengths = 0.083333333333
+public let toMetersPerSecond = 0.514444444
+
+enum DistanceUnit {
+    case nauticalMiles
+    case nauticalCables
+    case meters
+    case boatLength
+}
+
+public struct UIConstants {
+    
+    static let spacing: CGFloat = 6
+    static let halfScreen = (NSScreen.main?.frame.width ?? 1728) / 2
+    static let minAppWindowHeight = 520 + (3 * spacing)
+    static let tabBarHeight: CGFloat = 32
+    static let bottomBarHeight: CGFloat = 24
+
+    
+}
+
+
+

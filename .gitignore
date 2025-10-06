@@ -1,0 +1,68 @@
+# Xcode & macOS
+.DS_Store
+*.swp
+*.lock
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.xcuserdatad
+*.xcworkspace/xcuserdata
+DerivedData/
+build/
+*.moved-aside
+*.xcuserstate
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Xcode project files cache
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+
+# Logs & temp
+*.log
+*.tmp
+*.bak
+
+# App sandbox caches
+*.dSYM
+*.dSYM.zip
+
+# Swift Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# User-specific settings
+*.xcodeproj/project.xcworkspace/xcuserdata
+*.xcodeproj/xcuserdata
+*.xcworkspace/xcuserdata
+
+# macOS system files
+Icon?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local data / assets / exports
+/Screenshots/
+/Exports/
+/Logs/
+/Cache/
+/Temp/
+/Output/
+/DebugFiles/
+
+# Optional: exclude local JSON or configuration files
+*.local.json
+*.private.json
+Config/local.*
+
+# If you use SwiftData or CoreData local stores
+*.sqlite*
