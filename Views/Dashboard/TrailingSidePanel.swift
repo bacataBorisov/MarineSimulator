@@ -19,7 +19,7 @@ struct TrailingSidePanel: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Replace these with your real instrument views
                 // e.g. `AnemometerView(nmeaManager: nmea)` if required
-                DashboardWindCompassCard()
+                WindCompass()
                     //.frame(height: 140)
                     .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 8))
                 

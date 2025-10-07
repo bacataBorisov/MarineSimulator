@@ -28,15 +28,28 @@ struct BoatMapPreview: View {
             ZStack(alignment: .topLeading) {
                 Map(position: $mapPosition) {
                     Annotation("Boat", coordinate: coordinate) {
-                        Image(systemName: "sailboat.fill")
+                        Image(systemName: "location.north.line.fill")
                             .resizable()
-                            .frame(width: 24, height: 24)
-                            .foregroundStyle(.tint)
+                            .symbolRenderingMode(.multicolor)
+                            .frame(width: 20, height: 40)
+                            .overlay(
+                                Image(systemName: "location.north.line.fill")
+                                    .resizable()
+                                    .foregroundColor(.orange)
+                            )
+                            .rotationEffect(.degrees(nmeaManager.heading.value ?? 0))
+                            .animation(.easeInOut(duration: 0.8), value: nmeaManager.heading.value ?? 0)
+
                     }
                 }
                 .frame(width: safeWidth, height: safeHeight)               // prevent 0x0
                 .clipShape(Rectangle())
-                .allowsHitTesting(false)                                   // instead of .disabled(true)
+                .mapControls {
+                    MapCompass()
+                    MapScaleView()
+                    MapZoomStepper()
+                }
+                // if // instead of .disabled(true)
                 .onAppear {
                     // Defer camera set to after first layout pass
                     DispatchQueue.main.async {
@@ -46,11 +59,6 @@ struct BoatMapPreview: View {
                             didSetInitialCamera = true
                         }
                     }
-                }
-                .onChange(of: coordinateKey) {
-                    // Update camera when boat moves
-                    mapPosition = .camera(.init(centerCoordinate: coordinate, distance: 200_000))
-                    debugText = formatted(coordinate)
                 }
             }
         }

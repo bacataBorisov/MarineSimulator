@@ -44,7 +44,7 @@
 		066372FB2DFF8E9200B7348E /* ConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066372FA2DFF8E9200B7348E /* ConsoleView.swift */; };
 		0682C7622DFE63B200AD0C0B /* AnemometerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C7612DFE63B200AD0C0B /* AnemometerView.swift */; };
 		0682C7642DFE640A00AD0C0B /* Shapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C7632DFE640A00AD0C0B /* Shapes.swift */; };
-		0682C7682DFE653B00AD0C0B /* DashboardWindCompassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C7672DFE653B00AD0C0B /* DashboardWindCompassCard.swift */; };
+		0682C7682DFE653B00AD0C0B /* WindCompass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C7672DFE653B00AD0C0B /* WindCompass.swift */; };
 		0682C76E2DFE66D100AD0C0B /* CompassLabelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76A2DFE66D100AD0C0B /* CompassLabelView.swift */; };
 		0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76B2DFE66D100AD0C0B /* GaugeMarkerCompass.swift */; };
 		0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76C2DFE66D100AD0C0B /* CompassView.swift */; };
@@ -120,7 +120,7 @@
 		066372FA2DFF8E9200B7348E /* ConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleView.swift; sourceTree = "<group>"; };
 		0682C7612DFE63B200AD0C0B /* AnemometerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnemometerView.swift; sourceTree = "<group>"; };
 		0682C7632DFE640A00AD0C0B /* Shapes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shapes.swift; sourceTree = "<group>"; };
-		0682C7672DFE653B00AD0C0B /* DashboardWindCompassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardWindCompassCard.swift; sourceTree = "<group>"; };
+		0682C7672DFE653B00AD0C0B /* WindCompass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindCompass.swift; sourceTree = "<group>"; };
 		0682C76A2DFE66D100AD0C0B /* CompassLabelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLabelView.swift; sourceTree = "<group>"; };
 		0682C76B2DFE66D100AD0C0B /* GaugeMarkerCompass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMarkerCompass.swift; sourceTree = "<group>"; };
 		0682C76C2DFE66D100AD0C0B /* CompassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassView.swift; sourceTree = "<group>"; };
@@ -243,7 +243,7 @@
 				063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */,
 				063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */,
 				063AADF02E947A71003B2A7A /* ControlCategory.swift */,
-				0682C7672DFE653B00AD0C0B /* DashboardWindCompassCard.swift */,
+				0682C7672DFE653B00AD0C0B /* WindCompass.swift */,
 			);
 			path = Dashboard;
 			sourceTree = "<group>";
@@ -562,7 +562,7 @@
 				0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */,
 				0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */,
 				063AADE52E9469FA003B2A7A /* TrailingSidePanel.swift in Sources */,
-				0682C7682DFE653B00AD0C0B /* DashboardWindCompassCard.swift in Sources */,
+				0682C7682DFE653B00AD0C0B /* WindCompass.swift in Sources */,
 				06B4B2D22DF52FEB005DC523 /* GPSConfig.swift in Sources */,
 				06212DF22E10DF4F007A4537 /* VBWHelpView.swift in Sources */,
 				0648D2662E024807000DC7E3 /* MWDHelpView.swift in Sources */,
