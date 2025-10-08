@@ -33,6 +33,7 @@
 		063AADE52E9469FA003B2A7A /* TrailingSidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */; };
 		063AADE82E946F2A003B2A7A /* LeadingSidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */; };
 		063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADF02E947A71003B2A7A /* ControlCategory.swift */; };
+		063AADF62E949A5B003B2A7A /* OpenSeaMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADF52E949A5B003B2A7A /* OpenSeaMapView.swift */; };
 		0648D2252E00F1FA000DC7E3 /* HeadingConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */; };
 		0648D25A2E010520000DC7E3 /* ViewKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2592E010520000DC7E3 /* ViewKit.swift */; };
 		0648D25D2E02326A000DC7E3 /* NMEASimulator+SentenceBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D25C2E023240000DC7E3 /* NMEASimulator+SentenceBuilder.swift */; };
@@ -109,6 +110,7 @@
 		063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingSidePanel.swift; sourceTree = "<group>"; };
 		063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadingSidePanel.swift; sourceTree = "<group>"; };
 		063AADF02E947A71003B2A7A /* ControlCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCategory.swift; sourceTree = "<group>"; };
+		063AADF52E949A5B003B2A7A /* OpenSeaMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSeaMapView.swift; sourceTree = "<group>"; };
 		0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadingConfig.swift; sourceTree = "<group>"; };
 		0648D2592E010520000DC7E3 /* ViewKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewKit.swift; sourceTree = "<group>"; };
 		0648D25C2E023240000DC7E3 /* NMEASimulator+SentenceBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+SentenceBuilder.swift"; sourceTree = "<group>"; };
@@ -234,6 +236,14 @@
 			path = GPS;
 			sourceTree = "<group>";
 		};
+		063AADF42E949A24003B2A7A /* NauticalChars */ = {
+			isa = PBXGroup;
+			children = (
+				063AADF52E949A5B003B2A7A /* OpenSeaMapView.swift */,
+			);
+			path = NauticalChars;
+			sourceTree = "<group>";
+		};
 		0648D2232E00F172000DC7E3 /* Dashboard */ = {
 			isa = PBXGroup;
 			children = (
@@ -339,6 +349,7 @@
 		06B4B2C52DF50F52005DC523 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				063AADF42E949A24003B2A7A /* NauticalChars */,
 				06B4B2962DF50AB6005DC523 /* MainView.swift */,
 				06B4B2CB2DF52E02005DC523 /* ConfigurationView.swift */,
 				06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */,
@@ -582,6 +593,7 @@
 				0648D25D2E02326A000DC7E3 /* NMEASimulator+SentenceBuilder.swift in Sources */,
 				06212E982E149D3B007A4537 /* GLLHelpView.swift in Sources */,
 				06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */,
+				063AADF62E949A5B003B2A7A /* OpenSeaMapView.swift in Sources */,
 				06212DD72E0B6B1C007A4537 /* HDGHelpView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -745,6 +757,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = NMEASimulator/NMEASimulator.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -777,6 +790,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = NMEASimulator/NMEASimulator.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;

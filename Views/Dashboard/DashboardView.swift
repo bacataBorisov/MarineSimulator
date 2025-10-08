@@ -21,7 +21,7 @@ struct DashboardView: View {
     var body: some View {
         ZStack(alignment: .top) {
             // main map
-            BoatMapPreview(nmeaManager: nmeaManager)
+            BoatMapView()
 
             // TOP BAR
             TopControlBar(

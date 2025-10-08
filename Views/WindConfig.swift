@@ -115,13 +115,13 @@ private struct WindUIConditions {
     static func isMWDEnabled(_ nmea: NMEASimulator) -> Bool {
         nmea.sensorToggles.hasAnemometer &&
         nmea.hasTrueHeading &&
-        nmea.hasBoatSpeed
+        nmea.sensorToggles.hasSpeedLog
     }
     
     static func isVPWEnabled(_ nmea: NMEASimulator) -> Bool {
         nmea.sensorToggles.hasAnemometer &&
         nmea.hasTrueHeading &&
-        nmea.hasBoatSpeed
+        nmea.sensorToggles.hasSpeedLog
     }
     
     static func showAnemometerWarning(_ nmea: NMEASimulator) -> Bool {
@@ -130,11 +130,11 @@ private struct WindUIConditions {
     
     static func showMWDDependencyWarning(_ nmea: NMEASimulator) -> Bool {
         nmea.sensorToggles.hasAnemometer &&
-        (!nmea.hasTrueHeading || !nmea.hasBoatSpeed)
+        (!nmea.hasTrueHeading || !nmea.sensorToggles.hasSpeedLog)
     }
     
     static func showVPWDependencyWarning(_ nmea: NMEASimulator) -> Bool {
         nmea.sensorToggles.hasAnemometer &&
-        (!nmea.hasTrueHeading || !nmea.hasBoatSpeed)
+        (!nmea.hasTrueHeading || !nmea.sensorToggles.hasSpeedLog)
     }
 }
