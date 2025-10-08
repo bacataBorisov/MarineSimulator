@@ -9,7 +9,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct NMEASimulatorApp: App {
+struct MarineSimulator: App {
     
 // THIS WAS HERE WHEN I CREATED THE PROJECT I WILL KEEP IT FOR NOW IN CASE I NEED SWIFTDATA
 //    var sharedModelContainer: ModelContainer = {

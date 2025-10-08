@@ -49,7 +49,7 @@
 		0682C76E2DFE66D100AD0C0B /* CompassLabelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76A2DFE66D100AD0C0B /* CompassLabelView.swift */; };
 		0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76B2DFE66D100AD0C0B /* GaugeMarkerCompass.swift */; };
 		0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76C2DFE66D100AD0C0B /* CompassView.swift */; };
-		06B4B2952DF50AB6005DC523 /* NMEASimulatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* NMEASimulatorApp.swift */; };
+		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
 		06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C92DF51286005DC523 /* UDPClient.swift */; };
@@ -126,11 +126,11 @@
 		0682C76A2DFE66D100AD0C0B /* CompassLabelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLabelView.swift; sourceTree = "<group>"; };
 		0682C76B2DFE66D100AD0C0B /* GaugeMarkerCompass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMarkerCompass.swift; sourceTree = "<group>"; };
 		0682C76C2DFE66D100AD0C0B /* CompassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassView.swift; sourceTree = "<group>"; };
-		06B4B2912DF50AB6005DC523 /* NMEASimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NMEASimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		06B4B2942DF50AB6005DC523 /* NMEASimulatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMEASimulatorApp.swift; sourceTree = "<group>"; };
+		06B4B2912DF50AB6005DC523 /* MarineSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarineSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulator.swift; sourceTree = "<group>"; };
 		06B4B2962DF50AB6005DC523 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
-		06B4B2A42DF50AB8005DC523 /* NMEASimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NMEASimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		06B4B2AE2DF50AB8005DC523 /* NMEASimulatorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NMEASimulatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		06B4B2A42DF50AB8005DC523 /* MarineSimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		06B4B2AE2DF50AB8005DC523 /* MarineSimulatorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMEASimulator.swift; sourceTree = "<group>"; };
 		06B4B2C92DF51286005DC523 /* UDPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPClient.swift; sourceTree = "<group>"; };
 		06B4B2CB2DF52E02005DC523 /* ConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationView.swift; sourceTree = "<group>"; };
@@ -328,9 +328,9 @@
 		06B4B2922DF50AB6005DC523 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				06B4B2912DF50AB6005DC523 /* NMEASimulator.app */,
-				06B4B2A42DF50AB8005DC523 /* NMEASimulatorTests.xctest */,
-				06B4B2AE2DF50AB8005DC523 /* NMEASimulatorUITests.xctest */,
+				06B4B2912DF50AB6005DC523 /* MarineSimulator.app */,
+				06B4B2A42DF50AB8005DC523 /* MarineSimulatorTests.xctest */,
+				06B4B2AE2DF50AB8005DC523 /* MarineSimulatorUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -368,7 +368,7 @@
 		06B4B2C62DF50F81005DC523 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				06B4B2942DF50AB6005DC523 /* NMEASimulatorApp.swift */,
+				06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -397,9 +397,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		06B4B2902DF50AB6005DC523 /* NMEASimulator */ = {
+		06B4B2902DF50AB6005DC523 /* MarineSimulator */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 06B4B2B82DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulator" */;
+			buildConfigurationList = 06B4B2B82DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "MarineSimulator" */;
 			buildPhases = (
 				06B4B28D2DF50AB6005DC523 /* Sources */,
 				06B4B28E2DF50AB6005DC523 /* Frameworks */,
@@ -412,16 +412,16 @@
 			fileSystemSynchronizedGroups = (
 				06B4B2932DF50AB6005DC523 /* NMEASimulator */,
 			);
-			name = NMEASimulator;
+			name = MarineSimulator;
 			packageProductDependencies = (
 			);
 			productName = NMEASimulator;
-			productReference = 06B4B2912DF50AB6005DC523 /* NMEASimulator.app */;
+			productReference = 06B4B2912DF50AB6005DC523 /* MarineSimulator.app */;
 			productType = "com.apple.product-type.application";
 		};
-		06B4B2A32DF50AB8005DC523 /* NMEASimulatorTests */ = {
+		06B4B2A32DF50AB8005DC523 /* MarineSimulatorTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 06B4B2BB2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorTests" */;
+			buildConfigurationList = 06B4B2BB2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "MarineSimulatorTests" */;
 			buildPhases = (
 				06B4B2A02DF50AB8005DC523 /* Sources */,
 				06B4B2A12DF50AB8005DC523 /* Frameworks */,
@@ -435,16 +435,16 @@
 			fileSystemSynchronizedGroups = (
 				06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */,
 			);
-			name = NMEASimulatorTests;
+			name = MarineSimulatorTests;
 			packageProductDependencies = (
 			);
 			productName = NMEASimulatorTests;
-			productReference = 06B4B2A42DF50AB8005DC523 /* NMEASimulatorTests.xctest */;
+			productReference = 06B4B2A42DF50AB8005DC523 /* MarineSimulatorTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		06B4B2AD2DF50AB8005DC523 /* NMEASimulatorUITests */ = {
+		06B4B2AD2DF50AB8005DC523 /* MarineSimulatorUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 06B4B2BE2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorUITests" */;
+			buildConfigurationList = 06B4B2BE2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "MarineSimulatorUITests" */;
 			buildPhases = (
 				06B4B2AA2DF50AB8005DC523 /* Sources */,
 				06B4B2AB2DF50AB8005DC523 /* Frameworks */,
@@ -458,11 +458,11 @@
 			fileSystemSynchronizedGroups = (
 				06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */,
 			);
-			name = NMEASimulatorUITests;
+			name = MarineSimulatorUITests;
 			packageProductDependencies = (
 			);
 			productName = NMEASimulatorUITests;
-			productReference = 06B4B2AE2DF50AB8005DC523 /* NMEASimulatorUITests.xctest */;
+			productReference = 06B4B2AE2DF50AB8005DC523 /* MarineSimulatorUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -488,7 +488,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 06B4B28C2DF50AB6005DC523 /* Build configuration list for PBXProject "NMEASimulator" */;
+			buildConfigurationList = 06B4B28C2DF50AB6005DC523 /* Build configuration list for PBXProject "MarineSimulator" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -502,9 +502,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				06B4B2902DF50AB6005DC523 /* NMEASimulator */,
-				06B4B2A32DF50AB8005DC523 /* NMEASimulatorTests */,
-				06B4B2AD2DF50AB8005DC523 /* NMEASimulatorUITests */,
+				06B4B2902DF50AB6005DC523 /* MarineSimulator */,
+				06B4B2A32DF50AB8005DC523 /* MarineSimulatorTests */,
+				06B4B2AD2DF50AB8005DC523 /* MarineSimulatorUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -580,7 +580,7 @@
 				063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */,
 				06B4B2D42DFA5391005DC523 /* SimulatedValue.swift in Sources */,
 				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
-				06B4B2952DF50AB6005DC523 /* NMEASimulatorApp.swift in Sources */,
+				06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */,
 				06212DF02E10DF3B007A4537 /* VHWHelpView.swift in Sources */,
 				06212DE52E10D9DD007A4537 /* WorkPlaygroundStuff.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
@@ -617,12 +617,12 @@
 /* Begin PBXTargetDependency section */
 		06B4B2A62DF50AB8005DC523 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 06B4B2902DF50AB6005DC523 /* NMEASimulator */;
+			target = 06B4B2902DF50AB6005DC523 /* MarineSimulator */;
 			targetProxy = 06B4B2A52DF50AB8005DC523 /* PBXContainerItemProxy */;
 		};
 		06B4B2B02DF50AB8005DC523 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 06B4B2902DF50AB6005DC523 /* NMEASimulator */;
+			target = 06B4B2902DF50AB6005DC523 /* MarineSimulator */;
 			targetProxy = 06B4B2AF2DF50AB8005DC523 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -771,6 +771,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -804,6 +805,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -832,7 +834,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NMEASimulator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NMEASimulator";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MarineSimulator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MarineSimulator";
 			};
 			name = Debug;
 		};
@@ -850,7 +852,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NMEASimulator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NMEASimulator";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MarineSimulator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MarineSimulator";
 			};
 			name = Release;
 		};
@@ -889,7 +891,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		06B4B28C2DF50AB6005DC523 /* Build configuration list for PBXProject "NMEASimulator" */ = {
+		06B4B28C2DF50AB6005DC523 /* Build configuration list for PBXProject "MarineSimulator" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				06B4B2B62DF50AB8005DC523 /* Debug */,
@@ -898,7 +900,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		06B4B2B82DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulator" */ = {
+		06B4B2B82DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "MarineSimulator" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				06B4B2B92DF50AB8005DC523 /* Debug */,
@@ -907,7 +909,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		06B4B2BB2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorTests" */ = {
+		06B4B2BB2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "MarineSimulatorTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				06B4B2BC2DF50AB8005DC523 /* Debug */,
@@ -916,7 +918,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		06B4B2BE2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "NMEASimulatorUITests" */ = {
+		06B4B2BE2DF50AB8005DC523 /* Build configuration list for PBXNativeTarget "MarineSimulatorUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				06B4B2BF2DF50AB8005DC523 /* Debug */,
