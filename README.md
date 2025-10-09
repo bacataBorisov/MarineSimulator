@@ -1,6 +1,7 @@
-# 🧭 MarineSimulator
+# MarineSimulator
 
-A **macOS** app (SwiftUI + MapKit) for **simulating and visualizing marine navigation data** — heading, wind, speed, depth, and GPS — without needing onboard instruments. Ideal for prototyping, testing, and demos of NMEA-style workflows.
+A **macOS** app (SwiftUI + MapKit) for **simulating and visualizing marine navigation data** — heading, wind, speed, depth, and GPS — without needing onboard instruments. 
+Ideal for prototyping, testing, and demos of NMEA-style (not-only) workflows.
 
 ---
 
@@ -11,7 +12,7 @@ A **macOS** app (SwiftUI + MapKit) for **simulating and visualizing marine navig
 - **Manual pan/zoom** with a one-tap **“Center on Boat”** control (no forced follow)
 - **Compact control panels** (left) for quick tuning via sliders
 - **Inspector panel** (right) for live readouts and instrument widgets
-- **Optional UDP broadcast** of NMEA-like sentences for external consumers
+- **UDP broadcast** of NMEA-like sentences for external consumers
 - **SwiftUI-first** architecture; clean, extendable components
 
 > **Target:** macOS 14+ (Sonoma) or newer, Xcode 15+ recommended.
@@ -20,22 +21,19 @@ A **macOS** app (SwiftUI + MapKit) for **simulating and visualizing marine navig
 
 ## 🖼️ Screenshots
 
-> Place your images in `assets/media/` and keep the filenames below, or adjust the paths.
+### Dashboard
 
-### Dashboard (Light & Dark)
-| Light | Dark |
-|---|---|
-| ![Dashboard Light](assets/media/dashboard_light.png) | ![Dashboard Dark](assets/media/dashboard_dark.png) |
+![Dashboard](assets/media/dashboard.png) 
 
-### Map View
-![Map View](assets/media/map_preview.png)
+### Configuration Page
+![Map View](assets/media/conifguration_page.png)
 
-### Console
-![Console](assets/media/console_view.png)
+### Sentence Page
+![Console](assets/media/sentence_page.png)
 
 ---
 
-## 🎥 Demo Videos (optional)
+## 🎥 Demo Videos (coming soon ...)
 
 - 📺 **Quick Overview:** https://youtu.be/your_demo_video_here  
 - 🛠️ **Longer Walkthrough:** https://youtu.be/your_overview_video_here
@@ -45,7 +43,6 @@ A **macOS** app (SwiftUI + MapKit) for **simulating and visualizing marine navig
 ## 🚀 Getting Started
 
 ### 1) Clone
-```bash
 git clone https://github.com/bacataBorisov/MarineSimulator.git
 cd MarineSimulator
 
@@ -123,5 +120,5 @@ See the [LICENSE](LICENSE) file for details.
 **Vasil Borisov**  
 Marine Electronics Enthusiast • Software Developer  
 
-📧 **Email:** [bacata.borisov@gmail.com](mailto:bacata.borisov@gmail.com)  
+📧 **Email:** [vasil.borisovv@gmail.com](mailto:vasil.borisovv@gmail.com)  
 🐙 **GitHub:** [github.com/bacataBorisov](https://github.com/bacataBorisov)  
