@@ -23,20 +23,14 @@ Ideal for prototyping, testing, and demos of NMEA-style (not-only) workflows.
 
 ### Dashboard
 
-![Dashboard](assets/media/dashboard.png) 
+![Dashboard](assets/media/dashboard.heic) 
 
 ### Configuration Page
-![Map View](assets/media/conifguration_page.png)
-
-### Sentence Page
-![Console](assets/media/sentence_page.png)
+![Configuration Page](assets/media/configuration_page.heic)
 
 ---
 
 ## 🎥 Demo Videos (coming soon ...)
-
-- 📺 **Quick Overview:** https://youtu.be/your_demo_video_here  
-- 🛠️ **Longer Walkthrough:** https://youtu.be/your_overview_video_here
 
 ---
 
@@ -44,7 +38,6 @@ Ideal for prototyping, testing, and demos of NMEA-style (not-only) workflows.
 
 ### 1) Clone
 git clone https://github.com/bacataBorisov/MarineSimulator.git
-cd MarineSimulator
 
 ---
 
