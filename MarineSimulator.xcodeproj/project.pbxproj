@@ -152,14 +152,14 @@
 			path = NMEASimulator;
 			sourceTree = "<group>";
 		};
-		06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */ = {
+		06B4B2A72DF50AB8005DC523 /* MarineSimulatorTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = NMEASimulatorTests;
+			path = MarineSimulatorTests;
 			sourceTree = "<group>";
 		};
-		06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */ = {
+		06B4B2B12DF50AB8005DC523 /* MarineSimulatorUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = NMEASimulatorUITests;
+			path = MarineSimulatorUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -319,8 +319,8 @@
 				06B4B2C52DF50F52005DC523 /* Views */,
 				06B4B2C82DF50FC5005DC523 /* Utilities */,
 				06B4B2932DF50AB6005DC523 /* NMEASimulator */,
-				06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */,
-				06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */,
+				06B4B2A72DF50AB8005DC523 /* MarineSimulatorTests */,
+				06B4B2B12DF50AB8005DC523 /* MarineSimulatorUITests */,
 				06B4B2922DF50AB6005DC523 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -433,7 +433,7 @@
 				06B4B2A62DF50AB8005DC523 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				06B4B2A72DF50AB8005DC523 /* NMEASimulatorTests */,
+				06B4B2A72DF50AB8005DC523 /* MarineSimulatorTests */,
 			);
 			name = MarineSimulatorTests;
 			packageProductDependencies = (
@@ -456,7 +456,7 @@
 				06B4B2B02DF50AB8005DC523 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				06B4B2B12DF50AB8005DC523 /* NMEASimulatorUITests */,
+				06B4B2B12DF50AB8005DC523 /* MarineSimulatorUITests */,
 			);
 			name = MarineSimulatorUITests;
 			packageProductDependencies = (

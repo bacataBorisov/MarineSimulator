@@ -7,7 +7,7 @@
 
 import XCTest
 
-final class NMEASimulatorUITestsLaunchTests: XCTestCase {
+final class MarineSimulatorUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
