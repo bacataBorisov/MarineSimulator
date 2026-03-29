@@ -2,100 +2,106 @@ import Foundation
 
 extension NMEASimulator {
 
-    // MARK: - Wind Derived Outputs
+    var calculatedTWA: Double? { computeTWA(from: latestSnapshot) }
+    var calculatedAWS: Double? { computeAWS(from: latestSnapshot) }
+    var calculatedAWA: Double? { computeAWA(from: latestSnapshot) }
+    var calculatedAWD: Double? { computeAWD(from: latestSnapshot) }
+    var calculatedTWS: Double? { computeTWS(from: latestSnapshot) }
+    var calculatedTWD: Double? { computeTWD(from: latestSnapshot) }
+    var calculatedVPWKnots: Double? { computeVPWKnots(from: latestSnapshot) }
+    var calculatedVPWMS: Double? { computeVPWMS(from: latestSnapshot) }
 
-    var calculatedTWA: Double? {
-        guard let twd = twd.value else { return nil }
+    func computeTWA(from snapshot: SimulationSnapshot?) -> Double? {
+        guard let snapshot, let twd = snapshot.windDirectionTrue else { return nil }
 
-        // If boat is not moving or speed unavailable → heading irrelevant
-        if speed.value == nil || speed.value == 0 {
+        if snapshot.boatSpeed == nil || snapshot.boatSpeed == 0 {
             return twd
         }
 
-        guard let heading = heading.value else { return twd }
+        guard let heading = snapshot.gyroHeading ?? snapshot.magneticHeading else {
+            return twd
+        }
+
         return normalizeAngle(twd - heading)
     }
 
-    var calculatedAWS: Double? {
-        guard let tws = tws.value else { return nil }
+    func computeAWS(from snapshot: SimulationSnapshot?) -> Double? {
+        guard let snapshot, let tws = snapshot.windSpeedTrue else { return nil }
 
-        // If boat is stationary or missing data → AWS = TWS
-        if speed.value == nil || speed.value == 0 {
+        if snapshot.boatSpeed == nil || snapshot.boatSpeed == 0 {
             return tws
         }
 
         guard
-            let twd = twd.value,
-            let heading = heading.value,
-            let boatSpeed = speed.value
-        else { return tws }
-
-        let awaRad = toRadians(normalizeAngle(twd - heading))
-        let windX = tws * cos(awaRad)
-        let windY = tws * sin(awaRad)
-
-        let awsX = windX + boatSpeed
-        let awsY = windY
-
-        return sqrt(awsX * awsX + awsY * awsY)
-    }
-
-    var calculatedAWA: Double? {
-        // If we have no wind data at all
-        guard let tws = tws.value else { return nil }
-
-        // Case 1: boat speed missing or zero → AWA = TWA (or TWD if heading missing)
-        if speed.value == nil || speed.value == 0 {
-            if let twd = twd.value, let heading = heading.value {
-                return normalizeAngle(twd - heading)
-            } else if let twd = twd.value {
-                // no heading → use absolute wind direction
-                return twd
-            } else {
-                return nil
-            }
+            let twd = snapshot.windDirectionTrue,
+            let heading = snapshot.gyroHeading ?? snapshot.magneticHeading,
+            let boatSpeed = snapshot.boatSpeed
+        else {
+            return tws
         }
 
-        // Case 2: moving → do full calculation
-        guard
-            let twd = twd.value,
-            let heading = heading.value,
-            let boatSpeed = speed.value
-        else { return nil }
-
-        let twa = normalizeAngle(twd - heading)
-        let twaRad = toRadians(twa)
-
+        let twaRad = toRadians(normalizeAngle(twd - heading))
         let windX = tws * cos(twaRad)
         let windY = tws * sin(twaRad)
-
         let apparentX = windX + boatSpeed
         let apparentY = windY
 
-        let awaRad = atan2(apparentY, apparentX)
-        let degrees = toDegrees(awaRad)
-        return normalizeAngle(degrees)
+        return sqrt(apparentX * apparentX + apparentY * apparentY)
     }
-    var calculatedAWD: Double? {
-        guard let heading = heading.value, let awa = calculatedAWA else { return nil }
+
+    func computeAWA(from snapshot: SimulationSnapshot?) -> Double? {
+        guard let snapshot, let tws = snapshot.windSpeedTrue else { return nil }
+
+        if snapshot.boatSpeed == nil || snapshot.boatSpeed == 0 {
+            if let twd = snapshot.windDirectionTrue, let heading = snapshot.gyroHeading ?? snapshot.magneticHeading {
+                return normalizeAngle(twd - heading)
+            }
+            return snapshot.windDirectionTrue
+        }
+
+        guard
+            let twd = snapshot.windDirectionTrue,
+            let heading = snapshot.gyroHeading ?? snapshot.magneticHeading,
+            let boatSpeed = snapshot.boatSpeed
+        else {
+            return nil
+        }
+
+        let twa = normalizeAngle(twd - heading)
+        let twaRad = toRadians(twa)
+        let windX = tws * cos(twaRad)
+        let windY = tws * sin(twaRad)
+        let apparentX = windX + boatSpeed
+        let apparentY = windY
+        return normalizeAngle(toDegrees(atan2(apparentY, apparentX)))
+    }
+
+    func computeAWD(from snapshot: SimulationSnapshot?) -> Double? {
+        guard let snapshot, let heading = snapshot.gyroHeading ?? snapshot.magneticHeading, let awa = computeAWA(from: snapshot) else {
+            return nil
+        }
         return normalizeAngle(heading + awa)
     }
 
-    var calculatedTWS: Double? {
-        tws.value
+    func computeTWS(from snapshot: SimulationSnapshot?) -> Double? {
+        snapshot?.windSpeedTrue
     }
 
-    var calculatedTWD: Double? {
-        twd.value
+    func computeTWD(from snapshot: SimulationSnapshot?) -> Double? {
+        snapshot?.windDirectionTrue
     }
 
-    var calculatedVPWKnots: Double? {
-        guard let tws = tws.value, let twa = calculatedTWA else { return nil }
+    func computeVPWKnots(from snapshot: SimulationSnapshot?) -> Double? {
+        guard let snapshot, let tws = snapshot.windSpeedTrue, let twa = computeTWA(from: snapshot) else {
+            return nil
+        }
         return tws * cos(toRadians(twa))
     }
 
-    var calculatedVPWMS: Double? {
-        guard let vpwKnots = calculatedVPWKnots else { return nil }
-        return vpwKnots * 0.514444 // knots to m/s
+    func computeVPWMS(from snapshot: SimulationSnapshot?) -> Double? {
+        guard let vpwKnots = computeVPWKnots(from: snapshot) else {
+            return nil
+        }
+        return vpwKnots * 0.514444
     }
 }

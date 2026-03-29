@@ -49,6 +49,8 @@
 		0682C76E2DFE66D100AD0C0B /* CompassLabelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76A2DFE66D100AD0C0B /* CompassLabelView.swift */; };
 		0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76B2DFE66D100AD0C0B /* GaugeMarkerCompass.swift */; };
 		0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76C2DFE66D100AD0C0B /* CompassView.swift */; };
+		06883DE62F78B5AE005DE47D /* OutputEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */; };
+		06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */; };
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
@@ -126,6 +128,8 @@
 		0682C76A2DFE66D100AD0C0B /* CompassLabelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLabelView.swift; sourceTree = "<group>"; };
 		0682C76B2DFE66D100AD0C0B /* GaugeMarkerCompass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMarkerCompass.swift; sourceTree = "<group>"; };
 		0682C76C2DFE66D100AD0C0B /* CompassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassView.swift; sourceTree = "<group>"; };
+		06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputEndpoint.swift; sourceTree = "<group>"; };
+		06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationSnapshot.swift; sourceTree = "<group>"; };
 		06B4B2912DF50AB6005DC523 /* MarineSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarineSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulator.swift; sourceTree = "<group>"; };
 		06B4B2962DF50AB6005DC523 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
@@ -309,6 +313,13 @@
 			path = CompassView;
 			sourceTree = "<group>";
 		};
+		06883DE42F78B3A4005DE47D /* Docs */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Docs;
+			sourceTree = "<group>";
+		};
 		06B4B2882DF50AB6005DC523 = {
 			isa = PBXGroup;
 			children = (
@@ -322,6 +333,7 @@
 				06B4B2A72DF50AB8005DC523 /* MarineSimulatorTests */,
 				06B4B2B12DF50AB8005DC523 /* MarineSimulatorUITests */,
 				06B4B2922DF50AB6005DC523 /* Products */,
+				06883DE42F78B3A4005DE47D /* Docs */,
 			);
 			sourceTree = "<group>";
 		};
@@ -342,6 +354,8 @@
 				06B4B2D32DFA538D005DC523 /* SimulatedValue.swift */,
 				06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */,
 				06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */,
+				06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */,
+				06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -577,10 +591,12 @@
 				06B4B2D22DF52FEB005DC523 /* GPSConfig.swift in Sources */,
 				06212DF22E10DF4F007A4537 /* VBWHelpView.swift in Sources */,
 				0648D2662E024807000DC7E3 /* MWDHelpView.swift in Sources */,
+				06883DE62F78B5AE005DE47D /* OutputEndpoint.swift in Sources */,
 				063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */,
 				06B4B2D42DFA5391005DC523 /* SimulatedValue.swift in Sources */,
 				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
 				06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */,
+				06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */,
 				06212DF02E10DF3B007A4537 /* VHWHelpView.swift in Sources */,
 				06212DE52E10D9DD007A4537 /* WorkPlaygroundStuff.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,

@@ -9,32 +9,48 @@ import Foundation
 import Network
 
 class UDPClient {
-    
-    let ip: String
-    let port: UInt16
     private let queue = DispatchQueue(label: "udp.client.queue")
+    private var connections: [String: NWConnection] = [:]
 
-    init(ip: String, port: UInt16) {
-        self.ip = ip
-        self.port = port
-    }
+    func send(_ message: String, to endpoint: OutputEndpoint) {
+        guard endpoint.transport == .udp else {
+            return
+        }
 
-    func send(_ message: String) {
-        let connection = NWConnection(host: NWEndpoint.Host(ip), port: NWEndpoint.Port(rawValue: port)!, using: .udp)
-        connection.start(queue: queue)
+        let key = "\(endpoint.host):\(endpoint.port)"
+        let connection = connection(for: endpoint, key: key)
 
         guard let data = message.data(using: .utf8) else {
-            print("❌ Failed to encode message")
+            print("Failed to encode message")
             return
         }
 
         connection.send(content: data, completion: .contentProcessed { error in
-            if let error = error {
-                print("❌ Send error: \(error)")
-            } else {
-                print("✅ Sent: \(message.trimmingCharacters(in: .whitespacesAndNewlines))")
+            if let error {
+                print("UDP send error to \(key): \(error)")
             }
-            connection.cancel()
         })
+    }
+
+    func resetConnections() {
+        for connection in connections.values {
+            connection.cancel()
+        }
+        connections.removeAll()
+    }
+
+    private func connection(for endpoint: OutputEndpoint, key: String) -> NWConnection {
+        if let existingConnection = connections[key] {
+            return existingConnection
+        }
+
+        let connection = NWConnection(
+            host: NWEndpoint.Host(endpoint.host),
+            port: NWEndpoint.Port(rawValue: endpoint.port)!,
+            using: .udp
+        )
+        connection.start(queue: queue)
+        connections[key] = connection
+        return connection
     }
 }
