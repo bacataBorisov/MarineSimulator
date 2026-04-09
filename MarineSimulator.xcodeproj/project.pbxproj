@@ -41,6 +41,24 @@
 		0648D2612E023441000DC7E3 /* NMEASimulator+FormattedValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2602E023437000DC7E3 /* NMEASimulator+FormattedValues.swift */; };
 		0648D2642E02433E000DC7E3 /* MWVHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2632E02433E000DC7E3 /* MWVHelpView.swift */; };
 		0648D2662E024807000DC7E3 /* MWDHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2652E024807000DC7E3 /* MWDHelpView.swift */; };
+		065679B02F8869E20008299A /* InstructionManual.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AC2F8869E20008299A /* InstructionManual.md */; };
+		065679B12F8869E20008299A /* CurrentTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AA2F8869E20008299A /* CurrentTasks.md */; };
+		065679B22F8869E20008299A /* ProjectOverview.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AE2F8869E20008299A /* ProjectOverview.md */; };
+		065679B32F8869E20008299A /* CompletedTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679A92F8869E20008299A /* CompletedTasks.md */; };
+		065679B42F8869E20008299A /* FutureTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AB2F8869E20008299A /* FutureTasks.md */; };
+		065679B52F8869E20008299A /* ManualTestChecklist.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AD2F8869E20008299A /* ManualTestChecklist.md */; };
+		065679B62F8869E20008299A /* InstructionManual.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AC2F8869E20008299A /* InstructionManual.md */; };
+		065679B72F8869E20008299A /* CurrentTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AA2F8869E20008299A /* CurrentTasks.md */; };
+		065679B82F8869E20008299A /* ProjectOverview.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AE2F8869E20008299A /* ProjectOverview.md */; };
+		065679B92F8869E20008299A /* CompletedTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679A92F8869E20008299A /* CompletedTasks.md */; };
+		065679BA2F8869E20008299A /* FutureTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AB2F8869E20008299A /* FutureTasks.md */; };
+		065679BB2F8869E20008299A /* ManualTestChecklist.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AD2F8869E20008299A /* ManualTestChecklist.md */; };
+		065679BC2F8869E20008299A /* InstructionManual.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AC2F8869E20008299A /* InstructionManual.md */; };
+		065679BD2F8869E20008299A /* CurrentTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AA2F8869E20008299A /* CurrentTasks.md */; };
+		065679BE2F8869E20008299A /* ProjectOverview.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AE2F8869E20008299A /* ProjectOverview.md */; };
+		065679BF2F8869E20008299A /* CompletedTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679A92F8869E20008299A /* CompletedTasks.md */; };
+		065679C02F8869E20008299A /* FutureTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AB2F8869E20008299A /* FutureTasks.md */; };
+		065679C12F8869E20008299A /* ManualTestChecklist.md in Resources */ = {isa = PBXBuildFile; fileRef = 065679AD2F8869E20008299A /* ManualTestChecklist.md */; };
 		066372F92DFF83E000B7348E /* BoatMapPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066372F82DFF83E000B7348E /* BoatMapPreview.swift */; };
 		066372FB2DFF8E9200B7348E /* ConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066372FA2DFF8E9200B7348E /* ConsoleView.swift */; };
 		0682C7622DFE63B200AD0C0B /* AnemometerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C7612DFE63B200AD0C0B /* AnemometerView.swift */; };
@@ -54,12 +72,6 @@
 		06883DEA2F78B925005DE47D /* SimulatorSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE92F78B925005DE47D /* SimulatorSettings.swift */; };
 		06883DEC2F78BC26005DE47D /* TCPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DEB2F78BC26005DE47D /* TCPClient.swift */; };
 		06883DEE2F78C6CD005DE47D /* ManualView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DED2F78C6CD005DE47D /* ManualView.swift */; };
-		06883E072F79CA43005DE47D /* InstructionManual.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E042F79CA43005DE47D /* InstructionManual.md */; };
-		06883E082F79CA43005DE47D /* ProjectOverview.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E062F79CA43005DE47D /* ProjectOverview.md */; };
-		06883E092F79CA43005DE47D /* CompletedTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E012F79CA43005DE47D /* CompletedTasks.md */; };
-		06883E0A2F79CA43005DE47D /* FutureTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E032F79CA43005DE47D /* FutureTasks.md */; };
-		06883E0B2F79CA43005DE47D /* ManualTestChecklist.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E052F79CA43005DE47D /* ManualTestChecklist.md */; };
-		06883E0C2F79CA43005DE47D /* CurrentTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E022F79CA43005DE47D /* CurrentTasks.md */; };
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
@@ -129,6 +141,12 @@
 		0648D2602E023437000DC7E3 /* NMEASimulator+FormattedValues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+FormattedValues.swift"; sourceTree = "<group>"; };
 		0648D2632E02433E000DC7E3 /* MWVHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWVHelpView.swift; sourceTree = "<group>"; };
 		0648D2652E024807000DC7E3 /* MWDHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWDHelpView.swift; sourceTree = "<group>"; };
+		065679A92F8869E20008299A /* CompletedTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CompletedTasks.md; sourceTree = "<group>"; };
+		065679AA2F8869E20008299A /* CurrentTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CurrentTasks.md; sourceTree = "<group>"; };
+		065679AB2F8869E20008299A /* FutureTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = FutureTasks.md; sourceTree = "<group>"; };
+		065679AC2F8869E20008299A /* InstructionManual.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = InstructionManual.md; sourceTree = "<group>"; };
+		065679AD2F8869E20008299A /* ManualTestChecklist.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ManualTestChecklist.md; sourceTree = "<group>"; };
+		065679AE2F8869E20008299A /* ProjectOverview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ProjectOverview.md; sourceTree = "<group>"; };
 		066372F82DFF83E000B7348E /* BoatMapPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatMapPreview.swift; sourceTree = "<group>"; };
 		066372FA2DFF8E9200B7348E /* ConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleView.swift; sourceTree = "<group>"; };
 		0682C7612DFE63B200AD0C0B /* AnemometerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnemometerView.swift; sourceTree = "<group>"; };
@@ -142,12 +160,6 @@
 		06883DE92F78B925005DE47D /* SimulatorSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorSettings.swift; sourceTree = "<group>"; };
 		06883DEB2F78BC26005DE47D /* TCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TCPClient.swift; sourceTree = "<group>"; };
 		06883DED2F78C6CD005DE47D /* ManualView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualView.swift; sourceTree = "<group>"; };
-		06883E012F79CA43005DE47D /* CompletedTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CompletedTasks.md; sourceTree = "<group>"; };
-		06883E022F79CA43005DE47D /* CurrentTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CurrentTasks.md; sourceTree = "<group>"; };
-		06883E032F79CA43005DE47D /* FutureTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = FutureTasks.md; sourceTree = "<group>"; };
-		06883E042F79CA43005DE47D /* InstructionManual.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = InstructionManual.md; sourceTree = "<group>"; };
-		06883E052F79CA43005DE47D /* ManualTestChecklist.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ManualTestChecklist.md; sourceTree = "<group>"; };
-		06883E062F79CA43005DE47D /* ProjectOverview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ProjectOverview.md; sourceTree = "<group>"; };
 		06B4B2912DF50AB6005DC523 /* MarineSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarineSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulator.swift; sourceTree = "<group>"; };
 		06B4B2962DF50AB6005DC523 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
@@ -303,6 +315,20 @@
 			path = HelpViews;
 			sourceTree = "<group>";
 		};
+		065679AF2F8869E20008299A /* Docs */ = {
+			isa = PBXGroup;
+			name = Docs;
+			children = (
+				065679A92F8869E20008299A /* CompletedTasks.md */,
+				065679AA2F8869E20008299A /* CurrentTasks.md */,
+				065679AB2F8869E20008299A /* FutureTasks.md */,
+				065679AC2F8869E20008299A /* InstructionManual.md */,
+				065679AD2F8869E20008299A /* ManualTestChecklist.md */,
+				065679AE2F8869E20008299A /* ProjectOverview.md */,
+			);
+			path = MarineSimulator/Docs;
+			sourceTree = "<group>";
+		};
 		066372F72DFF83DA00B7348E /* GPS */ = {
 			isa = PBXGroup;
 			children = (
@@ -332,19 +358,6 @@
 			path = CompassView;
 			sourceTree = "<group>";
 		};
-		06883DE42F78B3A4005DE47D /* Docs */ = {
-			isa = PBXGroup;
-			children = (
-				06883E012F79CA43005DE47D /* CompletedTasks.md */,
-				06883E022F79CA43005DE47D /* CurrentTasks.md */,
-				06883E032F79CA43005DE47D /* FutureTasks.md */,
-				06883E042F79CA43005DE47D /* InstructionManual.md */,
-				06883E052F79CA43005DE47D /* ManualTestChecklist.md */,
-				06883E062F79CA43005DE47D /* ProjectOverview.md */,
-			);
-			path = Docs;
-			sourceTree = "<group>";
-		};
 		06B4B2882DF50AB6005DC523 = {
 			isa = PBXGroup;
 			children = (
@@ -358,7 +371,7 @@
 				06B4B2A72DF50AB8005DC523 /* MarineSimulatorTests */,
 				06B4B2B12DF50AB8005DC523 /* MarineSimulatorUITests */,
 				06B4B2922DF50AB6005DC523 /* Products */,
-				06883DE42F78B3A4005DE47D /* Docs */,
+				065679AF2F8869E20008299A /* Docs */,
 			);
 			sourceTree = "<group>";
 		};
@@ -555,12 +568,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				06883E072F79CA43005DE47D /* InstructionManual.md in Resources */,
-				06883E082F79CA43005DE47D /* ProjectOverview.md in Resources */,
-				06883E092F79CA43005DE47D /* CompletedTasks.md in Resources */,
-				06883E0A2F79CA43005DE47D /* FutureTasks.md in Resources */,
-				06883E0B2F79CA43005DE47D /* ManualTestChecklist.md in Resources */,
-				06883E0C2F79CA43005DE47D /* CurrentTasks.md in Resources */,
+				065679BC2F8869E20008299A /* InstructionManual.md in Resources */,
+				065679BD2F8869E20008299A /* CurrentTasks.md in Resources */,
+				065679BE2F8869E20008299A /* ProjectOverview.md in Resources */,
+				065679BF2F8869E20008299A /* CompletedTasks.md in Resources */,
+				065679C02F8869E20008299A /* FutureTasks.md in Resources */,
+				065679C12F8869E20008299A /* ManualTestChecklist.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -568,6 +581,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				065679B02F8869E20008299A /* InstructionManual.md in Resources */,
+				065679B12F8869E20008299A /* CurrentTasks.md in Resources */,
+				065679B22F8869E20008299A /* ProjectOverview.md in Resources */,
+				065679B32F8869E20008299A /* CompletedTasks.md in Resources */,
+				065679B42F8869E20008299A /* FutureTasks.md in Resources */,
+				065679B52F8869E20008299A /* ManualTestChecklist.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -575,6 +594,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				065679B62F8869E20008299A /* InstructionManual.md in Resources */,
+				065679B72F8869E20008299A /* CurrentTasks.md in Resources */,
+				065679B82F8869E20008299A /* ProjectOverview.md in Resources */,
+				065679B92F8869E20008299A /* CompletedTasks.md in Resources */,
+				065679BA2F8869E20008299A /* FutureTasks.md in Resources */,
+				065679BB2F8869E20008299A /* ManualTestChecklist.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

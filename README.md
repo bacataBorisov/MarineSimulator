@@ -1,117 +1,141 @@
 # MarineSimulator
 
-A **macOS** app (SwiftUI + MapKit) for **simulating and visualizing marine navigation data** — heading, wind, speed, depth, and GPS — without needing onboard instruments. 
-Ideal for prototyping, testing, and demos of NMEA-style (not-only) workflows.
+MarineSimulator is a macOS SwiftUI app for simulating marine instrument data and transmitting NMEA 0183 output to external navigation software over IP.
 
----
+It is built as a practical bench tool: something you can run beside a charting or instrument app, drive with believable values, and use to inspect exactly what is being sent.
 
-## ✨ Highlights
+## What It Does
 
-- **Real-time simulation** of vessel data (GPS, Compass, Wind, Speed/Depth)
-- **Interactive MapKit view** with a custom boat marker and smooth heading animation
-- **Manual pan/zoom** with a one-tap **“Center on Boat”** control (no forced follow)
-- **Compact control panels** (left) for quick tuning via sliders
-- **Inspector panel** (right) for live readouts and instrument widgets
-- **UDP broadcast** of NMEA-like sentences for external consumers
-- **SwiftUI-first** architecture; clean, extendable components
+- Simulates common onboard data sources:
+  - wind
+  - heading
+  - hydro / speed / depth / water temperature
+  - GPS position and motion
+- Transmits NMEA 0183 over:
+  - UDP
+  - TCP
+- Supports multiple output endpoints at the same time
+- Provides a map-first dashboard for live control and monitoring
+- Shows raw NMEA output and transport diagnostics in an in-app console drawer
+- Persists the last-used simulator state for faster repeated testing
 
-> **Target:** macOS 14+ (Sonoma) or newer, Xcode 15+ recommended.
+## Current Dashboard
 
----
+The current dashboard is centered around a live map with overlay tooling:
 
-## 🖼️ Screenshots
+- top command bar for panel toggles and presets
+- leading control rail for live simulator adjustments
+- trailing instrument rail for live values and sentence enable/disable pills
+- bottom console drawer for `NMEA` and `Transport` views
 
-### Dashboard
+The console drawer includes timestamps for NMEA lines and can be collapsed or expanded during testing.
 
-![Dashboard](assets/media/dashboard.heic) 
+## Current Capabilities
 
-### Configuration Page
-![Configuration Page](assets/media/configuration_page.heic)
+- Coherent snapshot-based simulation tick
+- Sentence-level scheduling with configurable intervals
+- Sensor toggles versus sentence toggles
+- Sensor interlocks in dashboard controls
+- Gyro-priority heading behavior when both gyro and magnetic heading exist
+- Transport diagnostics and event history
+- Fault injection for:
+  - dropped sentences
+  - delayed sentences
+  - corrupted checksums
+  - invalid data/status mutations
+- Named presets for repeatable setups
+- Auto-restored live values between launches
 
----
+## NMEA Coverage
 
-## 🎥 Demo Videos (coming soon ...)
+Current implemented sentence families include:
 
----
+- Wind
+  - `MWV`
+  - `MWD`
+  - `VPW`
+- Heading
+  - `HDG`
+  - `HDT`
+  - `ROT`
+- GPS
+  - `RMC`
+  - `GGA`
+  - `VTG`
+  - `GLL`
+  - `GSA`
+  - `GSV`
+  - `ZDA`
+- Hydro
+  - `DBT`
+  - `DPT`
+  - `MTW`
+  - `VHW`
+  - `VBW`
+  - `VLW`
 
-## 🚀 Getting Started
+## Testing Focus
 
-### 1) Clone
-git clone https://github.com/bacataBorisov/MarineSimulator.git
+The current engineering priority is external-reader interoperability, not feature expansion for its own sake.
 
----
+The next validation step is to run the manual checklist against the target reader and confirm:
 
-### 2) Open & Run
+- wind sentence interpretation
+- heading and course agreement
+- GPS sentence acceptance
+- UDP and TCP endpoint behavior
+- fault-handling behavior in the receiver
 
-1. Open the project in **Xcode**, select **My Mac** as the run destination.  
-2. Build & Run. The app launches with:
+## Project Docs
 
-   - 🗺️ A large **Map** in the center  
-   - 🎛️ **Top control bar** with quick actions (e.g., *Center on Boat*)  
-   - ⚙️ **Left panel** with sliders (*Wind, Heading, Hydro, GPS*)  
-   - 📊 **Right panel** with instruments/readouts  
-   - 💬 **Bottom console** (optional) for live sentence preview  
+User-facing project docs live in:
 
----
+- [`MarineSimulator/Docs/ProjectOverview.md`](MarineSimulator/Docs/ProjectOverview.md)
+- [`MarineSimulator/Docs/CurrentTasks.md`](MarineSimulator/Docs/CurrentTasks.md)
+- [`MarineSimulator/Docs/CompletedTasks.md`](MarineSimulator/Docs/CompletedTasks.md)
+- [`MarineSimulator/Docs/InstructionManual.md`](MarineSimulator/Docs/InstructionManual.md)
+- [`MarineSimulator/Docs/ManualTestChecklist.md`](MarineSimulator/Docs/ManualTestChecklist.md)
 
-### 3) Simulate
+## Getting Started
 
-- Use the **left sliders** to tweak *TWD/TWS, Heading, Speed/Depth, COG/SOG*.  
-- Watch the **boat marker rotate and move**.  
-- Click **Center** to re-focus the camera on your current position.  
+### Requirements
 
----
+- macOS
+- Xcode
 
-## ⚙️ Feature Details
+### Run
 
-### 🗺️ Map & Boat Marker
-- Built with **Apple MapKit** (fast and smooth base map).  
-- Boat marker uses an **SF Symbol**, tinted **orange/yellow**.  
-- Heading changes **animate smoothly**; the camera only recenters when you tap **Center**.  
+1. Clone the repository.
+2. Open `MarineSimulator.xcodeproj` in Xcode.
+3. Select `My Mac`.
+4. Build and run.
 
-### 🎚️ Controls & Panels
-- **Left Controls:** sliders for *Wind (TWD/TWS)*, *Hydro (Speed/Depth/Temp)*, *Heading*, and *GPS*.  
-- **Right Inspector:** compact instrument cards (*anemometer, compass, key metrics*).  
-- **Top Bar:** visibility toggles for panels and a *Center on Boat* button.  
+## Current Limitations
 
-### 🌐 Simulation & Output
-- Internal timer produces **continuous updates**.  
-- Supports **NMEA-style encoding** of common sentences (*MWV, MWD, VHW, DPT, RMC*).  
-- Optional **UDP broadcasting** for testing external apps (configurable port and cadence).  
+- Sentence fidelity still needs more edge-case validation against real external readers
+- Some sentence implementations are still intentionally conservative or simplified
+- UI automation is still limited
+- NMEA 2000 is not implemented
+- Environment-driven realism such as live weather/current ingestion is not implemented
 
----
+## Roadmap Direction
 
-## 🧪 Tips
+Near-term priority:
 
-- For testing map controls, **pan/zoom freely** — the app does **not auto-follow** the boat.  
-- Use **Center** when you want to snap the camera back to the vessel.  
-- If you see **heavy logging** during development, reduce verbosity in Xcode’s scheme settings.  
+1. prove compatibility against the external reader
+2. fix any mismatches found there
+3. lock those fixes down with targeted regression tests
 
----
+Longer-term direction:
 
-## 🗺️ Future Features
+- richer realism
+- more protocol depth
+- read/ingest mode
+- broader transport and device interoperability
 
-- 🌊 Seamarks overlay (**OpenSeaMap**) as an optional layer  
-- 🧭 Bathymetry with depth contours/labels (**EMODnet/ENC integration**)  
-- ⚡ Instrument failure or latency simulation  
-- 🌬️ Preset scenarios (*Calm, Breezy, Storm*)  
-- 🔌 NMEA 2000 / CAN bridging  
-- 💾 Data recording & replay (CSV export)  
-- ⚙️ Custom units and smoothing/filters (e.g., *simple Kalman filter*)  
+## Author
 
----
+Vasil Borisov
 
-## 📄 License
-
-Released under the **MIT License**.  
-See the [LICENSE](LICENSE) file for details.  
-
----
-
-## 👤 Author
-
-**Vasil Borisov**  
-Marine Electronics Enthusiast • Software Developer  
-
-📧 **Email:** [vasil.borisovv@gmail.com](mailto:vasil.borisovv@gmail.com)  
-🐙 **GitHub:** [github.com/bacataBorisov](https://github.com/bacataBorisov)  
+- GitHub: [bacataBorisov](https://github.com/bacataBorisov)
+- Email: [vasil.borisovv@gmail.com](mailto:vasil.borisovv@gmail.com)
