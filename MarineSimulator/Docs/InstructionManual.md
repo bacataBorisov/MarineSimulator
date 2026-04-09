@@ -69,8 +69,10 @@ Good for:
 - sentence scheduling with per-sentence intervals
 - multiple output endpoints
 - UDP and TCP output
+- sentence fault injection
 - persistent simulator settings
 - transport diagnostics and history
+- in-app searchable operator manual
 
 ### NMEA 0183 Coverage
 
@@ -112,10 +114,28 @@ Example pattern:
 - `UDP 127.0.0.1:4950` for a local simulator
 - `TCP 192.168.1.50:10110` for another tool or bridge
 
+## External Reader Compatibility
+
+When validating against another app or device, start from a conservative setup:
+
+- UDP unless the receiver explicitly expects TCP
+- fault injection disabled
+- timer interval at `1.0 s`
+- `MWV` in relative mode first
+- `MWD` enabled if you want explicit true wind direction
+
+Important distinctions:
+
+- `HDG` follows magnetic heading
+- `HDT` follows gyro heading
+- `MWV` is relative or true-relative wind, not absolute true wind direction
+- `MWD` is the sentence to compare for absolute true wind direction
+
+If a receiver display does not match the simulator, compare raw `MWD`, `MWV`, `HDG`, `HDT`, `VTG`, and `RMC` before trusting the rendered UI.
+
 ## Known Limits
 
-- TCP behavior is functional but still being hardened for repeated failures
-- fault injection is not implemented yet
+- TCP behavior is functional and now includes clearer lifecycle reporting and retry cooldowns, but can still be expanded further
 - calibration controls for current, variation, and deviation are not exposed yet
 - NMEA 2000 is not implemented
 
@@ -139,6 +159,24 @@ GPS support sentences are simulated, not backed by a real satellite visibility m
 ### Why Water Speed And GPS Speed Differ
 
 That is intentional. The simulator now separates water-track from ground-track using a simulated current model.
+
+### Fault Injection
+
+Fault injection can be enabled in Configuration.
+
+Current supported fault types:
+
+- dropped sentences
+- delayed sentences
+- corrupted checksums
+- invalid status/data flags for selected sentences
+
+Use this to verify whether a receiver:
+
+- tolerates missing traffic
+- rejects bad checksums
+- reacts correctly to invalid GPS/navigation status
+- handles delayed or uneven delivery
 
 ## Documentation Workflow
 

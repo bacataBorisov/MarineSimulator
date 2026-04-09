@@ -8,6 +8,9 @@ Use this checklist when validating the simulator against an external NMEA reader
 - [ ] Verify TCP output reaches a local reader that expects a stream socket.
 - [ ] Verify two enabled endpoints receive the same sentence stream at the same time.
 - [ ] Verify disabling a secondary endpoint stops output to that target without affecting the primary endpoint.
+- [ ] Verify disabling and re-enabling a secondary endpoint while the timer is running behaves cleanly in both the receiver and transport history.
+- [ ] Verify changing a secondary endpoint from UDP to TCP during an active run does not corrupt the primary output path.
+- [ ] Verify removing a secondary endpoint during an active run does not leave stale endpoint status in the UI.
 - [ ] Verify transport history shows connect, refusal, waiting, and idle transitions clearly.
 
 ## Timer And Lifecycle
@@ -17,6 +20,8 @@ Use this checklist when validating the simulator against an external NMEA reader
 - [ ] Verify changing the global interval while transmitting changes cadence without requiring a restart.
 - [ ] Verify stopping transmission immediately halts output and leaves transport status in an idle state.
 - [ ] Verify restarting transmission resets trip distance and sentence scheduling as expected.
+- [ ] Verify repeated `start / stop / start` cycles with at least one TCP endpoint do not leave the app in a stale transport state.
+- [ ] Verify restarting after editing a secondary endpoint still shows sane latest transport status and resumes clean output.
 
 ## Wind
 
