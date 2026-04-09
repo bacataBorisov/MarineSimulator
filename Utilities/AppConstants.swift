@@ -72,7 +72,13 @@ enum AppColors {
     static let info = Color.blue.opacity(0.7)
     static let danger = Color.red.opacity(0.7)
     static let success = Color.green.opacity(0.7)
-}
 
+    static let consoleBackgroundStart = Color(red: 0.16, green: 0.09, blue: 0.21)
+    static let consoleBackgroundMid = Color(red: 0.07, green: 0.16, blue: 0.20)
+    static let consoleBackgroundEnd = Color(red: 0.05, green: 0.20, blue: 0.18)
+    static let consoleLinePrimary = Color(red: 0.96, green: 0.84, blue: 0.95)
+    static let consoleLineSecondary = Color(red: 0.76, green: 0.96, blue: 0.90)
+    static let consoleChrome = Color(red: 0.10, green: 0.08, blue: 0.14)
+}
 
 

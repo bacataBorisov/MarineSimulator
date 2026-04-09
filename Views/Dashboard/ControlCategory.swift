@@ -19,26 +19,28 @@ struct LeftControlsPanel: View {
     @State private var category: ControlCategory = .wind
 
     var body: some View {
-        VStack(spacing: 10) {
-            // Segmented Picker
-            Picker("", selection: $category) {
-                ForEach(ControlCategory.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+        VStack(alignment: .leading, spacing: AppChrome.railSectionSpacing) {
+            RailSection("Live Controls", subtitle: "Adjust installed instruments directly from the dashboard. Disabled controls reflect missing sensors.") {
+                Picker("", selection: $category) {
+                    ForEach(ControlCategory.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 8)
 
             ScrollView {
-                switch category {
-                case .wind: WindControls(nmea: nmea)
-                case .hydro: HydroControls(nmea: nmea)
-                case .heading: HeadingControls(nmea: nmea)
+                VStack(alignment: .leading, spacing: 0) {
+                    switch category {
+                    case .wind: WindControls(nmea: nmea)
+                    case .hydro: HydroControls(nmea: nmea)
+                    case .heading: HeadingControls(nmea: nmea)
+                    }
                 }
+                .padding(.top, 2)
             }
             .scrollIndicators(.never)
         }
-        .padding()
-        .frame(minWidth: 280) // avoid layout collapse warnings
-        .background(.thinMaterial)
+        .padding(AppChrome.railPadding)
+        .frame(minWidth: 300, maxHeight: .infinity)
     }
 }
 
@@ -92,18 +94,25 @@ struct WindControls: View {
     @Bindable var nmea: NMEASimulator
     var body: some View {
         @Bindable var nmea = nmea
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
                 value: $nmea.twd,
                 title: "True Wind Direction",
                 precision: 0,
-                sliderRange: SimulatedValueType.windDirection.defaultRange
+                sliderRange: SimulatedValueType.windDirection.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasAnemometer,
+                disabledReason: !nmea.sensorToggles.hasAnemometer ? "Enable the Anemometer in Configuration to control wind." : nil
             )
+            RailDivider()
             ControlSliderView(
                 value: $nmea.tws,
                 title: "True Wind Speed",
                 precision: 1,
-                sliderRange: SimulatedValueType.windSpeed.defaultRange
+                sliderRange: SimulatedValueType.windSpeed.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasAnemometer,
+                disabledReason: !nmea.sensorToggles.hasAnemometer ? "Enable the Anemometer in Configuration to control wind." : nil
             )
         }
     }
@@ -114,24 +123,35 @@ struct HydroControls: View {
     @Bindable var nmea: NMEASimulator
     var body: some View {
         @Bindable var nmea = nmea
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
                 value: $nmea.speed,
                 title: "Speed Through Water",
                 precision: 1,
-                sliderRange: SimulatedValueType.speedLog.defaultRange
+                sliderRange: SimulatedValueType.speedLog.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasSpeedLog,
+                disabledReason: !nmea.sensorToggles.hasSpeedLog ? "Enable the Speed Log in Configuration to control water speed." : nil
             )
+            RailDivider()
             ControlSliderView(
                 value: $nmea.depth,
                 title: "Depth",
                 precision: 1,
-                sliderRange: SimulatedValueType.depth.defaultRange
+                sliderRange: SimulatedValueType.depth.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasEchoSounder,
+                disabledReason: !nmea.sensorToggles.hasEchoSounder ? "Enable the Echo Sounder in Configuration to control depth." : nil
             )
+            RailDivider()
             ControlSliderView(
                 value: $nmea.seaTemp,
                 title: "Sea Water Temperature",
                 precision: 1,
-                sliderRange: SimulatedValueType.seaTemp.defaultRange
+                sliderRange: SimulatedValueType.seaTemp.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasWaterTempSensor,
+                disabledReason: !nmea.sensorToggles.hasWaterTempSensor ? "Enable the Water Temperature sensor in Configuration to control sea temperature." : nil
             )
         }
     }
@@ -142,12 +162,27 @@ struct HeadingControls: View {
     @Bindable var nmea: NMEASimulator
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
                 value: $nmea.heading,
                 title: "Heading",
                 precision: 0,
-                sliderRange: SimulatedValueType.magneticCompass.defaultRange
+                sliderRange: SimulatedValueType.magneticCompass.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasCompass,
+                disabledReason: !nmea.sensorToggles.hasCompass ? "Enable the Magnetic Compass in Configuration to control magnetic heading." : nil,
+                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the primary source while the gyro is enabled." : "Magnetic heading is the active heading source because no gyro is enabled."
+            )
+            RailDivider()
+            ControlSliderView(
+                value: $nmea.gyroHeading,
+                title: "Gyro Heading",
+                precision: 0,
+                sliderRange: SimulatedValueType.gyroCompass.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasGyro,
+                disabledReason: !nmea.sensorToggles.hasGyro ? "Enable the Gyro Compass in Configuration to control true heading." : nil,
+                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the preferred heading source for derived calculations and true-heading sentences." : nil
             )
         }
     }
@@ -159,4 +194,3 @@ struct HeadingControls: View {
         .environment(NMEASimulator())
         .frame(width: 340, height: 800)
 }
-

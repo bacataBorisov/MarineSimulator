@@ -24,123 +24,131 @@ extension NMEASimulator {
         case mtw
     }
 
-    func buildNMEASentence(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> String? {
-        let payload: String?
+    func buildNMEASentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
+        let payloads: [String]
 
         switch type {
         case .mwv, .mwd, .vpw:
-            payload = buildWindSentence(talkerID: talkerID, type: type, snapshot: snapshot)
+            payloads = buildWindSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .hdg:
-            payload = buildHDGSentence(talkerID: talkerID, snapshot: snapshot)
+            payloads = buildHDGSentences(talkerID: talkerID, snapshot: snapshot)
         case .hdt, .rot:
-            payload = buildGyroSentence(talkerID: talkerID, type: type, snapshot: snapshot)
+            payloads = buildGyroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .rmc, .gga, .vtg, .gll, .gsa, .gsv, .zda:
-            payload = buildGPSSentence(talkerID: talkerID, type: type, snapshot: snapshot)
+            payloads = buildGPSSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .dbt, .dpt, .vhw, .vbw, .vlw, .mtw:
-            payload = buildHydroSentence(talkerID: talkerID, type: type, snapshot: snapshot)
+            payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         }
 
-        guard let payload, !payload.isEmpty else {
-            return nil
-        }
-
-        return addChecksum(to: payload)
+        return payloads
+            .filter { !$0.isEmpty }
+            .map(addChecksum(to:))
     }
 
-    private func buildWindSentence(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> String? {
+    private func buildWindSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         switch type {
         case .mwv:
             let reference = nextMWVReference(in: snapshot)
             if reference == "R" {
-                guard let awa = computeAWA(from: snapshot), let aws = computeAWS(from: snapshot) else { return nil }
-                return "$\(talkerID)MWV,\(String(format: "%.0f", awa)),R,\(String(format: "%.1f", aws)),N,A"
+                guard let awa = computeAWA(from: snapshot), let aws = computeAWS(from: snapshot) else { return [] }
+                return ["$\(talkerID)MWV,\(String(format: "%.0f", awa)),R,\(String(format: "%.1f", aws)),N,A"]
             }
 
-            guard let twa = computeTWA(from: snapshot), let tws = computeTWS(from: snapshot) else { return nil }
-            return "$\(talkerID)MWV,\(String(format: "%.0f", twa)),T,\(String(format: "%.1f", tws)),N,A"
+            guard let twa = computeTWA(from: snapshot), let tws = computeTWS(from: snapshot) else { return [] }
+            return ["$\(talkerID)MWV,\(String(format: "%.0f", twa)),T,\(String(format: "%.1f", tws)),N,A"]
 
         case .mwd:
-            guard let twd = computeTWD(from: snapshot), let tws = computeTWS(from: snapshot) else { return nil }
-            return "$\(talkerID)MWD,\(String(format: "%.0f", twd)),T,,M,\(String(format: "%.1f", tws)),N,,M"
+            guard let twd = computeTWD(from: snapshot), let tws = computeTWS(from: snapshot) else { return [] }
+            let magneticDirection = normalizeAngle(twd - snapshot.magneticVariation)
+            return ["$\(talkerID)MWD,\(String(format: "%.1f", twd)),T,\(String(format: "%.1f", magneticDirection)),M,\(String(format: "%.1f", tws)),N,\(String(format: "%.1f", tws * 0.514444)),M"]
 
         case .vpw:
-            guard let vpwKnots = computeVPWKnots(from: snapshot), let vpwMS = computeVPWMS(from: snapshot) else { return nil }
-            return "$\(talkerID)VPW,\(String(format: "%.1f", vpwKnots)),N,\(String(format: "%.1f", vpwMS)),M"
+            guard let vpwKnots = computeVPWKnots(from: snapshot), let vpwMS = computeVPWMS(from: snapshot) else { return [] }
+            return ["$\(talkerID)VPW,\(String(format: "%.1f", vpwKnots)),N,\(String(format: "%.1f", vpwMS)),M"]
 
         default:
-            return nil
+            return []
         }
     }
 
-    private func buildHDGSentence(talkerID: String, snapshot: SimulationSnapshot) -> String? {
+    private func buildHDGSentences(talkerID: String, snapshot: SimulationSnapshot) -> [String] {
         guard let headingMag = snapshot.magneticHeading else {
-            return nil
+            return []
         }
 
-        let deviationDeg = 2.0
-        let variationDeg = 3.0
+        let deviationDeg = abs(snapshot.compassDeviation)
+        let deviationHemisphere = snapshot.compassDeviation >= 0 ? "E" : "W"
+        let variationDeg = abs(snapshot.magneticVariation)
+        let variationHemisphere = snapshot.magneticVariation >= 0 ? "E" : "W"
 
-        return "$\(talkerID)HDG,\(String(format: "%.1f", headingMag)),\(String(format: "%.1f", deviationDeg)),E,\(String(format: "%.1f", variationDeg)),W"
+        return ["$\(talkerID)HDG,\(String(format: "%.1f", headingMag)),\(String(format: "%.1f", deviationDeg)),\(deviationHemisphere),\(String(format: "%.1f", variationDeg)),\(variationHemisphere)"]
     }
 
-    private func buildGyroSentence(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> String? {
+    private func buildGyroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         switch type {
         case .hdt:
             guard let headingTrue = resolvedTrueHeading(in: snapshot) else {
-                return nil
+                return []
             }
-            return "$\(talkerID)HDT,\(String(format: "%.1f", headingTrue)),T"
+            return ["$\(talkerID)HDT,\(String(format: "%.1f", headingTrue)),T"]
 
         case .rot:
             let status = abs(snapshot.turnRate) < 0.01 ? "V" : "A"
-            return "$\(talkerID)ROT,\(String(format: "%.1f", snapshot.turnRate)),\(status)"
+            return ["$\(talkerID)ROT,\(String(format: "%.1f", snapshot.turnRate)),\(status)"]
 
         default:
-            return nil
+            return []
         }
     }
 
-    private func buildHydroSentence(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> String? {
+    private func buildHydroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         switch type {
         case .dbt:
-            guard let depthMeters = snapshot.depth else { return nil }
+            guard let depthMeters = snapshot.depth else { return [] }
             let depthFeet = depthMeters * 3.28084
             let depthFathoms = depthMeters / 1.8288
-            return "$\(talkerID)DBT,\(String(format: "%.1f", depthFeet)),f,\(String(format: "%.1f", depthMeters)),M,\(String(format: "%.1f", depthFathoms)),F"
+            return ["$\(talkerID)DBT,\(String(format: "%.1f", depthFeet)),f,\(String(format: "%.1f", depthMeters)),M,\(String(format: "%.1f", depthFathoms)),F"]
 
         case .dpt:
-            guard let depthMeters = snapshot.depth else { return nil }
-            return "$\(talkerID)DPT,\(String(format: "%.1f", depthMeters)),\(String(format: "%.1f", depthOffsetMeters))"
+            guard let depthMeters = snapshot.depth else { return [] }
+            return ["$\(talkerID)DPT,\(String(format: "%.1f", depthMeters)),\(String(format: "%.1f", depthOffsetMeters))"]
 
         case .mtw:
-            guard let seaTemperature = snapshot.seaTemperature else { return nil }
-            return "$\(talkerID)MTW,\(String(format: "%.1f", seaTemperature)),C"
+            guard let seaTemperature = snapshot.seaTemperature else { return [] }
+            return ["$\(talkerID)MTW,\(String(format: "%.1f", seaTemperature)),C"]
 
         case .vhw:
             let headingTrue = resolvedTrueHeading(in: snapshot)
-            let headingMag = snapshot.magneticHeading
+            let headingMag = snapshot.magneticHeading ?? headingTrue.map { normalizeAngle($0 - snapshot.magneticVariation) }
             let speedKnots = snapshot.boatSpeed
             let speedKMH = speedKnots.map { $0 * 1.852 }
 
-            return "$\(talkerID)VHW,\(formatted(headingTrue, decimals: 1)),T,\(formatted(headingMag, decimals: 1)),M,\(formatted(speedKnots, decimals: 1)),N,\(formatted(speedKMH, decimals: 1)),K"
+            return ["$\(talkerID)VHW,\(formatted(headingTrue, decimals: 1)),T,\(formatted(headingMag, decimals: 1)),M,\(formatted(speedKnots, decimals: 1)),N,\(formatted(speedKMH, decimals: 1)),K"]
 
         case .vbw:
-            let longWater = snapshot.boatSpeed
-            let longGround = snapshot.gpsData.speedOverGround
+            let referenceHeading = resolvedTrueHeading(in: snapshot) ?? snapshot.gpsData.courseOverGround
+            let waterVector = speedComponents(speedKnots: snapshot.boatSpeed, course: referenceHeading, referenceHeading: referenceHeading)
+            let groundVector = sensorToggles.hasGPS
+                ? speedComponents(speedKnots: snapshot.gpsData.speedOverGround, course: snapshot.gpsData.courseOverGround, referenceHeading: referenceHeading)
+                : (longitudinal: Double?.none, transverse: Double?.none)
+            let longWater = waterVector.longitudinal
+            let transWater = waterVector.transverse
+            let longGround = groundVector.longitudinal
+            let transGround = groundVector.transverse
             let waterStatus = longWater == nil ? "V" : "A"
             let groundStatus = sensorToggles.hasGPS ? "A" : "V"
 
-            return "$\(talkerID)VBW,\(formatted(longWater, decimals: 1)),0.0,\(waterStatus),\(formatted(longGround, decimals: 1)),0.0,\(groundStatus)"
+            return ["$\(talkerID)VBW,\(formatted(longWater, decimals: 1)),\(formatted(transWater, decimals: 1)),\(waterStatus),\(formatted(longGround, decimals: 1)),\(formatted(transGround, decimals: 1)),\(groundStatus)"]
 
         case .vlw:
-            return "$\(talkerID)VLW,\(String(format: "%.2f", snapshot.logDistanceNm)),N,\(String(format: "%.2f", snapshot.tripDistanceNm)),N"
+            return ["$\(talkerID)VLW,\(String(format: "%.2f", snapshot.logDistanceNm)),N,\(String(format: "%.2f", snapshot.tripDistanceNm)),N"]
 
         default:
-            return nil
+            return []
         }
     }
 
-    private func buildGPSSentence(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> String? {
+    private func buildGPSSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         let timeString = utcTimeString(from: snapshot.timestamp)
         let dateString = utcDateString(from: snapshot.timestamp)
         let latitude = snapshot.gpsData.latitude
@@ -152,30 +160,47 @@ extension NMEASimulator {
 
         switch type {
         case .rmc:
-            return "$\(talkerID)RMC,\(timeString),A,\(latString),\(lonString),\(sogString),\(cogString),\(dateString),,,A"
+            let variation = abs(snapshot.magneticVariation)
+            let variationHemisphere = snapshot.magneticVariation >= 0 ? "E" : "W"
+            return ["$\(talkerID)RMC,\(timeString),A,\(latString),\(lonString),\(sogString),\(cogString),\(dateString),\(String(format: "%.1f", variation)),\(variationHemisphere),A"]
 
         case .gga:
-            return "$\(talkerID)GGA,\(timeString),\(latString),\(lonString),1,10,0.9,5.0,M,0.0,M,,"
+            let gpsSignal = snapshot.gpsSignal
+            return ["$\(talkerID)GGA,\(timeString),\(latString),\(lonString),\(gpsSignal.fixQuality),\(String(format: "%02d", gpsSignal.satellitesUsed)),\(String(format: "%.1f", gpsSignal.hdop)),\(String(format: "%.1f", gpsSignal.altitudeMeters)),M,\(String(format: "%.1f", gpsSignal.geoidalSeparationMeters)),M,,"]
 
         case .vtg:
-            let magneticCourse = normalizedMagneticCourse(fromTrue: snapshot.gpsData.courseOverGround)
-            return "$\(talkerID)VTG,\(cogString),T,\(String(format: "%.1f", magneticCourse)),M,\(sogString),N,\(String(format: "%.1f", snapshot.gpsData.speedOverGround * 1.852)),K,A"
+            let magneticCourse = normalizedMagneticCourse(fromTrue: snapshot.gpsData.courseOverGround, variation: snapshot.magneticVariation)
+            return ["$\(talkerID)VTG,\(cogString),T,\(String(format: "%.1f", magneticCourse)),M,\(sogString),N,\(String(format: "%.1f", snapshot.gpsData.speedOverGround * 1.852)),K,A"]
 
         case .gll:
-            return "$\(talkerID)GLL,\(latString),\(lonString),\(timeString),A,A"
+            return ["$\(talkerID)GLL,\(latString),\(lonString),\(timeString),A,A"]
 
         case .gsa:
-            return "$\(talkerID)GSA,A,3,01,03,05,07,09,11,13,15,17,19,,,,1.2,0.9,0.8"
+            let gpsSignal = snapshot.gpsSignal
+            let usedPRNs = gpsSignal.satellites
+                .filter(\.isUsedInFix)
+                .prefix(12)
+                .map { String(format: "%02d", $0.prn) }
+            let paddedPRNs = usedPRNs + Array(repeating: "", count: max(0, 12 - usedPRNs.count))
+            return ["$\(talkerID)GSA,\(gpsSignal.selectionMode),\(gpsSignal.fixMode),\(paddedPRNs.joined(separator: ",")),\(String(format: "%.1f", gpsSignal.pdop)),\(String(format: "%.1f", gpsSignal.hdop)),\(String(format: "%.1f", gpsSignal.vdop))"]
 
         case .gsv:
-            return "$\(talkerID)GSV,2,1,10,01,45,180,42,03,60,045,40,05,30,270,38,07,15,100,35"
+            let satellites = snapshot.gpsSignal.satellites
+            let totalMessages = Int(ceil(Double(satellites.count) / 4.0))
+            return stride(from: 0, to: satellites.count, by: 4).enumerated().map { index, start in
+                let chunk = satellites[start..<min(start + 4, satellites.count)]
+                let fields = chunk.map { satellite in
+                    "\(String(format: "%02d", satellite.prn)),\(satellite.elevation),\(satellite.azimuth),\(satellite.snr)"
+                }
+                return "$\(talkerID)GSV,\(totalMessages),\(index + 1),\(satellites.count),\(fields.joined(separator: ","))"
+            }
 
         case .zda:
             let components = Calendar(identifier: .gregorian).dateComponents(in: TimeZone(secondsFromGMT: 0)!, from: snapshot.timestamp)
-            return "$\(talkerID)ZDA,\(timeString),\(String(format: "%02d", components.day ?? 0)),\(String(format: "%02d", components.month ?? 0)),\(components.year ?? 0),00,00"
+            return ["$\(talkerID)ZDA,\(timeString),\(String(format: "%02d", components.day ?? 0)),\(String(format: "%02d", components.month ?? 0)),\(components.year ?? 0),00,00"]
 
         default:
-            return nil
+            return []
         }
     }
 
@@ -188,11 +213,21 @@ extension NMEASimulator {
             return nil
         }
 
-        return normalizeAngle(magneticHeading - 3.0)
+        return normalizeAngle(magneticHeading + snapshot.magneticVariation)
     }
 
-    private func normalizedMagneticCourse(fromTrue trueCourse: Double) -> Double {
-        normalizeAngle(trueCourse + 3.0)
+    private func normalizedMagneticCourse(fromTrue trueCourse: Double, variation: Double? = nil) -> Double {
+        normalizeAngle(trueCourse - (variation ?? 0))
+    }
+
+    private func speedComponents(speedKnots: Double?, course: Double?, referenceHeading: Double) -> (longitudinal: Double?, transverse: Double?) {
+        guard let speedKnots, let course else {
+            return (nil, nil)
+        }
+
+        let relativeAngle = calculateShortestRotation(from: referenceHeading, to: course)
+        let radians = toRadians(relativeAngle)
+        return (speedKnots * cos(radians), speedKnots * sin(radians))
     }
 
     private func utcTimeString(from date: Date) -> String {
@@ -214,7 +249,7 @@ extension NMEASimulator {
         return String(format: "%.\(decimals)f", value)
     }
 
-    private func addChecksum(to sentence: String) -> String {
+    func addChecksum(to sentence: String) -> String {
         let chars = sentence.dropFirst()
         let checksum = chars.reduce(0) { $0 ^ $1.asciiValue! }
         return "\(sentence)*\(String(format: "%02X", checksum))\r\n"

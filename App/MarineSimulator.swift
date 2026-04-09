@@ -31,12 +31,10 @@ struct MarineSimulator: App {
         WindowGroup {
             MainView()
                 .environment(nmeaManager)
-            // set the minimum to be half split screen on macbook pro 16 for now.
-            // ideally i want to be 1/4 but not sure how to do it to be visible for now
-                .frame(minWidth: (NSScreen.main?.frame.width ?? 1728) / 2,
-                       minHeight: 520 + (3 * UIConstants.spacing))
-
+                .frame(minWidth: 960, minHeight: 640)
         }
+        .defaultSize(width: 1180, height: 760)
+        .windowResizability(.contentMinSize)
         //.modelContainer(sharedModelContainer)
     }
 }

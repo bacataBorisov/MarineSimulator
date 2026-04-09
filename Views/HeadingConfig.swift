@@ -65,6 +65,14 @@ private struct HeadingSentencesSection: View {
                     infoView: { AnyView(HDGHelpView().font(.caption)) }
                 )
                 .disabled(!HeadingUIConditions.isHDGEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .hdg) },
+                        set: { nmeaManager.setInterval($0, for: .hdg) }
+                    ),
+                    isDisabled: !shouldSendHDG || !HeadingUIConditions.isHDGEnabled(nmeaManager)
+                )
                 
                 if HeadingUIConditions.showHDGWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableMagneticCompass)
@@ -85,6 +93,14 @@ private struct HeadingSentencesSection: View {
                     infoView: { AnyView(HDTHelpView().font(.caption)) }
                 )
                 .disabled(!HeadingUIConditions.isHDTEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .hdt) },
+                        set: { nmeaManager.setInterval($0, for: .hdt) }
+                    ),
+                    isDisabled: !shouldSendHDT || !HeadingUIConditions.isHDTEnabled(nmeaManager)
+                )
                 
                 // ROT – Rate of Turn
                 ViewKit.ToggleRowWithInfo(
@@ -94,6 +110,14 @@ private struct HeadingSentencesSection: View {
                     infoView: { AnyView(ROTHelpView().font(.caption)) }
                 )
                 .disabled(!HeadingUIConditions.isROTEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .rot) },
+                        set: { nmeaManager.setInterval($0, for: .rot) }
+                    ),
+                    isDisabled: !shouldSendROT || !HeadingUIConditions.isROTEnabled(nmeaManager)
+                )
                 
                 if HeadingUIConditions.showGyroWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableGyroCompass)

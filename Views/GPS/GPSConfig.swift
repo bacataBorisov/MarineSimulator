@@ -81,6 +81,25 @@ private struct GPSSentencesSection: View {
     @Binding var showGSV: Bool
     @Binding var showZDA: Bool
     
+    private var latitudeBinding: Binding<Double> {
+        Binding(
+            get: { nmeaManager.gpsData.latitude },
+            set: { newValue in
+                nmeaManager.gpsData.latitude = newValue
+                nmeaManager.persistLiveSettings()
+            }
+        )
+    }
+
+    private var longitudeBinding: Binding<Double> {
+        Binding(
+            get: { nmeaManager.gpsData.longitude },
+            set: { newValue in
+                nmeaManager.gpsData.longitude = newValue
+                nmeaManager.persistLiveSettings()
+            }
+        )
+    }
     
     private var selectedCoordinateBinding: Binding<CLLocationCoordinate2D?> {
         Binding<CLLocationCoordinate2D?>(
@@ -92,6 +111,7 @@ private struct GPSSentencesSection: View {
                 if let coord = newValue {
                     nmeaManager.gpsData.latitude = coord.latitude
                     nmeaManager.gpsData.longitude = coord.longitude
+                    nmeaManager.persistLiveSettings()
                 }
             }
         )
@@ -107,12 +127,26 @@ private struct GPSSentencesSection: View {
                     showInfo: $showRMC,
                     infoView: { AnyView(RMCHelpView().font(.caption)) }
                 )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .rmc) },
+                        set: { nmeaManager.setInterval($0, for: .rmc) }
+                    ),
+                    isDisabled: !shouldSendRMC || !nmeaManager.sensorToggles.hasGPS
+                )
                 
                 ViewKit.ToggleRowWithInfo(
                     "GGA - Fix Data",
                     isOn: $shouldSendGGA,
                     showInfo: $showGGA,
                     infoView: { AnyView(GGAHelpView().font(.caption)) }
+                )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .gga) },
+                        set: { nmeaManager.setInterval($0, for: .gga) }
+                    ),
+                    isDisabled: !shouldSendGGA || !nmeaManager.sensorToggles.hasGPS
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -121,12 +155,26 @@ private struct GPSSentencesSection: View {
                     showInfo: $showVTG,
                     infoView: { AnyView(VTGHelpView().font(.caption)) }
                 )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .vtg) },
+                        set: { nmeaManager.setInterval($0, for: .vtg) }
+                    ),
+                    isDisabled: !shouldSendVTG || !nmeaManager.sensorToggles.hasGPS
+                )
                 
                 ViewKit.ToggleRowWithInfo(
                     "GLL - Geographic Position",
                     isOn: $shouldSendGLL,
                     showInfo: $showGLL,
                     infoView: { AnyView(GLLHelpView().font(.caption)) }
+                )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .gll) },
+                        set: { nmeaManager.setInterval($0, for: .gll) }
+                    ),
+                    isDisabled: !shouldSendGLL || !nmeaManager.sensorToggles.hasGPS
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -135,6 +183,13 @@ private struct GPSSentencesSection: View {
                     showInfo: $showGSA,
                     infoView: { AnyView(GSAHelpView().font(.caption)) }
                 )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .gsa) },
+                        set: { nmeaManager.setInterval($0, for: .gsa) }
+                    ),
+                    isDisabled: !shouldSendGSA || !nmeaManager.sensorToggles.hasGPS
+                )
                 
                 ViewKit.ToggleRowWithInfo(
                     "GSV - Satellites in View",
@@ -142,12 +197,26 @@ private struct GPSSentencesSection: View {
                     showInfo: $showGSV,
                     infoView: { AnyView(GSVHelpView().font(.caption)) }
                 )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .gsv) },
+                        set: { nmeaManager.setInterval($0, for: .gsv) }
+                    ),
+                    isDisabled: !shouldSendGSV || !nmeaManager.sensorToggles.hasGPS
+                )
                 
                 ViewKit.ToggleRowWithInfo(
                     "ZDA - Time and Date",
                     isOn: $shouldSendZDA,
                     showInfo: $showZDA,
                     infoView: { AnyView(ZDAHelpView().font(.caption)) }
+                )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .zda) },
+                        set: { nmeaManager.setInterval($0, for: .zda) }
+                    ),
+                    isDisabled: !shouldSendZDA || !nmeaManager.sensorToggles.hasGPS
                 )
                 
                 if(!GPSSentencesSection.isGPSEnabled(nmeaManager)){
@@ -165,20 +234,27 @@ private struct GPSSentencesSection: View {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 HStack {
                     Text("Latitude:")
-                    TextField("", value: $nmeaManager.gpsData.latitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                    TextField("", value: latitudeBinding, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
                         .frame(width: 100)
                         .textFieldStyle(.roundedBorder)
                 }
                 HStack {
                     Text("Longitude:")
-                    TextField("", value: $nmeaManager.gpsData.longitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                    TextField("", value: longitudeBinding, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
                         .frame(width: 100)
                         .textFieldStyle(.roundedBorder)
                 }
                 Divider().padding(.vertical, 4)
                 GPSMapSelectorView(selectedCoordinate: selectedCoordinateBinding)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                if !nmeaManager.sensorToggles.hasGPS {
+                    Text("Enable GPS in Configuration to edit position and map starting coordinates.")
+                        .font(.caption2)
+                        .foregroundStyle(AppColors.warning)
+                }
             }
+            .disabled(!nmeaManager.sensorToggles.hasGPS)
         }
 
     }
@@ -186,5 +262,3 @@ private struct GPSSentencesSection: View {
         nmea.sensorToggles.hasGPS
     }
 }
-
-

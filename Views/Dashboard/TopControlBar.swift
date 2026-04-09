@@ -14,74 +14,125 @@ struct TopControlBar: View {
     @Binding var showRight: Bool
     @Binding var showBottom: Bool
 
-    @FocusState private var hostFocused: Bool
-    @FocusState private var portFocused: Bool
-
     var body: some View {
-        HStack(spacing: 8) {
-            // Panel toggles
-            ToggleIcon("sidebar.left", isOn: $showLeft)
-            ToggleIcon("sidebar.right", isOn: $showRight)
-            ToggleIcon("rectangle.bottomthird.inset.fill", isOn: $showBottom)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Dashboard")
+                        .font(.title3.weight(.semibold))
 
-            Divider().frame(height: 22)
+                    HStack(spacing: 8) {
+                        if let preset = nmea.selectedPreset {
+                            statusBadge(
+                                title: preset.displayName,
+                                systemImage: "cloud.sun",
+                                tint: .blue.opacity(0.75)
+                            )
+                        }
 
-            Spacer()
+                        if nmea.sensorToggles.hasGyro {
+                            statusBadge(title: "Gyro Priority", systemImage: "location.north.line", tint: .teal.opacity(0.8))
+                        } else if nmea.sensorToggles.hasCompass {
+                            statusBadge(title: "Magnetic Fallback", systemImage: "safari", tint: .orange.opacity(0.8))
+                        }
+                    }
+                }
 
-            // Quick sentence toggles (compact)
-            HStack(spacing: 10) {
-                QuickToggle("MWV", \SentenceToggleStates.shouldSendMWV)
-                QuickToggle("MWD", \SentenceToggleStates.shouldSendMWD)
-                QuickToggle("VPW", \SentenceToggleStates.shouldSendVPW)
-                QuickToggle("HDG", \SentenceToggleStates.shouldSendHDG)
-                QuickToggle("HDT", \SentenceToggleStates.shouldSendHDT)
-                QuickToggle("ROT", \SentenceToggleStates.shouldSendROT)
+                Spacer(minLength: 0)
+            }
+
+            HStack(alignment: .center, spacing: 10) {
+                HStack(spacing: 8) {
+                    ToggleIcon("slider.horizontal.below.rectangle", title: "Controls", isOn: $showLeft)
+                    ToggleIcon("gauge.with.needle", title: "Instruments", isOn: $showRight)
+                    ToggleIcon("terminal", title: "Console", isOn: $showBottom)
+                }
+
+                Divider()
+                    .frame(height: 28)
+
+                HStack(spacing: 8) {
+                    ForEach(SimulationPreset.allCases) { preset in
+                        PresetIconButton(
+                            preset: preset,
+                            isSelected: (nmea.selectedPreset ?? .lightWeather) == preset
+                        ) {
+                            nmea.applyPreset(preset)
+                        }
+                    }
+                }
             }
         }
         .font(.callout)
-        .padding(8)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.08)))
-        .shadow(radius: 10)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func statusBadge(title: String, systemImage: String, tint: Color) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
 private struct ToggleIcon: View {
-    let sf: String; @Binding var isOn: Bool
-    init(_ sf: String, isOn: Binding<Bool>) { self.sf = sf; self._isOn = isOn }
+    let sf: String
+    let title: String
+    @Binding var isOn: Bool
+
+    init(_ sf: String, title: String, isOn: Binding<Bool>) {
+        self.sf = sf
+        self.title = title
+        self._isOn = isOn
+    }
+
     var body: some View {
-        Button { withAnimation(.spring) { isOn.toggle() } } label: {
+        Button { withAnimation(.snappy(duration: 0.24)) { isOn.toggle() } } label: {
             Image(systemName: sf)
-        }
-        .buttonStyle(.bordered)
-    }
-}
-
-private struct QuickToggle: View {
-    @Environment(NMEASimulator.self) private var nmea
-
-    let label: String
-    let keyPath: WritableKeyPath<SentenceToggleStates, Bool>
-
-    init(_ label: String, _ keyPath: WritableKeyPath<SentenceToggleStates, Bool>) {
-        self.label = label
-        self.keyPath = keyPath
-    }
-
-    private var isOn: Bool {
-        nmea.sentenceToggles[keyPath: keyPath]
-    }
-
-    var body: some View {
-        Button {
-            nmea.sentenceToggles[keyPath: keyPath].toggle()
-        } label: {
-            Text(label)
-                .font(.caption.bold())
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(isOn ? .green.opacity(0.25) : .white.opacity(0.08), in: Capsule())
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 32, height: 32)
+                .background(isOn ? AppChrome.raisedFill : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
+        .help(title)
     }
 }
 
+private struct PresetIconButton: View {
+    let preset: SimulationPreset
+    let isSelected: Bool
+    let action: () -> Void
+
+    private var symbolName: String {
+        switch preset {
+        case .harborCalm:
+            return "drop"
+        case .lightWeather:
+            return "cloud.sun"
+        case .stormyWeather:
+            return "hurricane"
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbolName)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 32, height: 32)
+                .background(
+                    isSelected ? AppColors.success.opacity(0.22) : AppChrome.subtleFill,
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(isSelected ? AppColors.success.opacity(0.45) : .white.opacity(0.08))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(preset.displayName + ". " + preset.summary)
+    }
+}

@@ -5,56 +5,148 @@ struct DashboardView: View {
     @Environment(NMEASimulator.self) private var nmeaManager
 
     // visibility
-    @State private var showLeftDock = true
-    @State private var showRightInspector = true
-    @State private var showConsole = true
+    @AppStorage("dashboard.show_left_dock") private var showLeftDock = true
+    @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
+    @AppStorage("dashboard.show_console") private var showConsole = true
 
-    // sizes
-    @State private var leftWidth: CGFloat = 320
-    @State private var rightWidth: CGFloat = 300
-    @State private var bottomHeight: CGFloat = 180
+    @AppStorage("dashboard.console_height") private var storedConsoleHeight: Double = 220
+    private let leftRailWidth: CGFloat = 332
+    private let rightRailWidth: CGFloat = 340
+    private let topBarHeight: CGFloat = 112
+    private let consoleHeaderHeight: CGFloat = 28
 
-    // assume your top bar is ~48pt tall (tweak if needed)
-    private let topBarHeight: CGFloat = 48
-    private let topBarSpacing: CGFloat = 8
+    private var dashboardConsoleHeight: Binding<CGFloat> {
+        Binding(
+            get: { CGFloat(storedConsoleHeight) },
+            set: { storedConsoleHeight = Double($0) }
+        )
+    }
+
+    private var consoleOverlayInset: CGFloat {
+        guard showConsole else { return 0 }
+        return CGFloat(storedConsoleHeight) + consoleHeaderHeight
+    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            // main map
-            BoatMapView()
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    TopControlBar(
+                        showLeft: $showLeftDock,
+                        showRight: $showRightInspector,
+                        showBottom: $showConsole
+                    )
+                    .environment(nmeaManager)
+                    .frame(maxWidth: .infinity, minHeight: topBarHeight, maxHeight: topBarHeight)
+                    .background(
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(.white.opacity(0.10))
+                            .frame(height: 1)
+                    }
 
-            // TOP BAR
-            TopControlBar(
-                showLeft: $showLeftDock,
-                showRight: $showRightInspector,
-                showBottom: $showConsole
-            )
-            .environment(nmeaManager)
-            .padding(.horizontal, 10)
-            .padding(.top, 8)
-            .frame(maxWidth: .infinity, alignment: .top)
-            .zIndex(10)
-            
-            // LEFT: Full Control (your sliders/toggles)
-            LeadingSidePanel(
-                edge: .leading,
-                isVisible: $showLeftDock,
-                topOffset: topBarHeight + topBarSpacing
-            ) {
-                LeftControlsPanel(nmea: nmeaManager)
-            }
-            // RIGHT SIDEBAR — now padded below the top bar
-            if showRightInspector {
-                HStack {
-                    Spacer()
-                    TrailingSidePanel()
-                        .frame(width: rightWidth)
-                        .padding(.top, topBarHeight + topBarSpacing) // 👈 keeps it under the bar
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                        .zIndex(9)
+                    ZStack {
+                        BoatMapView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.16),
+                                .clear,
+                                Color.black.opacity(showConsole ? 0.12 : 0.03)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .allowsHitTesting(false)
+                    }
+                    .clipped()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                overlayRail(
+                    width: showLeftDock ? leftRailWidth : 0,
+                    edge: .leading,
+                    isVisible: showLeftDock,
+                    bottomInset: consoleOverlayInset
+                ) {
+                    LeftControlsPanel(nmea: nmeaManager)
+                }
+
+                overlayRail(
+                    width: showRightInspector ? rightRailWidth : 0,
+                    edge: .trailing,
+                    isVisible: showRightInspector,
+                    bottomInset: consoleOverlayInset
+                ) {
+                    ScrollView {
+                        TrailingSidePanel()
+                    }
+                    .scrollIndicators(.hidden)
+                }
+
+                if #available(macOS 15.0, *), showConsole {
+                    ConsolePanelView(
+                        nmeaManager: nmeaManager,
+                        consoleHeight: dashboardConsoleHeight,
+                        geometryHeight: geometry.size.height
+                    )
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial)
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .fill(.white.opacity(0.10))
+                            .frame(height: 1)
+                    }
+                    .shadow(color: .black.opacity(0.26), radius: 18, y: -2)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(12)
                 }
             }
+            .animation(.snappy(duration: 0.28, extraBounce: 0.03), value: showRightInspector)
+            .animation(.snappy(duration: 0.28, extraBounce: 0.03), value: showConsole)
+            .animation(.snappy(duration: 0.28, extraBounce: 0.03), value: showLeftDock)
         }
-        .animation(.easeInOut(duration: 0.5), value: showRightInspector)
+    }
+
+    @ViewBuilder
+    private func overlayRail<Content: View>(
+        width: CGFloat,
+        edge: HorizontalEdge,
+        isVisible: Bool,
+        bottomInset: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 0) {
+            if edge == .trailing {
+                Spacer(minLength: 0)
+            }
+
+            content()
+                .frame(width: width)
+                .frame(maxHeight: .infinity)
+                .background(
+                    Rectangle()
+                        .fill(.regularMaterial)
+                )
+                .opacity(isVisible ? 1 : 0)
+                .clipped()
+                .allowsHitTesting(isVisible)
+                .overlay(alignment: edge == .leading ? .trailing : .leading) {
+                    Rectangle()
+                        .fill(.white.opacity(0.08))
+                        .frame(width: 1)
+                }
+
+            if edge == .leading {
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(.top, topBarHeight)
+        .padding(.bottom, bottomInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: edge == .leading ? .leading : .trailing)
     }
 }

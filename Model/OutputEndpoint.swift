@@ -31,3 +31,32 @@ struct OutputEndpoint: Codable, Identifiable, Equatable {
         self.isEnabled = isEnabled
     }
 }
+
+enum TransportStatusLevel: String {
+    case idle
+    case connected
+    case warning
+    case error
+}
+
+struct OutputEndpointStatus {
+    var endpointID: UUID
+    var level: TransportStatusLevel
+    var message: String
+    var updatedAt: Date = .now
+}
+
+struct TransportHistoryEvent: Identifiable {
+    enum Category: String {
+        case transport
+        case lifecycle
+        case fault
+    }
+
+    var id: UUID = UUID()
+    var endpointID: UUID?
+    var level: TransportStatusLevel
+    var category: Category
+    var message: String
+    var timestamp: Date = .now
+}

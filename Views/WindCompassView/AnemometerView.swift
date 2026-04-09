@@ -176,7 +176,7 @@ struct WindArrow: View {
                 .offset(y: -offset * 1.035)
                 .foregroundStyle(Color(.white))
         }
-        .rotationEffect(.degrees(delta)) // Rotate the arrow by delta
+        .rotationEffect(.degrees(delta))
         .animation(shouldAnimate ? .easeInOut(duration: 1) : .none, value: delta) // Smooth rotation animation
     }
 }

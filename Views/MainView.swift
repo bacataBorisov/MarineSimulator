@@ -4,20 +4,33 @@ import AppKit
 enum SidebarItem: Hashable {
     case gps, config
     case wind, hydro, compass
-    case dashboard
+    case dashboard, manual
 }
 
 struct MainView: View {
     
     @Environment(NMEASimulator.self) private var nmeaManager
     
-    @State private var selection: SidebarItem? = .dashboard
+    @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
+    @AppStorage("main_view.console_height") private var storedConsoleHeight: Double = 28
 
-    @State private var consoleHeight: CGFloat = 28
+    private var selection: Binding<SidebarItem?> {
+        Binding(
+            get: { SidebarItem(rawValue: selectedPanelRawValue) ?? .dashboard },
+            set: { selectedPanelRawValue = $0?.rawValue ?? SidebarItem.dashboard.rawValue }
+        )
+    }
+
+    private var consoleHeight: Binding<CGFloat> {
+        Binding(
+            get: { CGFloat(storedConsoleHeight) },
+            set: { storedConsoleHeight = Double($0) }
+        )
+    }
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selection) {
+            List(selection: selection) {
                 Section("Dashboard") {
                     NavigationLink(value: SidebarItem.dashboard) {
                         Label("Dashboard", systemImage: "gauge.open.with.lines.needle.33percent.and.arrow.trianglehead.from.0percent.to.50percent")
@@ -26,6 +39,9 @@ struct MainView: View {
                 Section("Setup") {
                     NavigationLink(value: SidebarItem.config) {
                         Label("Configuration", systemImage: "gear")
+                    }
+                    NavigationLink(value: SidebarItem.manual) {
+                        Label("Manual", systemImage: "book.closed")
                     }
                 }
                 Section("Sentences") {
@@ -50,13 +66,15 @@ struct MainView: View {
                 VStack(spacing: 0) {
                     // Top panel (dynamic height)
                     Group {
-                        switch selection {
+                        switch selection.wrappedValue {
                         case .dashboard:
                             DashboardView()
                         case .gps:
                             GPSConfig(nmeaManager: nmeaManager)
                         case .config:
                             ConfigurationView(nmeaManager: nmeaManager)
+                        case .manual:
+                            ManualView()
                         case .wind:
                             WindConfig(nmeaManager: nmeaManager)
                         case .hydro:
@@ -67,13 +85,13 @@ struct MainView: View {
                             Text("Select a panel").foregroundColor(.secondary)
                         }
                     }
-                    .frame(height: max(0, geometry.size.height - consoleHeight))
+                    .frame(height: max(0, geometry.size.height - consoleHeight.wrappedValue))
 
                     // Console Panel
-                    if #available(macOS 15.0, *) {
+                    if #available(macOS 15.0, *), selection.wrappedValue != .dashboard {
                         ConsolePanelView(
                             nmeaManager: nmeaManager,
-                            consoleHeight: $consoleHeight,
+                            consoleHeight: consoleHeight,
                             geometryHeight: geometry.size.height
                         )
                     }
@@ -94,7 +112,7 @@ struct MainView: View {
                         Button {
                             nmeaManager.startSimulation()
                         } label: {
-                            Label("Start", systemImage: "play.fill")
+                            Label(nmeaManager.isTimerSelected ? "Start" : "Send Once", systemImage: nmeaManager.isTimerSelected ? "play.fill" : "paperplane.fill")
                         }
                         .transition(.opacity)
                     }
@@ -107,6 +125,14 @@ struct MainView: View {
                     Label(nmeaManager.isTransmitting ? "Transmitting" : "Idle",
                           systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
                         .foregroundStyle(nmeaManager.isTransmitting ? .green : .gray)
+
+                    if let transportStatus = nmeaManager.latestTransportStatus {
+                        Label(transportStatus.message, systemImage: transportStatus.level.systemImage)
+                            .font(.caption)
+                            .foregroundStyle(transportStatus.level.color)
+                            .labelStyle(.titleAndIcon)
+                            .lineLimit(1)
+                    }
 
                     Label("\(nmeaManager.ip)", systemImage: "network")
                         .font(.caption)
@@ -137,6 +163,76 @@ struct MainView: View {
         var frame = window.frame
         frame.size.width = width
         window.setFrame(frame, display: true, animate: true)
+    }
+}
+
+private extension TransportStatusLevel {
+    var color: Color {
+        switch self {
+        case .idle:
+            return .secondary
+        case .connected:
+            return .green
+        case .warning:
+            return .orange
+        case .error:
+            return .red
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .idle:
+            return "questionmark.circle"
+        case .connected:
+            return "checkmark.circle"
+        case .warning:
+            return "exclamationmark.triangle"
+        case .error:
+            return "xmark.octagon"
+        }
+    }
+}
+
+extension SidebarItem: RawRepresentable {
+    init?(rawValue: String) {
+        switch rawValue {
+        case "gps":
+            self = .gps
+        case "config":
+            self = .config
+        case "wind":
+            self = .wind
+        case "hydro":
+            self = .hydro
+        case "compass":
+            self = .compass
+        case "dashboard":
+            self = .dashboard
+        case "manual":
+            self = .manual
+        default:
+            return nil
+        }
+    }
+
+    var rawValue: String {
+        switch self {
+        case .gps:
+            return "gps"
+        case .config:
+            return "config"
+        case .wind:
+            return "wind"
+        case .hydro:
+            return "hydro"
+        case .compass:
+            return "compass"
+        case .dashboard:
+            return "dashboard"
+        case .manual:
+            return "manual"
+        }
     }
 }
 

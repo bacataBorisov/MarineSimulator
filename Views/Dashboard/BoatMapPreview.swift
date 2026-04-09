@@ -12,13 +12,14 @@ struct BoatMapView: View {
         )
     )
     @State private var autoCenter = false
+    private var gpsControlsDisabled: Bool { !nmeaManager.sensorToggles.hasGPS }
 
     var body: some View {
         ZStack {
             // MARK: - Main Map
             Map(position: $position, interactionModes: [.all]) {
                 // Boat annotation
-                Annotation("Boat", coordinate: CLLocationCoordinate2D(latitude: nmeaManager.gpsData.latitude.magnitude, longitude: nmeaManager.gpsData.longitude)) {
+                Annotation("Boat", coordinate: CLLocationCoordinate2D(latitude: nmeaManager.gpsData.latitude, longitude: nmeaManager.gpsData.longitude)) {
                     Image(systemName: "location.north.line.fill")
                         .resizable()
                         .frame(width: 20, height: 40)
@@ -43,6 +44,7 @@ struct BoatMapView: View {
                     Button {
                         withAnimation(.easeInOut(duration: 0.8)) {
                             nmeaManager.gpsData.longitude -= 0.05
+                            nmeaManager.persistLiveSettings()
                         }
                     } label: {
                         Image(systemName: "arrow.left.circle.fill")
@@ -53,11 +55,13 @@ struct BoatMapView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Move West")
+                    .disabled(gpsControlsDisabled)
 
                     // Move East
                     Button {
                         withAnimation(.easeInOut(duration: 0.8)) {
                             nmeaManager.gpsData.longitude += 0.05
+                            nmeaManager.persistLiveSettings()
                         }
                     } label: {
                         Image(systemName: "arrow.right.circle.fill")
@@ -68,6 +72,7 @@ struct BoatMapView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Move East")
+                    .disabled(gpsControlsDisabled)
 
                     // Center on Boat
                     Button {
@@ -91,8 +96,17 @@ struct BoatMapView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Center on Boat")
+                    .disabled(gpsControlsDisabled)
                 }
                 .padding(.bottom, 16)
+
+                if gpsControlsDisabled {
+                    Text("Enable GPS in Configuration to reposition the boat on the map.")
+                        .font(.caption2)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
             }
         }
     }

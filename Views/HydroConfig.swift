@@ -88,9 +88,17 @@ private struct HydroSentencesSection: View {
                     infoView: { AnyView(DBTHelpView().font(.caption)) }
                 )
                 .disabled(!HydroUIConditions.isDBTEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .dbt) },
+                        set: { nmeaManager.setInterval($0, for: .dbt) }
+                    ),
+                    isDisabled: !shouldSendDBT || !HydroUIConditions.isDBTEnabled(nmeaManager)
+                )
                 
                 
-                // DPT – Depth of Water (requires offset)
+                // DPT – Depth of Water
                 ViewKit.ToggleRowWithInfo(
                     "DPT - Depth of Water",
                     isOn: $shouldSendDPT,
@@ -98,6 +106,14 @@ private struct HydroSentencesSection: View {
                     infoView: { AnyView(DPTHelpView().font(.caption)) }
                 )
                 .disabled(!HydroUIConditions.isDPTEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .dpt) },
+                        set: { nmeaManager.setInterval($0, for: .dpt) }
+                    ),
+                    isDisabled: !shouldSendDPT || !HydroUIConditions.isDPTEnabled(nmeaManager)
+                )
                 
                 if HydroUIConditions.showEchoSounderWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableEchoSounder)
@@ -140,7 +156,7 @@ private struct HydroSentencesSection: View {
                     }
                 }
                 if HydroUIConditions.showInvalidOffsetWarning(nmeaManager) {
-                    Text("Please enter a valid non-zero depth offset (e.g., 0.30 or -0.70) to activate DPT.")
+                    Text("Please enter a valid depth offset between -99 m and 99 m.")
                         .foregroundStyle(AppColors.warning)
                         .font(.caption2)
                         .padding(.leading, 4)
@@ -159,6 +175,14 @@ private struct HydroSentencesSection: View {
                 )
                 .disabled(!HydroUIConditions.isMTWEnabled(nmeaManager))
                 .toggleStyle(.switch)
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .mtw) },
+                        set: { nmeaManager.setInterval($0, for: .mtw) }
+                    ),
+                    isDisabled: !shouldSendMTW || !HydroUIConditions.isMTWEnabled(nmeaManager)
+                )
                 
                 if HydroUIConditions.showMTWWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableWaterTempSensor)
@@ -178,9 +202,17 @@ private struct HydroSentencesSection: View {
                     infoView: { AnyView(VHWHelpView().font(.caption)) }
                 )
                 .disabled(!HydroUIConditions.isVHWEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .vhw) },
+                        set: { nmeaManager.setInterval($0, for: .vhw) }
+                    ),
+                    isDisabled: !shouldSendVHW || !HydroUIConditions.isVHWEnabled(nmeaManager)
+                )
                 
                 if HydroUIConditions.showVHWMissingBothNote(nmeaManager) {
-                    Text("Activate Speed Log or Magnetic Compass to enable the sentence.")
+                    Text("Activate Speed Log, Magnetic Compass, or Gyro to enable the sentence.")
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
@@ -207,6 +239,14 @@ private struct HydroSentencesSection: View {
                     infoView: { AnyView(VBWHelpView().font(.caption)) }
                 )
                 .disabled(!HydroUIConditions.isVBWEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .vbw) },
+                        set: { nmeaManager.setInterval($0, for: .vbw) }
+                    ),
+                    isDisabled: !shouldSendVBW || !HydroUIConditions.isVBWEnabled(nmeaManager)
+                )
                 
                 if HydroUIConditions.showVBWMissingBothNote(nmeaManager) {
                     Text("Activate Speed Log or GPS to enable the sentence.")
@@ -236,6 +276,14 @@ private struct HydroSentencesSection: View {
                     infoView: { AnyView(VLWHelpView().font(.caption)) }
                 )
                 .disabled(!HydroUIConditions.isVLWEnabled(nmeaManager))
+
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .vlw) },
+                        set: { nmeaManager.setInterval($0, for: .vlw) }
+                    ),
+                    isDisabled: !shouldSendVLW || !HydroUIConditions.isVLWEnabled(nmeaManager)
+                )
                 
                 if HydroUIConditions.showVLWSpeedLogNote(nmeaManager) {
                     Text(UIStrings.Warnings.enableSpeedLog)
@@ -261,8 +309,7 @@ private struct HydroUIConditions {
     
     static func isDPTEnabled(_ nmea: NMEASimulator) -> Bool {
         guard nmea.sensorToggles.hasEchoSounder else { return false }
-        let offset = nmea.depthOffsetMeters
-        return offset != 0 && abs(offset) <= 99
+        return abs(nmea.depthOffsetMeters) <= 99
     }
     
     static func showEchoSounderWarning(_ nmea: NMEASimulator) -> Bool {
@@ -274,7 +321,7 @@ private struct HydroUIConditions {
     }
     
     static func showInvalidOffsetWarning(_ nmea: NMEASimulator) -> Bool {
-        nmea.sensorToggles.hasEchoSounder && !isDPTEnabled(nmea)
+        nmea.sensorToggles.hasEchoSounder && abs(nmea.depthOffsetMeters) > 99
     }
     
     // MARK: - Sea Water Temperature
@@ -289,7 +336,7 @@ private struct HydroUIConditions {
     // MARK: - Speed Sentences (Minimal Version)
     
     static func isVHWEnabled(_ nmea: NMEASimulator) -> Bool {
-        nmea.sensorToggles.hasSpeedLog || nmea.sensorToggles.hasCompass
+        nmea.sensorToggles.hasSpeedLog || nmea.sensorToggles.hasCompass || nmea.sensorToggles.hasGyro
     }
     
     static func showVHWCompassNote(_ nmea: NMEASimulator) -> Bool {
@@ -301,7 +348,7 @@ private struct HydroUIConditions {
     }
     
     static func showVHWMissingBothNote(_ nmea: NMEASimulator) -> Bool {
-        !nmea.sensorToggles.hasSpeedLog && !nmea.sensorToggles.hasCompass
+        !nmea.sensorToggles.hasSpeedLog && !nmea.sensorToggles.hasCompass && !nmea.sensorToggles.hasGyro
     }
     
     static func isVBWEnabled(_ nmea: NMEASimulator) -> Bool {

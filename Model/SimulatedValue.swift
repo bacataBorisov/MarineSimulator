@@ -60,7 +60,7 @@ enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
 }
 
 /// Struct to represent a metric with optional value and random generation
-struct SimulatedValue: Codable {
+struct SimulatedValue: Codable, Equatable {
     var value: Double?
     var range: ClosedRange<Double>
     var centerValue: Double
@@ -115,4 +115,3 @@ extension Comparable {
         return min(max(self, limits.lowerBound), limits.upperBound)
     }
 }
-
