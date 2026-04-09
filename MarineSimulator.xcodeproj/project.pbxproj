@@ -51,6 +51,15 @@
 		0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C76C2DFE66D100AD0C0B /* CompassView.swift */; };
 		06883DE62F78B5AE005DE47D /* OutputEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */; };
 		06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */; };
+		06883DEA2F78B925005DE47D /* SimulatorSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE92F78B925005DE47D /* SimulatorSettings.swift */; };
+		06883DEC2F78BC26005DE47D /* TCPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DEB2F78BC26005DE47D /* TCPClient.swift */; };
+		06883DEE2F78C6CD005DE47D /* ManualView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DED2F78C6CD005DE47D /* ManualView.swift */; };
+		06883E072F79CA43005DE47D /* InstructionManual.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E042F79CA43005DE47D /* InstructionManual.md */; };
+		06883E082F79CA43005DE47D /* ProjectOverview.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E062F79CA43005DE47D /* ProjectOverview.md */; };
+		06883E092F79CA43005DE47D /* CompletedTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E012F79CA43005DE47D /* CompletedTasks.md */; };
+		06883E0A2F79CA43005DE47D /* FutureTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E032F79CA43005DE47D /* FutureTasks.md */; };
+		06883E0B2F79CA43005DE47D /* ManualTestChecklist.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E052F79CA43005DE47D /* ManualTestChecklist.md */; };
+		06883E0C2F79CA43005DE47D /* CurrentTasks.md in Resources */ = {isa = PBXBuildFile; fileRef = 06883E022F79CA43005DE47D /* CurrentTasks.md */; };
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
@@ -130,6 +139,15 @@
 		0682C76C2DFE66D100AD0C0B /* CompassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassView.swift; sourceTree = "<group>"; };
 		06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputEndpoint.swift; sourceTree = "<group>"; };
 		06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationSnapshot.swift; sourceTree = "<group>"; };
+		06883DE92F78B925005DE47D /* SimulatorSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorSettings.swift; sourceTree = "<group>"; };
+		06883DEB2F78BC26005DE47D /* TCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TCPClient.swift; sourceTree = "<group>"; };
+		06883DED2F78C6CD005DE47D /* ManualView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualView.swift; sourceTree = "<group>"; };
+		06883E012F79CA43005DE47D /* CompletedTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CompletedTasks.md; sourceTree = "<group>"; };
+		06883E022F79CA43005DE47D /* CurrentTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CurrentTasks.md; sourceTree = "<group>"; };
+		06883E032F79CA43005DE47D /* FutureTasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = FutureTasks.md; sourceTree = "<group>"; };
+		06883E042F79CA43005DE47D /* InstructionManual.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = InstructionManual.md; sourceTree = "<group>"; };
+		06883E052F79CA43005DE47D /* ManualTestChecklist.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ManualTestChecklist.md; sourceTree = "<group>"; };
+		06883E062F79CA43005DE47D /* ProjectOverview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ProjectOverview.md; sourceTree = "<group>"; };
 		06B4B2912DF50AB6005DC523 /* MarineSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarineSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulator.swift; sourceTree = "<group>"; };
 		06B4B2962DF50AB6005DC523 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
@@ -280,6 +298,7 @@
 				06212DE62E10DBCE007A4537 /* Hydro */,
 				06212DD52E0B6B14007A4537 /* Heading */,
 				06212E902E149B21007A4537 /* GPS */,
+				06883DED2F78C6CD005DE47D /* ManualView.swift */,
 			);
 			path = HelpViews;
 			sourceTree = "<group>";
@@ -316,6 +335,12 @@
 		06883DE42F78B3A4005DE47D /* Docs */ = {
 			isa = PBXGroup;
 			children = (
+				06883E012F79CA43005DE47D /* CompletedTasks.md */,
+				06883E022F79CA43005DE47D /* CurrentTasks.md */,
+				06883E032F79CA43005DE47D /* FutureTasks.md */,
+				06883E042F79CA43005DE47D /* InstructionManual.md */,
+				06883E052F79CA43005DE47D /* ManualTestChecklist.md */,
+				06883E062F79CA43005DE47D /* ProjectOverview.md */,
 			);
 			path = Docs;
 			sourceTree = "<group>";
@@ -356,6 +381,7 @@
 				06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */,
 				06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */,
 				06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */,
+				06883DE92F78B925005DE47D /* SimulatorSettings.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -391,6 +417,7 @@
 			isa = PBXGroup;
 			children = (
 				06B4B2C92DF51286005DC523 /* UDPClient.swift */,
+				06883DEB2F78BC26005DE47D /* TCPClient.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -528,6 +555,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06883E072F79CA43005DE47D /* InstructionManual.md in Resources */,
+				06883E082F79CA43005DE47D /* ProjectOverview.md in Resources */,
+				06883E092F79CA43005DE47D /* CompletedTasks.md in Resources */,
+				06883E0A2F79CA43005DE47D /* FutureTasks.md in Resources */,
+				06883E0B2F79CA43005DE47D /* ManualTestChecklist.md in Resources */,
+				06883E0C2F79CA43005DE47D /* CurrentTasks.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -553,6 +586,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				06212DEE2E10DF0E007A4537 /* MTWHelpView.swift in Sources */,
+				06883DEA2F78B925005DE47D /* SimulatorSettings.swift in Sources */,
 				06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */,
 				06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */,
 				0648D2642E02433E000DC7E3 /* MWVHelpView.swift in Sources */,
@@ -585,6 +619,7 @@
 				06B4B2DA2DFCE735005DC523 /* AppConstants.swift in Sources */,
 				0682C76E2DFE66D100AD0C0B /* CompassLabelView.swift in Sources */,
 				0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */,
+				06883DEE2F78C6CD005DE47D /* ManualView.swift in Sources */,
 				0682C7702DFE66D100AD0C0B /* CompassView.swift in Sources */,
 				063AADE52E9469FA003B2A7A /* TrailingSidePanel.swift in Sources */,
 				0682C7682DFE653B00AD0C0B /* WindCompass.swift in Sources */,
@@ -605,6 +640,7 @@
 				06212E9C2E149D98007A4537 /* GSVHelpView.swift in Sources */,
 				06212DD22E0B65D2007A4537 /* SentenceToggleStates.swift in Sources */,
 				066372F92DFF83E000B7348E /* BoatMapPreview.swift in Sources */,
+				06883DEC2F78BC26005DE47D /* TCPClient.swift in Sources */,
 				06212DEA2E10DE31007A4537 /* DBTHelpView.swift in Sources */,
 				0648D25D2E02326A000DC7E3 /* NMEASimulator+SentenceBuilder.swift in Sources */,
 				06212E982E149D3B007A4537 /* GLLHelpView.swift in Sources */,
@@ -844,7 +880,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -862,7 +898,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
