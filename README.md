@@ -46,6 +46,20 @@ The console drawer includes timestamps for NMEA lines and can be collapsed or ex
 - Named presets for repeatable setups
 - Auto-restored live values between launches
 
+## Screenshots
+
+### Dashboard
+
+![Dashboard](assets/media/dashboard.png)
+
+### Configuration
+
+![Configuration](assets/media/configuration_page.png)
+
+### Sentence Setup
+
+![Sentence Setup](assets/media/sentence_page.png)
+
 ## NMEA Coverage
 
 Current implemented sentence families include:
