@@ -6,7 +6,7 @@
 
 The file **`../state/cache.md`** is separate: it is **regenerated** by `agentos cache update` from scan **change** rows only.
 
-- **Objective:** Agent OS test run completed; repo index and exports are fresh — no product task in flight.
-- **Immediate next step:** Waiting for user task; on pickup, re-read **`scanned-summary.md`**, **`AGENTS.md`**, and **`begin-chat.md`**, then verify paths in the codebase (including Swift files with spaces in the name).
-- **Critical constraints:** Follow **`AGENTS.md`** and **`.agent-os/context/`** for workflow; do not invent requirements or timelines; treat **`../state/cache.md`** as scan deltas only.
-- **Risks:** **`init`** resets templates — restore any committed custom **`context/*.md`** from git if needed.
+- **Objective:** Active session is initialized; no product/code task has been assigned yet.
+- **Immediate next step:** Wait for the user's first task, then inspect the relevant Swift/UI files, verify current behavior in code, and implement only the requested change.
+- **Critical constraints:** Follow repo-root **`AGENTS.md`** and **`.agent-os/context/`** workflow; do not invent requirements or timelines; keep changes scoped to the request; use **`../state/cache.md`** only for latest scan deltas.
+- **Risks:** None yet.
