@@ -147,6 +147,19 @@
 		065679AC2F8869E20008299A /* InstructionManual.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = InstructionManual.md; sourceTree = "<group>"; };
 		065679AD2F8869E20008299A /* ManualTestChecklist.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ManualTestChecklist.md; sourceTree = "<group>"; };
 		065679AE2F8869E20008299A /* ProjectOverview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ProjectOverview.md; sourceTree = "<group>"; };
+		06E0A0112F88B0E10008299A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		06E0A0122F88B0E10008299A /* begin-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "begin-chat.md"; sourceTree = "<group>"; };
+		06E0A0132F88B0E10008299A /* cache.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = cache.md; sourceTree = "<group>"; };
+		06E0A0142F88B0E10008299A /* end-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "end-chat.md"; sourceTree = "<group>"; };
+		06E0A0152F88B0E10008299A /* open-questions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "open-questions.md"; sourceTree = "<group>"; };
+		06E0A0162F88B0E10008299A /* project-memory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "project-memory.md"; sourceTree = "<group>"; };
+		06567A122F887CF40008299A /* agent_os.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = agent_os.db; sourceTree = "<group>"; };
+		06567A142F887CF40008299A /* context-pack.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "context-pack.json"; sourceTree = "<group>"; };
+		06567A152F887CF40008299A /* context-pack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "context-pack.md"; sourceTree = "<group>"; };
+		06567A192F887CF40008299A /* last-scan.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "last-scan.json"; sourceTree = "<group>"; };
+		06567A1F2F887CF40008299A /* cache.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = cache.md; sourceTree = "<group>"; };
+		06567A202F887CF40008299A /* current-handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "current-handoff.md"; sourceTree = "<group>"; };
+		06567A232F887CF40008299A /* config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config.json; sourceTree = "<group>"; };
 		066372F82DFF83E000B7348E /* BoatMapPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatMapPreview.swift; sourceTree = "<group>"; };
 		066372FA2DFF8E9200B7348E /* ConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleView.swift; sourceTree = "<group>"; };
 		0682C7612DFE63B200AD0C0B /* AnemometerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnemometerView.swift; sourceTree = "<group>"; };
@@ -178,6 +191,7 @@
 		06B4B2DB2DFCFEBA005DC523 /* GPSData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPSData.swift; sourceTree = "<group>"; };
 		06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		06D349022E91ED6C005F76A4 /* TopControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopControlBar.swift; sourceTree = "<group>"; };
+		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -317,7 +331,6 @@
 		};
 		065679AF2F8869E20008299A /* Docs */ = {
 			isa = PBXGroup;
-			name = Docs;
 			children = (
 				065679A92F8869E20008299A /* CompletedTasks.md */,
 				065679AA2F8869E20008299A /* CurrentTasks.md */,
@@ -326,7 +339,68 @@
 				065679AD2F8869E20008299A /* ManualTestChecklist.md */,
 				065679AE2F8869E20008299A /* ProjectOverview.md */,
 			);
-			path = MarineSimulator/Docs;
+			name = Docs;
+			path = Docs;
+			sourceTree = "<group>";
+		};
+		06E0A0102F88B0E10008299A /* context */ = {
+			isa = PBXGroup;
+			children = (
+				06E0A0112F88B0E10008299A /* README.md */,
+				06E0A0122F88B0E10008299A /* begin-chat.md */,
+				06E0A0132F88B0E10008299A /* cache.md */,
+				06E0A0142F88B0E10008299A /* end-chat.md */,
+				06E0A0152F88B0E10008299A /* open-questions.md */,
+				06E0A0162F88B0E10008299A /* project-memory.md */,
+			);
+			path = context;
+			sourceTree = "<group>";
+		};
+		06567A132F887CF40008299A /* data */ = {
+			isa = PBXGroup;
+			children = (
+				06567A122F887CF40008299A /* agent_os.db */,
+			);
+			path = data;
+			sourceTree = "<group>";
+		};
+		06567A162F887CF40008299A /* exports */ = {
+			isa = PBXGroup;
+			children = (
+				06567A142F887CF40008299A /* context-pack.json */,
+				06567A152F887CF40008299A /* context-pack.md */,
+			);
+			path = exports;
+			sourceTree = "<group>";
+		};
+		06567A1A2F887CF40008299A /* logs */ = {
+			isa = PBXGroup;
+			children = (
+				06567A192F887CF40008299A /* last-scan.json */,
+			);
+			path = logs;
+			sourceTree = "<group>";
+		};
+		06567A212F887CF40008299A /* state */ = {
+			isa = PBXGroup;
+			children = (
+				06567A1F2F887CF40008299A /* cache.md */,
+				06567A202F887CF40008299A /* current-handoff.md */,
+			);
+			path = state;
+			sourceTree = "<group>";
+		};
+		06567A242F887CF40008299A /* .agent-os */ = {
+			isa = PBXGroup;
+			children = (
+				06E0A0102F88B0E10008299A /* context */,
+				06567A132F887CF40008299A /* data */,
+				06567A162F887CF40008299A /* exports */,
+				06567A1A2F887CF40008299A /* logs */,
+				06567A212F887CF40008299A /* state */,
+				06567A232F887CF40008299A /* config.json */,
+			);
+			path = ".agent-os";
 			sourceTree = "<group>";
 		};
 		066372F72DFF83DA00B7348E /* GPS */ = {
@@ -361,6 +435,8 @@
 		06B4B2882DF50AB6005DC523 = {
 			isa = PBXGroup;
 			children = (
+				B04B0DD949D2B477290B74C1 /* AGENT_OS.md */,
+				06567A242F887CF40008299A /* .agent-os */,
 				06B4B2C62DF50F81005DC523 /* App */,
 				06B4B2C72DF50FA7005DC523 /* Networking */,
 				06B4B2C42DF50F3C005DC523 /* Model */,

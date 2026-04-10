@@ -44,9 +44,9 @@ Implemented or partially implemented areas:
 
 The project uses a simple task flow documented in the repository:
 
-- `MarineSimulator/Docs/FutureTasks.md` is the backlog and task pool.
-- `MarineSimulator/Docs/CurrentTasks.md` is the active work queue.
-- `MarineSimulator/Docs/CompletedTasks.md` is the finished work log.
+- `Docs/FutureTasks.md` is the backlog and task pool.
+- `Docs/CurrentTasks.md` is the active work queue.
+- `Docs/CompletedTasks.md` is the finished work log.
 
 Tasks should move from future to current when selected for work, then into completed once implemented and verified.
 

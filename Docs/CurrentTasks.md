@@ -4,8 +4,8 @@ These are the tasks currently in progress or next in line for the active work st
 
 Agent handoff reference:
 
-- Agent session state and latest technical handoff live in `docs/agent/current-handoff.md`.
-- Use this file for product/project task tracking and `docs/agent/` for per-session agent memory.
+- Scan-backed agent handoff lives in `.agent-os/state/current-handoff.md` (refresh with `agentos handoff update`).
+- Use this file (`Docs/CurrentTasks.md`) for product/project task tracking and `.agent-os/context/` for editable session workflow and memory.
 
 ## Active
 
@@ -17,7 +17,7 @@ Agent handoff reference:
 
 ## Resume From Here
 
-1. Run `MarineSimulator/Docs/ManualTestChecklist.md` against the external reader app.
+1. Run `Docs/ManualTestChecklist.md` against the external reader app.
 2. Record any mismatches by sentence family or transport mode before changing code.
 3. Fix real interoperability defects first, especially `MWV`, `MWD`, `HDG`, `HDT`, `VTG`, `RMC`, and UDP/TCP endpoint behavior.
 4. After external-reader behavior is stable, add targeted engine tests for each mismatch that was found.
@@ -27,7 +27,7 @@ Agent handoff reference:
 
 - Primary validation target: external-reader interoperability, not new feature expansion.
 - Most likely next bugs, if any remain: sentence interpretation mismatches, transport lifecycle issues, and receiver-specific acceptance quirks.
-- Best source of truth for what to verify next: `MarineSimulator/Docs/ManualTestChecklist.md` plus the current engine behavior in code.
+- Best source of truth for what to verify next: `Docs/ManualTestChecklist.md` plus the current engine behavior in code.
 
 ## Engineering Notes
 

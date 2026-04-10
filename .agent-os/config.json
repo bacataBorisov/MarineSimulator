@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "chunk_lines": 100,
+  "exclude_dirs": [".git", "node_modules", ".agent-os"],
+  "notes": "C scanner uses built-in defaults; Python may read this later."
+}

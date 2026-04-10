@@ -104,11 +104,11 @@ The next validation step is to run the manual checklist against the target reade
 
 User-facing project docs live in:
 
-- [`MarineSimulator/Docs/ProjectOverview.md`](MarineSimulator/Docs/ProjectOverview.md)
-- [`MarineSimulator/Docs/CurrentTasks.md`](MarineSimulator/Docs/CurrentTasks.md)
-- [`MarineSimulator/Docs/CompletedTasks.md`](MarineSimulator/Docs/CompletedTasks.md)
-- [`MarineSimulator/Docs/InstructionManual.md`](MarineSimulator/Docs/InstructionManual.md)
-- [`MarineSimulator/Docs/ManualTestChecklist.md`](MarineSimulator/Docs/ManualTestChecklist.md)
+- [`Docs/ProjectOverview.md`](Docs/ProjectOverview.md)
+- [`Docs/CurrentTasks.md`](Docs/CurrentTasks.md)
+- [`Docs/CompletedTasks.md`](Docs/CompletedTasks.md)
+- [`Docs/InstructionManual.md`](Docs/InstructionManual.md)
+- [`Docs/ManualTestChecklist.md`](Docs/ManualTestChecklist.md)
 
 ## Getting Started
 
