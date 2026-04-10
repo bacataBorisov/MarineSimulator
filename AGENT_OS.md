@@ -25,7 +25,8 @@ When you use the **`agentos`** CLI, it tries to **edit `project.pbxproj`** so **
 
 | What | Path |
 |------|------|
-| Agent context (workflow, you edit) | `.agent-os/context/` — begin/end chat, rolling `cache.md`, memory, questions |
+| Cursor / team agent rules (optional) | **`AGENTS.md`** at repo root — read when present; CLI never edits it |
+| Agent context (workflow, you edit) | `.agent-os/context/` — **`scanned-summary.md`** (auto), begin/end chat, rolling `cache.md`, memory, questions |
 | Context pack (JSON, for tools) | `.agent-os/exports/context-pack.json` |
 | Context pack (Markdown summary) | `.agent-os/exports/context-pack.md` |
 | Working cache | `.agent-os/state/cache.md` |

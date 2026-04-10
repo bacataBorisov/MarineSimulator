@@ -2,13 +2,29 @@
   "version": 1,
   "profile": "normal",
   "scan": {
-    "id": 3,
+    "id": 1,
     "repo_root": "/Users/bacataborisov/Documents/Projects/MarineSimulator",
-    "started_at": "2026-04-10 02:15:34",
-    "finished_at": "2026-04-10 02:15:34",
-    "scan_type": "incremental"
+    "started_at": "2026-04-10 02:24:07",
+    "finished_at": "2026-04-10 02:24:07",
+    "scan_type": "full"
   },
   "changes": [
+    {
+      "change_type": "new",
+      "path": ".gitignore"
+    },
+    {
+      "change_type": "new",
+      "path": "AGENTS.md"
+    },
+    {
+      "change_type": "new",
+      "path": "AGENT_OS.md"
+    },
+    {
+      "change_type": "new",
+      "path": "App/MarineSimulator.swift"
+    },
     {
       "change_type": "new",
       "path": "Docs/CompletedTasks.md"
@@ -34,32 +50,316 @@
       "path": "Docs/ProjectOverview.md"
     },
     {
-      "change_type": "deleted",
-      "path": "MarineSimulator/Docs/CompletedTasks.md"
+      "change_type": "new",
+      "path": "LICENSE"
     },
     {
-      "change_type": "deleted",
-      "path": "MarineSimulator/Docs/CurrentTasks.md"
+      "change_type": "new",
+      "path": "MarineSimulator.xcodeproj/xcuserdata/bacataborisov.xcuserdatad/xcschemes/xcschememanagement.plist"
     },
     {
-      "change_type": "deleted",
-      "path": "MarineSimulator/Docs/FutureTasks.md"
+      "change_type": "new",
+      "path": "MarineSimulatorTests/NMEASimulatorEngineTests.swift"
     },
     {
-      "change_type": "deleted",
-      "path": "MarineSimulator/Docs/InstructionManual.md"
+      "change_type": "new",
+      "path": "MarineSimulatorUITests/MarineSimulatorUITests.swift"
     },
     {
-      "change_type": "deleted",
-      "path": "MarineSimulator/Docs/ManualTestChecklist.md"
+      "change_type": "new",
+      "path": "MarineSimulatorUITests/MarineSimulatorUITestsLaunchTests.swift"
     },
     {
-      "change_type": "deleted",
-      "path": "MarineSimulator/Docs/ProjectOverview.md"
+      "change_type": "new",
+      "path": "Model/GPSData.swift"
     },
     {
-      "change_type": "modified",
+      "change_type": "new",
+      "path": "Model/OutputEndpoint.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Model/SensorToggleStates.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Model/SentenceToggleStates.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Model/SimulatedValue.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Model/SimulationSnapshot.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Model/SimulatorSettings.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEA/NMEASimulator+FormattedValues.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEA/NMEASimulator+SentenceBuilder.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEA/NMEASimulator+WindCalculations.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEA/NMEASimulator.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Assets.xcassets/AccentColor.colorset/Contents.json"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Assets.xcassets/AppIcon.appiconset/Contents.json"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Assets.xcassets/Contents.json"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Assets.xcassets/dial_gauge_end.colorset/Contents.json"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Assets.xcassets/dial_gauge_start.colorset/Contents.json"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Item.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Preview Content/Preview Assets.xcassets/Contents.json"
+    },
+    {
+      "change_type": "new",
+      "path": "NMEASimulator/Preview Content/PreviewData.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Networking/TCPClient.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Networking/UDPClient.swift"
+    },
+    {
+      "change_type": "new",
       "path": "README.md"
+    },
+    {
+      "change_type": "new",
+      "path": "Utilities/AppConstants.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Utilities/FormatKit.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Utilities/MathUtilities.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Utilities/Shapes.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Utilities/ViewKit.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Utilities/WorkPlaygroundStuff.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/ConfigurationView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/ConsolePanelView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/ConsoleView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/BoatMapPreview 2.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/BoatMapPreview.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/ControlCategory.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/DashboardView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/LeadingSidePanel.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/SideToolbarRight.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/TopControlBar.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/TrailingSidePanel.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/Dashboard/WindCompass.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/GPS/GPSConfig.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/GPS/GPSMapSelectorView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/GPS/MapWithRightClick.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HeadingConfig.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/GGAHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/GLLHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/GSAHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/GSVHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/RMCHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/VTGHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/GPS/ZDAHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Heading/HDGHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Heading/HDTHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Heading/ROTHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Hydro/DBTHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Hydro/DPTHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Hydro/MTWHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Hydro/VBWHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Hydro/VHWHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Hydro/VLWHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/ManualView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Wind/MWDHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Wind/MWVHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HelpViews/Wind/VPWHelpView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/HydroConfig.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/MainView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/NauticalChars/OpenSeaMapView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/WindCompassView/AnemometerView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/WindCompassView/CompassView/CompassLabelView 2.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/WindCompassView/CompassView/CompassLabelView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/WindCompassView/CompassView/CompassView.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/WindCompassView/CompassView/GaugeMarkerCompass.swift"
+    },
+    {
+      "change_type": "new",
+      "path": "Views/WindConfig.swift"
     }
   ],
   "files": [

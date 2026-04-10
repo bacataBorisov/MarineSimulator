@@ -4,24 +4,61 @@ Profile: **normal**
 
 ## Scan
 
-- id: 3
-- type: incremental
+- id: 1
+- type: full
 
 ## Recent changes
 
+- `.gitignore` — new
+- `AGENTS.md` — new
+- `AGENT_OS.md` — new
+- `App/MarineSimulator.swift` — new
 - `Docs/CompletedTasks.md` — new
 - `Docs/CurrentTasks.md` — new
 - `Docs/FutureTasks.md` — new
 - `Docs/InstructionManual.md` — new
 - `Docs/ManualTestChecklist.md` — new
 - `Docs/ProjectOverview.md` — new
-- `MarineSimulator/Docs/CompletedTasks.md` — deleted
-- `MarineSimulator/Docs/CurrentTasks.md` — deleted
-- `MarineSimulator/Docs/FutureTasks.md` — deleted
-- `MarineSimulator/Docs/InstructionManual.md` — deleted
-- `MarineSimulator/Docs/ManualTestChecklist.md` — deleted
-- `MarineSimulator/Docs/ProjectOverview.md` — deleted
-- `README.md` — modified
+- `LICENSE` — new
+- `MarineSimulator.xcodeproj/xcuserdata/bacataborisov.xcuserdatad/xcschemes/xcschememanagement.plist` — new
+- `MarineSimulatorTests/NMEASimulatorEngineTests.swift` — new
+- `MarineSimulatorUITests/MarineSimulatorUITests.swift` — new
+- `MarineSimulatorUITests/MarineSimulatorUITestsLaunchTests.swift` — new
+- `Model/GPSData.swift` — new
+- `Model/OutputEndpoint.swift` — new
+- `Model/SensorToggleStates.swift` — new
+- `Model/SentenceToggleStates.swift` — new
+- `Model/SimulatedValue.swift` — new
+- `Model/SimulationSnapshot.swift` — new
+- `Model/SimulatorSettings.swift` — new
+- `NMEA/NMEASimulator+FormattedValues.swift` — new
+- `NMEA/NMEASimulator+SentenceBuilder.swift` — new
+- `NMEA/NMEASimulator+WindCalculations.swift` — new
+- `NMEA/NMEASimulator.swift` — new
+- `NMEASimulator/Assets.xcassets/AccentColor.colorset/Contents.json` — new
+- `NMEASimulator/Assets.xcassets/AppIcon.appiconset/Contents.json` — new
+- `NMEASimulator/Assets.xcassets/Contents.json` — new
+- `NMEASimulator/Assets.xcassets/dial_gauge_end.colorset/Contents.json` — new
+- `NMEASimulator/Assets.xcassets/dial_gauge_start.colorset/Contents.json` — new
+- `NMEASimulator/Item.swift` — new
+- `NMEASimulator/Preview Content/Preview Assets.xcassets/Contents.json` — new
+- `NMEASimulator/Preview Content/PreviewData.swift` — new
+- `Networking/TCPClient.swift` — new
+- `Networking/UDPClient.swift` — new
+- `README.md` — new
+- `Utilities/AppConstants.swift` — new
+- `Utilities/FormatKit.swift` — new
+- `Utilities/MathUtilities.swift` — new
+- `Utilities/Shapes.swift` — new
+- `Utilities/ViewKit.swift` — new
+- `Utilities/WorkPlaygroundStuff.swift` — new
+- `Views/ConfigurationView.swift` — new
+- `Views/ConsolePanelView.swift` — new
+- `Views/ConsoleView.swift` — new
+- `Views/Dashboard/BoatMapPreview 2.swift` — new
+- `Views/Dashboard/BoatMapPreview.swift` — new
+- `Views/Dashboard/ControlCategory.swift` — new
+- `Views/Dashboard/DashboardView.swift` — new
 
 ## Sample chunks
 
