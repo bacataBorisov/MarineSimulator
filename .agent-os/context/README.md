@@ -2,7 +2,7 @@
 
 This folder lives under **`.agent-os/context/`**. It is the **editable** layer for **how agents start and end work** — separate from the **machine** index (`data/`, `logs/`) and from **scan-derived** notes in **`../state/`**.
 
-- **`scanned-summary.md`** — **auto-filled** on each `agentos cache update` (scan stats, top-level layout, README excerpt). Start here for cold boot.
+- **`scanned-summary.md`** — **auto-filled** on each `agentos cache update` (scan stats, top-level layout, README excerpt). Start here for cold boot. **IDEs differ:** if you do not see it in the sidebar, open **`.agent-os/context/scanned-summary.md`** from the repository root by path (Xcode: expand **`.agent-os`** → **context**).
 - Read **`begin-chat.md`** for the full read order (**`AGENTS.md`** at repo root next, if present).
 - Use **`end-chat.md`** when wrapping up.
 - Keep **`project-memory.md`** and **`open-questions.md`** short and current.
