@@ -85,7 +85,7 @@ Profile: **normal**
   - Run `.agent-os/context/end-chat.md` when the user is ending the session or explicitly starting fresh.
 
 ### `AGENT_OS.md`
-- lines 1–37 `f1cb2b94289d…`
+- lines 1–38 `9465408a45c4…`
   # Agent OS output (this repository)
   
   The tooling stores generated files under **`.agent-os/`**. **Finder** and **Terminal** can always see them; **Xcode** needs two separate ideas (below).

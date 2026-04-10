@@ -192,6 +192,7 @@
 		06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		06D349022E91ED6C005F76A4 /* TopControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopControlBar.swift; sourceTree = "<group>"; };
 		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
+		33962C04C5CB6F13174882D6 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -436,6 +437,7 @@
 			isa = PBXGroup;
 			children = (
 				B04B0DD949D2B477290B74C1 /* AGENT_OS.md */,
+				33962C04C5CB6F13174882D6 /* AGENTS.md */,
 				06567A242F887CF40008299A /* .agent-os */,
 				06B4B2C62DF50F81005DC523 /* App */,
 				06B4B2C72DF50FA7005DC523 /* Networking */,

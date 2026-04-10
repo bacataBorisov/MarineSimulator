@@ -14,7 +14,7 @@ The **Project navigator** is not a full folder listing. It only shows files that
 
 After that, **`AGENT_OS.md`** and **`.agent-os`** show in the sidebar like any other project file.
 
-When you use the **`agentos`** CLI, it tries to **edit `project.pbxproj`** so **`AGENT_OS.md`** and a **`.agent-os` folder** (if present) appear in Xcode. It prefers **`<folderName>.xcodeproj`** at the repo root when that exists; otherwise it picks the shallowest ``*.xcodeproj``. Run **`agentos xcode integrate`** to run the same step manually or pass **`--xcodeproj`**. Set **`AGENT_OS_SKIP_XCODE_INTEGRATE=1`** to disable.
+When you use the **`agentos`** CLI, it tries to **edit `project.pbxproj`** so **`AGENT_OS.md`**, **`AGENTS.md`** (only if that file already exists at the repo root), and a **`.agent-os` folder** (if present) appear in Xcode. It prefers **`<folderName>.xcodeproj`** at the repo root when that exists; otherwise it picks the shallowest ``*.xcodeproj``. Run **`agentos xcode integrate`** to run the same step manually or pass **`--xcodeproj`**. Set **`AGENT_OS_SKIP_XCODE_INTEGRATE=1`** to disable. Use **`agentos xcode integrate --no-agents`** to skip adding **`AGENTS.md`**.
 
 ## Open the real folder (without adding to the project)
 
