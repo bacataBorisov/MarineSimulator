@@ -4,61 +4,28 @@ Profile: **normal**
 
 ## Scan
 
-- id: 1
-- type: full
+- id: 2
+- type: incremental
 
 ## Recent changes
 
-- `.gitignore` — new
-- `AGENTS.md` — new
-- `AGENT_OS.md` — new
-- `App/MarineSimulator.swift` — new
-- `Docs/CompletedTasks.md` — new
-- `Docs/CurrentTasks.md` — new
-- `Docs/FutureTasks.md` — new
-- `Docs/InstructionManual.md` — new
-- `Docs/ManualTestChecklist.md` — new
-- `Docs/ProjectOverview.md` — new
-- `LICENSE` — new
-- `MarineSimulator.xcodeproj/xcuserdata/bacataborisov.xcuserdatad/xcschemes/xcschememanagement.plist` — new
-- `MarineSimulatorTests/NMEASimulatorEngineTests.swift` — new
-- `MarineSimulatorUITests/MarineSimulatorUITests.swift` — new
-- `MarineSimulatorUITests/MarineSimulatorUITestsLaunchTests.swift` — new
-- `Model/GPSData.swift` — new
-- `Model/OutputEndpoint.swift` — new
-- `Model/SensorToggleStates.swift` — new
-- `Model/SentenceToggleStates.swift` — new
-- `Model/SimulatedValue.swift` — new
-- `Model/SimulationSnapshot.swift` — new
-- `Model/SimulatorSettings.swift` — new
-- `NMEA/NMEASimulator+FormattedValues.swift` — new
-- `NMEA/NMEASimulator+SentenceBuilder.swift` — new
-- `NMEA/NMEASimulator+WindCalculations.swift` — new
-- `NMEA/NMEASimulator.swift` — new
-- `NMEASimulator/Assets.xcassets/AccentColor.colorset/Contents.json` — new
-- `NMEASimulator/Assets.xcassets/AppIcon.appiconset/Contents.json` — new
-- `NMEASimulator/Assets.xcassets/Contents.json` — new
-- `NMEASimulator/Assets.xcassets/dial_gauge_end.colorset/Contents.json` — new
-- `NMEASimulator/Assets.xcassets/dial_gauge_start.colorset/Contents.json` — new
-- `NMEASimulator/Item.swift` — new
-- `NMEASimulator/Preview Content/Preview Assets.xcassets/Contents.json` — new
-- `NMEASimulator/Preview Content/PreviewData.swift` — new
-- `Networking/TCPClient.swift` — new
-- `Networking/UDPClient.swift` — new
-- `README.md` — new
-- `Utilities/AppConstants.swift` — new
-- `Utilities/FormatKit.swift` — new
-- `Utilities/MathUtilities.swift` — new
-- `Utilities/Shapes.swift` — new
-- `Utilities/ViewKit.swift` — new
-- `Utilities/WorkPlaygroundStuff.swift` — new
-- `Views/ConfigurationView.swift` — new
-- `Views/ConsolePanelView.swift` — new
-- `Views/ConsoleView.swift` — new
-- `Views/Dashboard/BoatMapPreview 2.swift` — new
-- `Views/Dashboard/BoatMapPreview.swift` — new
-- `Views/Dashboard/ControlCategory.swift` — new
-- `Views/Dashboard/DashboardView.swift` — new
+- `Docs/CompletedTasks.md` — modified
+- `Docs/CurrentTasks.md` — modified
+- `Docs/InstructionManual.md` — modified
+- `Docs/ProjectOverview.md` — modified
+- `MarineSimulatorTests/NMEASimulatorEngineTests.swift` — modified
+- `MarineSimulatorTests/OpenMeteoWeatherServiceTests.swift` — new
+- `Model/LiveWeather.swift` — new
+- `Model/SimulatorSettings.swift` — modified
+- `NMEA/NMEASimulator+WindCalculations.swift` — modified
+- `NMEA/NMEASimulator.swift` — modified
+- `Networking/WeatherService.swift` — new
+- `Views/ConfigurationView.swift` — modified
+- `Views/Dashboard/BoatMapPreview.swift` — modified
+- `Views/Dashboard/ControlCategory.swift` — modified
+- `Views/Dashboard/DashboardView.swift` — modified
+- `Views/Dashboard/TopControlBar.swift` — modified
+- `Views/Dashboard/TrailingSidePanel.swift` — modified
 
 ## Sample chunks
 
@@ -107,7 +74,7 @@ Profile: **normal**
   import SwiftUI
 
 ### `Docs/CompletedTasks.md`
-- lines 1–50 `5a4d3af8e7c7…`
+- lines 1–56 `09431211884b…`
   # Completed Tasks
   
   This file tracks finished work that should not remain in the active queue.
@@ -118,7 +85,7 @@ Profile: **normal**
   - [x] Introduce a coherent simulation tick that produces one snapshot per cycle.
 
 ### `Docs/CurrentTasks.md`
-- lines 1–50 `79338fd7ce79…`
+- lines 1–51 `9e0941132af0…`
   # Current Tasks
   
   These are the tasks currently in progress or next in line for the active work stream.
@@ -140,7 +107,7 @@ Profile: **normal**
   - [ ] Add damping/filtering options for instrument behavior.
 
 ### `Docs/InstructionManual.md`
-- lines 1–100 `414a2026a7de…`
+- lines 1–100 `e67fc0470df0…`
   # Instruction Manual
   
   This manual is the operator reference for MarineSimulator.
@@ -149,15 +116,15 @@ Profile: **normal**
   
   MarineSimulator simulates marine instrument data with an emphasis on NMEA 0183 workflows for navigation app testing on macOS.
   
-- lines 101–190 `c25ec44f4434…`
-  ## Multi-Endpoint Use
+- lines 101–200 `1579c1ad9359…`
+  ## Transport Diagnostics
   
-  You can stream to more than one destination at once.
+  The app shows transport information in two places:
   
-  Typical use cases:
+  - toolbar status for the latest state
+  - console transport view for recent event history
   
-  - one simulator app on the Mac
-  - one real device over Wi-Fi or Ethernet
+  Typical meanings:
 
 ### `Docs/ManualTestChecklist.md`
 - lines 1–52 `8e36b43f738e…`
@@ -171,7 +138,7 @@ Profile: **normal**
   - [ ] Verify TCP output reaches a local reader that expects a stream socket.
 
 ### `Docs/ProjectOverview.md`
-- lines 1–100 `41feb72d457c…`
+- lines 1–100 `e46c5e9382a1…`
   # Marine Simulator
   
   ## Purpose
@@ -180,15 +147,15 @@ Profile: **normal**
   
   The project exists to provide a better test environment than a simple script-based simulator, especially for validating navigation software such as Extasy Complete Navigation when real boat time is limited.
   
-- lines 101–200 `9e96b236409f…`
+- lines 101–200 `fcc765221190…`
+  - [ ] Validate sentence correctness more rigorously.
+  - [ ] Add optional invalid/corrupted sentence simulation for receiver robustness testing.
   - [ ] Improve VHW logic:
     - use gyro heading when available
     - otherwise derive true heading from magnetic heading plus variation
   - [ ] Add simulator mode and read mode so the app can also ingest live sensor/network data.
   
   ### Networking
-  
-  - [ ] Add TCP/IP output option.
 
 ### `LICENSE`
 - lines 1–21 `5be1d5d336fc…`
@@ -232,6 +199,26 @@ Profile: **normal**
               "hasAIS": false,
               "hasEchoSounder": true,
 
+### `MarineSimulatorTests/OpenMeteoWeatherServiceTests.swift`
+- lines 1–100 `4c39f5aa782a…`
+  import Foundation
+  import Testing
+  @testable import MarineSimulator
+  
+  @Suite(.serialized)
+  struct OpenMeteoWeatherServiceTests {
+      @Test
+      func fetchWeatherDecodesMarineHourlyTimestampsWithoutTimeZoneSuffix() async throws {
+- lines 101–200 `04d5db28aaf2…`
+  #expect(items["current"] == "wind_speed_10m,wind_direction_10m")
+          #expect(items["wind_speed_unit"] == "kn")
+          #expect(items["timezone"] == "GMT")
+          #expect(items["cell_selection"] == "sea")
+      }
+  
+      @Test
+      func metNorwayFallbackProvidesGlobalWindWhenOpenMeteoTimesOut() async throws {
+
 ### `MarineSimulatorUITests/MarineSimulatorUITests.swift`
 - lines 1–43 `c214eabca6f0…`
   //
@@ -265,6 +252,17 @@ Profile: **normal**
   
   
 
+### `Model/LiveWeather.swift`
+- lines 1–60 `9c82c898cd5f…`
+  import Foundation
+  
+  enum WeatherSourceMode: String, Codable, CaseIterable, Identifiable {
+      case manual
+      case liveWeather
+  
+      var id: String { rawValue }
+  
+
 ### `Model/OutputEndpoint.swift`
 - lines 1–62 `dc1ca73eed6f…`
   import Foundation
@@ -286,34 +284,3 @@ Profile: **normal**
   //
   
   import Foundation
-
-### `Model/SentenceToggleStates.swift`
-- lines 1–48 `1265588ff060…`
-  //
-  //  SentenceToggleStates.swift
-  //  NMEASimulator
-  //
-  //  Created by Vasil Borisov on 24.06.25.
-  //
-  
-  
-
-### `Model/SimulatedValue.swift`
-- lines 1–100 `9d9332f6b695…`
-  import Foundation
-  
-  /// Enum to represent different types of navigational metrics
-  enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
-      case magneticCompass
-      case gyroCompass
-      case windDirection
-      case windSpeed
-- lines 101–117 `509be24e6b5d…`
-  // Limit offset so it never exceeds half of total range
-          let maxAllowedOffset = (range.upperBound - range.lowerBound) / 2
-          offset = min(offset, maxAllowedOffset)
-  
-          let generated = Double.random(in: lowerBound...upperBound)
-          value = generated
-          return generated
-      }
