@@ -2,7 +2,6 @@ import SwiftUI
 import MapKit
 
 struct BoatMapView: View {
-    
     @Environment(NMEASimulator.self) private var nmeaManager
 
     @State private var position: MapCameraPosition = .region(
@@ -11,14 +10,11 @@ struct BoatMapView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3)
         )
     )
-    @State private var autoCenter = false
     private var gpsControlsDisabled: Bool { !nmeaManager.sensorToggles.hasGPS }
 
     var body: some View {
         ZStack {
-            // MARK: - Main Map
             Map(position: $position, interactionModes: [.all]) {
-                // Boat annotation
                 Annotation("Boat", coordinate: CLLocationCoordinate2D(latitude: nmeaManager.gpsData.latitude, longitude: nmeaManager.gpsData.longitude)) {
                     Image(systemName: "location.north.line.fill")
                         .resizable()
@@ -36,79 +32,122 @@ struct BoatMapView: View {
                 MapZoomStepper()
             }
 
-            // MARK: - Demo Controls (Optional)
             VStack {
+                mapToolbar
+
                 Spacer()
-                HStack(spacing: 16) {
-                    // Move West
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.8)) {
-                            nmeaManager.gpsData.longitude -= 0.05
-                            nmeaManager.persistLiveSettings()
-                        }
-                    } label: {
-                        Image(systemName: "arrow.left.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .resizable()
-                            .frame(width: 32, height: 32)
-                            .shadow(radius: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Move West")
-                    .disabled(gpsControlsDisabled)
+            }
+            .padding(.top, 20)
+        }
+    }
 
-                    // Move East
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.8)) {
-                            nmeaManager.gpsData.longitude += 0.05
-                            nmeaManager.persistLiveSettings()
-                        }
-                    } label: {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .resizable()
-                            .frame(width: 32, height: 32)
-                            .shadow(radius: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Move East")
-                    .disabled(gpsControlsDisabled)
-
-                    // Center on Boat
-                    Button {
-                        withAnimation(.easeInOut) {
-                            position = .camera(
-                                .init(centerCoordinate: CLLocationCoordinate2D(
-                                    latitude: nmeaManager.gpsData.latitude,
-                                    longitude: nmeaManager.gpsData.longitude
-                                ),
-                                distance: 120_000,
-                                heading: 0,
-                                pitch: 0)
-                            )
-                        }
-                    } label: {
-                        Image(systemName: "scope")
-                            .symbolRenderingMode(.multicolor)
-                            .resizable()
-                            .frame(width: 32, height: 32)
-                            .shadow(radius: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Center on Boat")
-                    .disabled(gpsControlsDisabled)
-                }
-                .padding(.bottom, 16)
+    private var mapToolbar: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                Label("Map Tools", systemImage: "map")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary.opacity(0.88))
 
                 if gpsControlsDisabled {
-                    Text("Enable GPS in Configuration to reposition the boat on the map.")
-                        .font(.caption2)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: Capsule())
+                    Text("GPS off")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppChrome.subtleFill, in: Capsule())
                 }
             }
+
+            HStack(spacing: 10) {
+                MapActionButton(
+                    systemImage: "arrow.left",
+                    title: "Move West",
+                    isDisabled: gpsControlsDisabled
+                ) {
+                    shiftLongitude(by: -0.05)
+                }
+
+                MapActionButton(
+                    systemImage: "scope",
+                    title: "Center on Boat",
+                    isDisabled: gpsControlsDisabled
+                ) {
+                    centerOnBoat()
+                }
+
+                MapActionButton(
+                    systemImage: "arrow.right",
+                    title: "Move East",
+                    isDisabled: gpsControlsDisabled
+                ) {
+                    shiftLongitude(by: 0.05)
+                }
+            }
+
+            if gpsControlsDisabled {
+                Text("Enable GPS in Configuration to reposition the boat.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .padding(14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.10), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 18, y: 6)
+    }
+
+    private func shiftLongitude(by delta: Double) {
+        withAnimation(.easeInOut(duration: 0.8)) {
+            nmeaManager.gpsData.longitude += delta
+            nmeaManager.persistLiveSettings()
+        }
+    }
+
+    private func centerOnBoat() {
+        withAnimation(.easeInOut) {
+            position = .camera(
+                .init(
+                    centerCoordinate: CLLocationCoordinate2D(
+                        latitude: nmeaManager.gpsData.latitude,
+                        longitude: nmeaManager.gpsData.longitude
+                    ),
+                    distance: 120_000,
+                    heading: 0,
+                    pitch: 0
+                )
+            )
+        }
+    }
+}
+
+private struct MapActionButton: View {
+    let systemImage: String
+    let title: String
+    let isDisabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 34, height: 34)
+                .background(
+                    isDisabled ? AppChrome.subtleFill : AppChrome.raisedFill,
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(.white.opacity(isDisabled ? 0.06 : 0.12), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.5 : 1)
     }
 }
 

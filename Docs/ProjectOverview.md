@@ -23,9 +23,9 @@ The app is intended to simulate the boat-side sensor network rather than just em
 - support presets, repeatable scenarios, and fault injection
 - eventually simulate weather and environmental conditions based on vessel location
 
-Top idea for future realism:
+Current realism expansion now includes a first location-driven weather path:
 
-- Fetch weather/environment data for the vessel position and derive wind, temperature, water temperature, drift, and related values from it.
+- Live weather mode can fetch wind and sea-surface temperature from the boat's GPS position.
 
 ## Current Scope
 
@@ -58,6 +58,7 @@ These items are already present in the project and should be treated as the curr
 - Adjustable transmission timer.
 - Wind input and derived wind calculations.
 - GPS module with moving position.
+- Live weather override for wind and sea temperature based on GPS position.
 - Magnetic compass support.
 - Anemometer support.
 - Water temperature support.
@@ -68,6 +69,7 @@ These items are already present in the project and should be treated as the curr
 - Min/max-style simulated value control through ranges and offsets.
 - Real-time toggle changes while transmitting.
 - Sidebar visibility control for map space.
+- Floating map reposition controls that remain accessible above the map when the console or inspector is open.
 - Console clear action.
 - Display of input units.
 - Additional NMEA output visibility for confirmation.

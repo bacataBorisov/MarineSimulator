@@ -56,7 +56,7 @@ struct TrailingSidePanel: View {
             RailSection("Hydro") {
                 MetricGrid(columns: 2) {
                     MetricRow(label: "Depth", value: meters(nmea.depth.value))
-                    MetricRow(label: "Sea Temp", value: degC(nmea.seaTemp.value))
+                    MetricRow(label: "Sea Temp", value: degC(nmea.displayedSeaTemperature))
                 }
             }
 

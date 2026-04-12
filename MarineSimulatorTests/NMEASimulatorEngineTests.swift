@@ -273,6 +273,317 @@ struct NMEASimulatorEngineTests {
     }
 
     @Test
+    func simulatorSettingsDecodeFallsBackForMissingLiveWeatherFields() throws {
+        let json = """
+        {
+          "ip": "127.0.0.1",
+          "port": 4950,
+          "talkerID": "II",
+          "outputEndpoints": [
+            {
+              "id": "00000000-0000-0000-0000-000000000001",
+              "name": "Primary Output",
+              "host": "127.0.0.1",
+              "port": 4950,
+              "transport": "udp",
+              "isEnabled": true
+            }
+          ],
+          "sentenceIntervals": {},
+          "isTimerSelected": true,
+          "interval": 1,
+          "sentenceToggles": {
+            "shouldSendMWV": true,
+            "shouldSendMWD": true,
+            "shouldSendVPW": true,
+            "shouldSendHDG": true,
+            "shouldSendHDT": true,
+            "shouldSendROT": true,
+            "shouldSendRMC": true,
+            "shouldSendGGA": true,
+            "shouldSendVTG": true,
+            "shouldSendGLL": true,
+            "shouldSendGSA": true,
+            "shouldSendGSV": true,
+            "shouldSendZDA": true,
+            "shouldSendDBT": true,
+            "shouldSendDPT": true,
+            "shouldSendVHW": true,
+            "shouldSendVLW": true,
+            "shouldSendVBW": true,
+            "shouldSendMTW": true
+          },
+          "sensorToggles": {
+            "hasAnemometer": true,
+            "hasCompass": true,
+            "hasGyro": true,
+            "hasGPS": true,
+            "hasAIS": false,
+            "hasEchoSounder": true,
+            "hasSpeedLog": true,
+            "hasWaterTempSensor": true,
+            "hasAirTempSensor": false,
+            "hasHumidtySensor": false,
+            "hasBarometer": false,
+            "shouldSendGNSS": false,
+            "shouldSendDSC": false
+          },
+          "twd": {
+            "value": 90,
+            "range": [0, 359],
+            "centerValue": 90,
+            "offset": 0
+          },
+          "tws": {
+            "value": 10,
+            "range": [0, 50],
+            "centerValue": 10,
+            "offset": 0
+          },
+          "speed": {
+            "value": 6,
+            "range": [0, 50],
+            "centerValue": 6,
+            "offset": 0
+          },
+          "depth": {
+            "value": 12,
+            "range": [0, 1000],
+            "centerValue": 12,
+            "offset": 0
+          },
+          "depthOffsetMeters": 0,
+          "seaTemp": {
+            "value": 18,
+            "range": [0, 40],
+            "centerValue": 18,
+            "offset": 0
+          },
+          "heading": {
+            "value": 120,
+            "range": [0, 359],
+            "centerValue": 120,
+            "offset": 0
+          },
+          "gyroHeading": {
+            "value": 121,
+            "range": [0, 359.9],
+            "centerValue": 121,
+            "offset": 0
+          },
+          "gpsData": {
+            "latitude": 43.19542,
+            "longitude": 27.89615,
+            "speedOverGround": 6,
+            "courseOverGround": 90
+          },
+          "faultInjection": {
+            "isEnabled": false,
+            "dropRate": 0,
+            "delayRate": 0,
+            "checksumCorruptionRate": 0,
+            "invalidDataRate": 0,
+            "maximumDelayCycles": 2
+          },
+          "mwvReferenceMode": "relative",
+          "selectedPreset": null
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(SimulatorSettings.self, from: json)
+
+        #expect(decoded.weatherSourceMode == .manual)
+        #expect(decoded.liveWeatherSettings == LiveWeatherSettings())
+        #expect(decoded.latestLiveWeather == nil)
+    }
+
+    @Test
+    func liveWeatherSettingsPersistAcrossRestore() async {
+        let defaults = isolatedDefaults()
+        let suiteName = defaultsSuiteName(for: defaults)
+        let simulator = NMEASimulator(
+            userDefaults: defaults,
+            weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
+        )
+
+        simulator.weatherSourceMode = .liveWeather
+        simulator.liveWeatherSettings.refreshIntervalMinutes = 20
+        simulator.liveWeatherSettings.minimumRefreshDistanceNM = 7
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+
+        let restored = NMEASimulator(
+            userDefaults: defaults,
+            weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
+        )
+
+        #expect(restored.weatherSourceMode == .liveWeather)
+        #expect(restored.liveWeatherSettings.refreshIntervalMinutes == 20)
+        #expect(restored.liveWeatherSettings.minimumRefreshDistanceNM == 7)
+        #expect(restored.latestLiveWeather?.trueWindDirection == 145)
+        #expect(restored.latestLiveWeather?.trueWindSpeedKnots == 18)
+
+        if let defaults = UserDefaults(suiteName: suiteName) {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+    }
+
+    @Test
+    func liveWeatherOverridesWindAndSeaTemperatureDuringSimulationCycle() async {
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
+        )
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.weatherSourceMode = .liveWeather
+
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+        simulator.sendAllSelectedNMEA()
+
+        #expect(abs((simulator.latestSnapshot?.windDirectionTrue ?? 0) - 145) <= 6.1)
+        #expect(abs((simulator.latestSnapshot?.windSpeedTrue ?? 0) - 18) <= 0.91)
+        #expect(abs((simulator.latestSnapshot?.seaTemperature ?? 0) - 16.4) <= 0.31)
+    }
+
+    @Test
+    func liveWeatherAddsSmallVariationBetweenFetches() async {
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
+        )
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.weatherSourceMode = .liveWeather
+
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+
+        simulator.sendAllSelectedNMEA()
+        let firstSnapshot = simulator.latestSnapshot
+
+        simulator.sendAllSelectedNMEA()
+        let secondSnapshot = simulator.latestSnapshot
+
+        #expect(firstSnapshot?.windDirectionTrue != nil)
+        #expect(firstSnapshot?.windSpeedTrue != nil)
+        #expect(firstSnapshot?.seaTemperature != nil)
+
+        #expect(abs((firstSnapshot?.windDirectionTrue ?? 0) - 145) <= 6.1)
+        #expect(abs((firstSnapshot?.windSpeedTrue ?? 0) - 18) <= 0.91)
+        #expect(abs((firstSnapshot?.seaTemperature ?? 0) - 16.4) <= 0.31)
+
+        #expect(abs((secondSnapshot?.windDirectionTrue ?? 0) - 145) <= 6.1)
+        #expect(abs((secondSnapshot?.windSpeedTrue ?? 0) - 18) <= 0.91)
+        #expect(abs((secondSnapshot?.seaTemperature ?? 0) - 16.4) <= 0.31)
+    }
+
+    @Test
+    func switchingToLiveWeatherClearsPresetAndFetchesFreshWeather() async {
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: DelayedStubWeatherService(
+                snapshot: makeLiveWeatherSnapshot(),
+                delayNanoseconds: 50_000_000
+            )
+        )
+
+        simulator.applyPreset(.stormyWeather)
+        #expect(simulator.selectedPreset == .stormyWeather)
+
+        simulator.weatherSourceMode = .liveWeather
+
+        #expect(simulator.selectedPreset == nil)
+        #expect(simulator.latestLiveWeather == nil)
+        #expect(simulator.twd.value == nil)
+        #expect(simulator.tws.value == nil)
+        #expect(simulator.seaTemp.value == nil)
+
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+
+        #expect(simulator.latestLiveWeather?.trueWindDirection == 145)
+        #expect(simulator.latestLiveWeather?.trueWindSpeedKnots == 18)
+        #expect(simulator.latestLiveWeather?.seaSurfaceTemperatureCelsius == 16.4)
+    }
+
+    @Test
+    func liveWeatherStartWaitsForFreshFetchBeforeTransmitting() async {
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: DelayedStubWeatherService(
+                snapshot: makeLiveWeatherSnapshot(),
+                delayNanoseconds: 50_000_000
+            )
+        )
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.weatherSourceMode = .liveWeather
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+
+        simulator.startSimulation()
+
+        #expect(simulator.latestLiveWeather?.trueWindDirection == 145)
+        #expect(simulator.isTransmitting == true)
+
+        simulator.stopSimulation()
+    }
+
+    @Test
+    func liveWeatherStartUsesCachedWeatherImmediately() async {
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
+        )
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.weatherSourceMode = .liveWeather
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+
+        simulator.startSimulation()
+
+        #expect(simulator.isTransmitting == true)
+        #expect(simulator.latestLiveWeather?.trueWindDirection == 145)
+
+        simulator.stopSimulation()
+    }
+
+    @Test
+    func liveWeatherRemainsVisibleAfterStoppingSimulation() async {
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
+        )
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.weatherSourceMode = .liveWeather
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+
+        simulator.startSimulation()
+        simulator.stopSimulation()
+
+        #expect(simulator.isTransmitting == false)
+        #expect(simulator.twd.value == 145)
+        #expect(simulator.tws.value == 18)
+        #expect(simulator.seaTemp.value == 16.4)
+        #expect(simulator.calculatedTWD == 145)
+    }
+
+    @Test
+    func failedLiveWeatherRefreshKeepsLastGoodSnapshotVisible() async {
+        let service = SequencedWeatherService(responses: [
+            .success(makeLiveWeatherSnapshot()),
+            .failure(WeatherServiceError.requestTimedOut)
+        ])
+        let simulator = NMEASimulator(
+            userDefaults: isolatedDefaults(),
+            weatherService: service
+        )
+        simulator.weatherSourceMode = .liveWeather
+
+        _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
+        let refreshSucceeded = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_100))
+
+        #expect(refreshSucceeded == false)
+        #expect(simulator.latestLiveWeather?.trueWindDirection == 145)
+        #expect(simulator.liveWeatherStatus.state == .failed)
+        #expect(simulator.liveWeatherStatus.lastUpdated == simulator.latestLiveWeather?.fetchedAt)
+        #expect(simulator.liveWeatherStatus.message.contains("Using last good weather"))
+    }
+
+    @Test
     func startSimulationWithoutTimerSendsOneBurstAndStops() {
         let simulator = configuredSimulatorForDeterministicOutput()
         simulator.outputEndpoints[0].isEnabled = false
@@ -1274,4 +1585,99 @@ private func isValidNMEASentence(_ sentence: String) -> Bool {
     }
 
     return providedChecksum.uppercased() == String(format: "%02X", computedChecksum)
+}
+
+private func makeLiveWeatherSnapshot() -> LiveWeatherSnapshot {
+    LiveWeatherSnapshot(
+        fetchedAt: Date(timeIntervalSince1970: 1_700_000_000),
+        latitude: 43.19542,
+        longitude: 27.89615,
+        trueWindDirection: 145,
+        trueWindSpeedKnots: 18,
+        windGustSpeedKnots: 22,
+        seaSurfaceTemperatureCelsius: 16.4,
+        airTemperatureCelsius: 21.3,
+        relativeHumidityPercent: 68,
+        airPressureHectopascals: 1014.2,
+        sourceName: "Stub",
+        marineSourceName: "Stub Marine"
+    )
+}
+
+private struct StubWeatherService: WeatherService {
+    let snapshot: LiveWeatherSnapshot
+
+    func fetchWeather(latitude: Double, longitude: Double, date: Date) async throws -> LiveWeatherSnapshot {
+        LiveWeatherSnapshot(
+            fetchedAt: date,
+            latitude: latitude,
+            longitude: longitude,
+            trueWindDirection: snapshot.trueWindDirection,
+            trueWindSpeedKnots: snapshot.trueWindSpeedKnots,
+            windGustSpeedKnots: snapshot.windGustSpeedKnots,
+            seaSurfaceTemperatureCelsius: snapshot.seaSurfaceTemperatureCelsius,
+            airTemperatureCelsius: snapshot.airTemperatureCelsius,
+            relativeHumidityPercent: snapshot.relativeHumidityPercent,
+            airPressureHectopascals: snapshot.airPressureHectopascals,
+            sourceName: snapshot.sourceName,
+            marineSourceName: snapshot.marineSourceName
+        )
+    }
+}
+
+private struct DelayedStubWeatherService: WeatherService {
+    let snapshot: LiveWeatherSnapshot
+    let delayNanoseconds: UInt64
+
+    func fetchWeather(latitude: Double, longitude: Double, date: Date) async throws -> LiveWeatherSnapshot {
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+        return LiveWeatherSnapshot(
+            fetchedAt: date,
+            latitude: latitude,
+            longitude: longitude,
+            trueWindDirection: snapshot.trueWindDirection,
+            trueWindSpeedKnots: snapshot.trueWindSpeedKnots,
+            windGustSpeedKnots: snapshot.windGustSpeedKnots,
+            seaSurfaceTemperatureCelsius: snapshot.seaSurfaceTemperatureCelsius,
+            airTemperatureCelsius: snapshot.airTemperatureCelsius,
+            relativeHumidityPercent: snapshot.relativeHumidityPercent,
+            airPressureHectopascals: snapshot.airPressureHectopascals,
+            sourceName: snapshot.sourceName,
+            marineSourceName: snapshot.marineSourceName
+        )
+    }
+}
+
+private final class SequencedWeatherService: WeatherService {
+    private var responses: [Result<LiveWeatherSnapshot, Error>]
+    private var index = 0
+
+    init(responses: [Result<LiveWeatherSnapshot, Error>]) {
+        self.responses = responses
+    }
+
+    func fetchWeather(latitude: Double, longitude: Double, date: Date) async throws -> LiveWeatherSnapshot {
+        let response = responses[min(index, responses.count - 1)]
+        index += 1
+
+        switch response {
+        case .success(let snapshot):
+            return LiveWeatherSnapshot(
+                fetchedAt: date,
+                latitude: latitude,
+                longitude: longitude,
+                trueWindDirection: snapshot.trueWindDirection,
+                trueWindSpeedKnots: snapshot.trueWindSpeedKnots,
+                windGustSpeedKnots: snapshot.windGustSpeedKnots,
+                seaSurfaceTemperatureCelsius: snapshot.seaSurfaceTemperatureCelsius,
+                airTemperatureCelsius: snapshot.airTemperatureCelsius,
+                relativeHumidityPercent: snapshot.relativeHumidityPercent,
+                airPressureHectopascals: snapshot.airPressureHectopascals,
+                sourceName: snapshot.sourceName,
+                marineSourceName: snapshot.marineSourceName
+            )
+        case .failure(let error):
+            throw error
+        }
+    }
 }

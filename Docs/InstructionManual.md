@@ -74,6 +74,20 @@ Good for:
 - transport diagnostics and history
 - in-app searchable operator manual
 
+### Dashboard
+
+- map-first layout with collapsible leading controls, trailing instruments, and bottom console
+- floating map tools for west/east repositioning and boat recentering
+- map tools stay above the map instead of dropping behind the console drawer
+
+### Live Weather
+
+- manual mode remains the default
+- live weather mode uses the current GPS position
+- V1 live weather currently drives true wind direction, true wind speed, and sea-surface temperature
+- provider: Open-Meteo
+- if the fetch fails, the simulator keeps the last good live snapshot or falls back to manual behavior
+
 ### NMEA 0183 Coverage
 
 Current implemented families include:
@@ -141,6 +155,16 @@ If a receiver display does not match the simulator, compare raw `MWD`, `MWV`, `H
 
 ## Troubleshooting
 
+### Map Controls Are Hidden
+
+The map repositioning controls live in a floating toolbar near the top of the map.
+
+If you do not see them:
+
+- enable GPS in Configuration
+- check that you are on the dashboard view
+- verify the app window is large enough to show the map header area clearly
+
 ### Connection Refused
 
 This usually means the simulator is sending to a host and port where nothing is listening.
@@ -159,6 +183,15 @@ GPS support sentences are simulated, not backed by a real satellite visibility m
 ### Why Water Speed And GPS Speed Differ
 
 That is intentional. The simulator now separates water-track from ground-track using a simulated current model.
+
+### Live Weather Is Not Updating
+
+Check:
+
+- GPS is enabled
+- Weather Source is set to `Live Weather` in Configuration
+- the Mac has network access
+- the refresh interval or movement threshold has been reached, or you pressed `Refresh Weather`
 
 ### Fault Injection
 

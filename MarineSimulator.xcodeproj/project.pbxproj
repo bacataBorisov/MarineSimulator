@@ -72,6 +72,8 @@
 		06883DEA2F78B925005DE47D /* SimulatorSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DE92F78B925005DE47D /* SimulatorSettings.swift */; };
 		06883DEC2F78BC26005DE47D /* TCPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DEB2F78BC26005DE47D /* TCPClient.swift */; };
 		06883DEE2F78C6CD005DE47D /* ManualView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DED2F78C6CD005DE47D /* ManualView.swift */; };
+		06AFA93A2F8B049400A76F15 /* LiveWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AFA9392F8B049300A76F15 /* LiveWeather.swift */; };
+		06AFA93C2F8B049400A76F15 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AFA93B2F8B049400A76F15 /* WeatherService.swift */; };
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
@@ -147,12 +149,6 @@
 		065679AC2F8869E20008299A /* InstructionManual.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = InstructionManual.md; sourceTree = "<group>"; };
 		065679AD2F8869E20008299A /* ManualTestChecklist.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ManualTestChecklist.md; sourceTree = "<group>"; };
 		065679AE2F8869E20008299A /* ProjectOverview.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ProjectOverview.md; sourceTree = "<group>"; };
-		06E0A0112F88B0E10008299A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		06E0A0122F88B0E10008299A /* begin-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "begin-chat.md"; sourceTree = "<group>"; };
-		06E0A0132F88B0E10008299A /* cache.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = cache.md; sourceTree = "<group>"; };
-		06E0A0142F88B0E10008299A /* end-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "end-chat.md"; sourceTree = "<group>"; };
-		06E0A0152F88B0E10008299A /* open-questions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "open-questions.md"; sourceTree = "<group>"; };
-		06E0A0162F88B0E10008299A /* project-memory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "project-memory.md"; sourceTree = "<group>"; };
 		06567A122F887CF40008299A /* agent_os.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = agent_os.db; sourceTree = "<group>"; };
 		06567A142F887CF40008299A /* context-pack.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "context-pack.json"; sourceTree = "<group>"; };
 		06567A152F887CF40008299A /* context-pack.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "context-pack.md"; sourceTree = "<group>"; };
@@ -173,6 +169,8 @@
 		06883DE92F78B925005DE47D /* SimulatorSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorSettings.swift; sourceTree = "<group>"; };
 		06883DEB2F78BC26005DE47D /* TCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TCPClient.swift; sourceTree = "<group>"; };
 		06883DED2F78C6CD005DE47D /* ManualView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualView.swift; sourceTree = "<group>"; };
+		06AFA9392F8B049300A76F15 /* LiveWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWeather.swift; sourceTree = "<group>"; };
+		06AFA93B2F8B049400A76F15 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
 		06B4B2912DF50AB6005DC523 /* MarineSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarineSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulator.swift; sourceTree = "<group>"; };
 		06B4B2962DF50AB6005DC523 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
@@ -191,8 +189,14 @@
 		06B4B2DB2DFCFEBA005DC523 /* GPSData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPSData.swift; sourceTree = "<group>"; };
 		06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		06D349022E91ED6C005F76A4 /* TopControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopControlBar.swift; sourceTree = "<group>"; };
-		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
+		06E0A0112F88B0E10008299A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		06E0A0122F88B0E10008299A /* begin-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "begin-chat.md"; sourceTree = "<group>"; };
+		06E0A0132F88B0E10008299A /* cache.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = cache.md; sourceTree = "<group>"; };
+		06E0A0142F88B0E10008299A /* end-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "end-chat.md"; sourceTree = "<group>"; };
+		06E0A0152F88B0E10008299A /* open-questions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "open-questions.md"; sourceTree = "<group>"; };
+		06E0A0162F88B0E10008299A /* project-memory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "project-memory.md"; sourceTree = "<group>"; };
 		33962C04C5CB6F13174882D6 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
+		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -340,21 +344,7 @@
 				065679AD2F8869E20008299A /* ManualTestChecklist.md */,
 				065679AE2F8869E20008299A /* ProjectOverview.md */,
 			);
-			name = Docs;
 			path = Docs;
-			sourceTree = "<group>";
-		};
-		06E0A0102F88B0E10008299A /* context */ = {
-			isa = PBXGroup;
-			children = (
-				06E0A0112F88B0E10008299A /* README.md */,
-				06E0A0122F88B0E10008299A /* begin-chat.md */,
-				06E0A0132F88B0E10008299A /* cache.md */,
-				06E0A0142F88B0E10008299A /* end-chat.md */,
-				06E0A0152F88B0E10008299A /* open-questions.md */,
-				06E0A0162F88B0E10008299A /* project-memory.md */,
-			);
-			path = context;
 			sourceTree = "<group>";
 		};
 		06567A132F887CF40008299A /* data */ = {
@@ -473,6 +463,7 @@
 				06883DE52F78B5AE005DE47D /* OutputEndpoint.swift */,
 				06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */,
 				06883DE92F78B925005DE47D /* SimulatorSettings.swift */,
+				06AFA9392F8B049300A76F15 /* LiveWeather.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -509,6 +500,7 @@
 			children = (
 				06B4B2C92DF51286005DC523 /* UDPClient.swift */,
 				06883DEB2F78BC26005DE47D /* TCPClient.swift */,
+				06AFA93B2F8B049400A76F15 /* WeatherService.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -524,6 +516,19 @@
 				06212DE42E10D9CE007A4537 /* WorkPlaygroundStuff.swift */,
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		06E0A0102F88B0E10008299A /* context */ = {
+			isa = PBXGroup;
+			children = (
+				06E0A0112F88B0E10008299A /* README.md */,
+				06E0A0122F88B0E10008299A /* begin-chat.md */,
+				06E0A0132F88B0E10008299A /* cache.md */,
+				06E0A0142F88B0E10008299A /* end-chat.md */,
+				06E0A0152F88B0E10008299A /* open-questions.md */,
+				06E0A0162F88B0E10008299A /* project-memory.md */,
+			);
+			path = context;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -732,6 +737,7 @@
 				06883DE62F78B5AE005DE47D /* OutputEndpoint.swift in Sources */,
 				063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */,
 				06B4B2D42DFA5391005DC523 /* SimulatedValue.swift in Sources */,
+				06AFA93C2F8B049400A76F15 /* WeatherService.swift in Sources */,
 				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
 				06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */,
 				06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */,
@@ -749,6 +755,7 @@
 				06212E982E149D3B007A4537 /* GLLHelpView.swift in Sources */,
 				06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */,
 				063AADF62E949A5B003B2A7A /* OpenSeaMapView.swift in Sources */,
+				06AFA93A2F8B049400A76F15 /* LiveWeather.swift in Sources */,
 				06212DD72E0B6B1C007A4537 /* HDGHelpView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

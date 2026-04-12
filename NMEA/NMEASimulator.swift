@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Observation
+import CoreLocation
 
 @Observable
 class NMEASimulator {
@@ -14,6 +15,7 @@ class NMEASimulator {
     }
 
     private let userDefaults: UserDefaults
+    @ObservationIgnored private let weatherService: any WeatherService
 
     // MARK: - Sensors & Sentences States
 
@@ -120,6 +122,50 @@ class NMEASimulator {
     var selectedPreset: SimulationPreset? {
         didSet { persistSettingsIfNeeded() }
     }
+    var weatherSourceMode: WeatherSourceMode = .manual {
+        didSet {
+            guard !isRestoringSettings else { return }
+
+            if weatherSourceMode == .manual {
+                liveWeatherTask?.cancel()
+                liveWeatherTask = nil
+                liveWeatherStatus = .idle
+            } else {
+                selectedPreset = nil
+                latestLiveWeather = nil
+                twd.value = nil
+                tws.value = nil
+                seaTemp.value = nil
+                refreshLiveWeather(force: true)
+            }
+            persistSettingsIfNeeded()
+        }
+    }
+    var liveWeatherSettings = LiveWeatherSettings() {
+        didSet {
+            guard !isRestoringSettings else { return }
+            persistSettingsIfNeeded()
+        }
+    }
+    private(set) var latestLiveWeather: LiveWeatherSnapshot? {
+        didSet {
+            guard !isRestoringSettings else { return }
+            persistSettingsIfNeeded()
+        }
+    }
+    private(set) var liveWeatherStatus: LiveWeatherStatus = .idle
+
+    var isLiveWeatherActive: Bool {
+        weatherSourceMode == .liveWeather
+    }
+
+    var liveWeatherControlsWind: Bool {
+        isLiveWeatherActive && sensorToggles.hasAnemometer
+    }
+
+    var liveWeatherControlsSeaTemperature: Bool {
+        isLiveWeatherActive && sensorToggles.hasWaterTempSensor
+    }
 
     // MARK: - Dashboard Indicator
 
@@ -151,14 +197,22 @@ class NMEASimulator {
     private var isRestoringSettings = false
     private var isSynchronizingEndpoints = false
     private var pendingTransmissions: [PendingTransmission] = []
+    @ObservationIgnored private var liveWeatherTask: Task<Bool, Never>?
 
-    init(userDefaults: UserDefaults = .standard) {
+    init(
+        userDefaults: UserDefaults = .standard,
+        weatherService: any WeatherService = GlobalFallbackWeatherService()
+    ) {
         self.userDefaults = userDefaults
+        self.weatherService = weatherService
         tcpClient.onStateChange = { [weak self] endpoint, state in
             self?.handleTCPStateUpdate(state, for: endpoint)
         }
         loadPersistedSettings()
         normalizeOutputEndpoints()
+        if weatherSourceMode == .liveWeather {
+            refreshLiveWeather(force: true)
+        }
     }
 
     func persistLiveSettings() {
@@ -180,6 +234,10 @@ class NMEASimulator {
     }
 
     func applyPreset(_ preset: SimulationPreset) {
+        guard weatherSourceMode == .manual else {
+            return
+        }
+
         switch preset {
         case .harborCalm:
             twd = configuredValue(type: .windDirection, center: 75, offset: 6)
@@ -236,6 +294,34 @@ class NMEASimulator {
         stopSimulation()
         resetEngineForNewRun()
 
+        if weatherSourceMode == .liveWeather, latestLiveWeather == nil {
+            startSimulationWithFreshLiveWeather()
+            return
+        }
+
+        beginSimulationRun()
+    }
+
+    private func startSimulationWithFreshLiveWeather() {
+        let startupDate = Date.now
+
+        liveWeatherTask?.cancel()
+        liveWeatherTask = Task { [weak self] in
+            guard let self else { return false }
+            defer { self.liveWeatherTask = nil }
+
+            let success = await self.refreshLiveWeatherNow(force: true, at: startupDate)
+            guard success || self.latestLiveWeather != nil else {
+                self.appendHistoryEvent(level: .warning, category: .lifecycle, message: "Simulation start cancelled: live weather unavailable")
+                return false
+            }
+
+            self.beginSimulationRun()
+            return true
+        }
+    }
+
+    private func beginSimulationRun() {
         guard isTimerSelected else {
             appendHistoryEvent(level: .connected, category: .lifecycle, message: "Single transmission sent")
             runSimulationCycle()
@@ -257,6 +343,10 @@ class NMEASimulator {
     func stopSimulation() {
         let wasRunning = isTransmitting || timer != nil
         isTransmitting = false
+        if !wasRunning {
+            liveWeatherTask?.cancel()
+            liveWeatherTask = nil
+        }
         timer?.invalidate()
         timer = nil
         udpClient.resetConnections()
@@ -277,6 +367,9 @@ class NMEASimulator {
         latestTransportStatus = latestIdleStatus
 
         if wasRunning {
+            if weatherSourceMode == .liveWeather {
+                applyResolvedLiveWeatherValues()
+            }
             appendHistoryEvent(level: .idle, category: .lifecycle, message: "Simulation stopped")
         }
     }
@@ -325,6 +418,65 @@ class NMEASimulator {
         transportHistory.removeAll()
     }
 
+    func refreshLiveWeather(force: Bool = false) {
+        if force, let liveWeatherTask {
+            liveWeatherTask.cancel()
+            self.liveWeatherTask = nil
+        } else if liveWeatherTask != nil {
+            return
+        }
+
+        liveWeatherTask = Task { [weak self] in
+            guard let self else { return false }
+            defer { self.liveWeatherTask = nil }
+            return await self.refreshLiveWeatherNow(force: force)
+        }
+    }
+
+    @discardableResult
+    func refreshLiveWeatherNow(force: Bool = false, at timestamp: Date = .now) async -> Bool {
+        guard weatherSourceMode == .liveWeather else {
+            liveWeatherStatus = .idle
+            return false
+        }
+
+        guard sensorToggles.hasGPS else {
+            liveWeatherStatus = LiveWeatherStatus(state: .failed, message: "Enable GPS to use live weather.", lastUpdated: latestLiveWeather?.fetchedAt)
+            return false
+        }
+
+        if !force, !shouldRefreshLiveWeather(at: timestamp) {
+            return false
+        }
+
+        liveWeatherStatus = LiveWeatherStatus(state: .fetching, message: "Fetching live weather…", lastUpdated: latestLiveWeather?.fetchedAt)
+
+        do {
+            let snapshot = try await weatherService.fetchWeather(
+                latitude: gpsData.latitude,
+                longitude: gpsData.longitude,
+                date: timestamp
+            )
+            latestLiveWeather = snapshot
+            applyResolvedLiveWeatherValues()
+            liveWeatherStatus = LiveWeatherStatus(
+                state: .ready,
+                message: "Live weather updated from \(snapshot.sourceName).",
+                lastUpdated: snapshot.fetchedAt
+            )
+            return true
+        } catch {
+            liveWeatherStatus = LiveWeatherStatus(
+                state: .failed,
+                message: latestLiveWeather == nil
+                    ? error.localizedDescription
+                    : "Live weather refresh failed. Using last good weather. \(error.localizedDescription)",
+                lastUpdated: latestLiveWeather?.fetchedAt
+            )
+            return false
+        }
+    }
+
     private func runSimulationCycle(at timestamp: Date = .now) {
         flushPendingTransmissions(at: timestamp)
         let snapshot = tickSimulation(at: timestamp)
@@ -337,14 +489,47 @@ class NMEASimulator {
 
     private func tickSimulation(at timestamp: Date) -> SimulationSnapshot {
         let deltaTime = max(0, resolvedDeltaTime(for: timestamp))
+        triggerLiveWeatherRefreshIfNeeded(at: timestamp)
 
-        twd.value = twd.generateRandomValue(shouldGenerate: sensorToggles.hasAnemometer)
-        tws.value = tws.generateRandomValue(shouldGenerate: sensorToggles.hasAnemometer)
+        if weatherSourceMode == .liveWeather {
+            if let liveWeather = activeLiveWeather {
+                twd.value = sensorToggles.hasAnemometer
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.trueWindDirection,
+                        jitter: 6,
+                        range: SimulatedValueType.windDirection.defaultRange,
+                        wraps: true
+                    )
+                    : nil
+                tws.value = sensorToggles.hasAnemometer
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.trueWindSpeedKnots,
+                        jitter: 0.9,
+                        range: SimulatedValueType.windSpeed.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+                seaTemp.value = sensorToggles.hasWaterTempSensor
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.seaSurfaceTemperatureCelsius,
+                        jitter: 0.3,
+                        range: SimulatedValueType.seaTemp.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+            } else {
+                twd.value = nil
+                tws.value = nil
+                seaTemp.value = nil
+            }
+        } else {
+            twd.value = twd.generateRandomValue(shouldGenerate: sensorToggles.hasAnemometer)
+            tws.value = tws.generateRandomValue(shouldGenerate: sensorToggles.hasAnemometer)
+            seaTemp.value = seaTemp.generateRandomValue(shouldGenerate: sensorToggles.hasWaterTempSensor)
+        }
 
         heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
         gyroHeading.value = gyroHeading.generateRandomValue(shouldGenerate: sensorToggles.hasGyro)
-
-        seaTemp.value = seaTemp.generateRandomValue(shouldGenerate: sensorToggles.hasWaterTempSensor)
         depth.value = depth.generateRandomValue(shouldGenerate: sensorToggles.hasEchoSounder)
         speed.value = speed.generateRandomValue(shouldGenerate: sensorToggles.hasSpeedLog)
 
@@ -733,7 +918,10 @@ class NMEASimulator {
             gpsData: gpsData,
             faultInjection: faultInjection,
             mwvReferenceMode: mwvReferenceMode,
-            selectedPreset: selectedPreset
+            selectedPreset: selectedPreset,
+            weatherSourceMode: weatherSourceMode,
+            liveWeatherSettings: liveWeatherSettings,
+            latestLiveWeather: latestLiveWeather
         )
     }
 
@@ -765,6 +953,16 @@ class NMEASimulator {
         faultInjection = settings.faultInjection
         mwvReferenceMode = settings.mwvReferenceMode
         selectedPreset = settings.selectedPreset
+        weatherSourceMode = settings.weatherSourceMode
+        liveWeatherSettings = settings.liveWeatherSettings
+        latestLiveWeather = settings.latestLiveWeather
+        liveWeatherStatus = weatherSourceMode == .liveWeather
+            ? LiveWeatherStatus(
+                state: latestLiveWeather == nil ? .idle : .ready,
+                message: latestLiveWeather == nil ? "Live weather not fetched yet." : "Using cached live weather.",
+                lastUpdated: latestLiveWeather?.fetchedAt
+            )
+            : .idle
 
         isRestoringSettings = false
     }
@@ -822,6 +1020,78 @@ class NMEASimulator {
             return timestamp.timeIntervalSince(lastSimulationTickDate)
         }
         return 0
+    }
+
+    private var activeLiveWeather: LiveWeatherSnapshot? {
+        guard weatherSourceMode == .liveWeather else {
+            return nil
+        }
+        return latestLiveWeather
+    }
+
+    private func triggerLiveWeatherRefreshIfNeeded(at timestamp: Date) {
+        guard weatherSourceMode == .liveWeather else {
+            return
+        }
+
+        guard liveWeatherTask == nil, shouldRefreshLiveWeather(at: timestamp) else {
+            return
+        }
+
+        refreshLiveWeather(force: false)
+    }
+
+    private func shouldRefreshLiveWeather(at timestamp: Date) -> Bool {
+        guard weatherSourceMode == .liveWeather else {
+            return false
+        }
+
+        guard let latestLiveWeather else {
+            return true
+        }
+
+        if timestamp.timeIntervalSince(latestLiveWeather.fetchedAt) >= liveWeatherSettings.refreshInterval {
+            return true
+        }
+
+        let latestLocation = CLLocation(latitude: latestLiveWeather.latitude, longitude: latestLiveWeather.longitude)
+        let currentLocation = CLLocation(latitude: gpsData.latitude, longitude: gpsData.longitude)
+        let distanceNM = currentLocation.distance(from: latestLocation) / 1852
+        return distanceNM >= liveWeatherSettings.minimumRefreshDistanceNM
+    }
+
+    private func generateLiveWeatherValue(
+        base: Double?,
+        jitter: Double,
+        range: ClosedRange<Double>,
+        wraps: Bool
+    ) -> Double? {
+        guard let base else {
+            return nil
+        }
+
+        let offset = Double.random(in: -jitter...jitter)
+        if wraps {
+            return normalizeAngle(base + offset)
+        }
+
+        return (base + offset).clamped(to: range)
+    }
+
+    private func applyResolvedLiveWeatherValues() {
+        guard let liveWeather = activeLiveWeather else {
+            return
+        }
+
+        twd.value = sensorToggles.hasAnemometer
+            ? liveWeather.trueWindDirection
+            : nil
+        tws.value = sensorToggles.hasAnemometer
+            ? liveWeather.trueWindSpeedKnots
+            : nil
+        seaTemp.value = sensorToggles.hasWaterTempSensor
+            ? liveWeather.seaSurfaceTemperatureCelsius
+            : nil
     }
 
     private func computedTurnRate(currentHeading: Double, deltaTime: TimeInterval) -> Double {

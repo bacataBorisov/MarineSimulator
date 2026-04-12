@@ -55,17 +55,106 @@ struct ConfigurationView: View {
                                     }
                                 }
                                 .pickerStyle(.segmented)
+                                .disabled(nmeaManager.weatherSourceMode == .liveWeather)
 
                                 Button {
                                     nmeaManager.applyPreset(nmeaManager.selectedPreset ?? .lightWeather)
                                 } label: {
                                     Label("Apply Preset", systemImage: "sparkles")
                                 }
+                                .disabled(nmeaManager.weatherSourceMode == .liveWeather)
                             }
 
                             Text((nmeaManager.selectedPreset ?? .lightWeather).summary)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+
+                            if nmeaManager.weatherSourceMode == .liveWeather {
+                                Text("Presets are disabled while Live Weather mode is active because weather-related values are driven from GPS-based provider data.")
+                                    .font(.caption2)
+                                    .foregroundStyle(AppColors.warning)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal)
+
+                    GroupBox(label: Label("Weather Source", systemImage: "cloud.sun.rain")) {
+                        VStack(alignment: .leading, spacing: UIConstants.spacing * 2) {
+                            Text("Use manual controls by default, or pull live wind and sea temperature from the boat's current GPS position.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Picker("Weather Source", selection: $nmeaManager.weatherSourceMode) {
+                                ForEach(WeatherSourceMode.allCases) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            if nmeaManager.weatherSourceMode == .liveWeather {
+                                Grid(horizontalSpacing: 16, verticalSpacing: UIConstants.spacing) {
+                                    GridRow {
+                                        Text("Refresh Every")
+                                        Stepper(value: $nmeaManager.liveWeatherSettings.refreshIntervalMinutes, in: 5...60, step: 5) {
+                                            Text("\(nmeaManager.liveWeatherSettings.refreshIntervalMinutes) min")
+                                                .monospacedDigit()
+                                        }
+                                        Text("Refresh After")
+                                        Stepper(value: $nmeaManager.liveWeatherSettings.minimumRefreshDistanceNM, in: 1...30, step: 1) {
+                                            Text("\(nmeaManager.liveWeatherSettings.minimumRefreshDistanceNM.formatted(.number.precision(.fractionLength(0)))) nm")
+                                                .monospacedDigit()
+                                        }
+                                    }
+                                }
+
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: weatherStatusSystemImage)
+                                    Text(nmeaManager.liveWeatherStatus.message)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .font(.caption)
+                                .foregroundStyle(weatherStatusColor)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                if let latestLiveWeather = nmeaManager.latestLiveWeather {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Provider: \(latestLiveWeather.sourceName)")
+                                        if let marineSourceName = latestLiveWeather.marineSourceName {
+                                            Text("Marine: \(marineSourceName)")
+                                        }
+                                        Text("Wind: \(weatherValue(latestLiveWeather.trueWindDirection, unit: "°")) / \(weatherValue(latestLiveWeather.trueWindSpeedKnots, unit: "kn"))")
+                                        Text("Gust: \(weatherValue(latestLiveWeather.windGustSpeedKnots, unit: "kn"))")
+                                        Text("Sea Temp: \(weatherValue(latestLiveWeather.seaSurfaceTemperatureCelsius, unit: "°C"))")
+                                        Text("Air Temp: \(weatherValue(latestLiveWeather.airTemperatureCelsius, unit: "°C"))")
+                                        Text("Humidity: \(weatherValue(latestLiveWeather.relativeHumidityPercent, unit: "%"))")
+                                        Text("Pressure: \(weatherValue(latestLiveWeather.airPressureHectopascals, unit: "hPa"))")
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                }
+
+                                if let lastUpdated = nmeaManager.liveWeatherStatus.lastUpdated {
+                                    Text("Last Update: \(lastUpdated.formatted(date: .abbreviated, time: .shortened))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                HStack {
+                                    Button {
+                                        nmeaManager.refreshLiveWeather(force: true)
+                                    } label: {
+                                        Label("Refresh Weather", systemImage: "arrow.clockwise")
+                                    }
+                                    .disabled(!nmeaManager.sensorToggles.hasGPS || nmeaManager.liveWeatherStatus.state == .fetching)
+
+                                    if !nmeaManager.sensorToggles.hasGPS {
+                                        Text("Enable GPS to fetch live weather.")
+                                            .font(.caption2)
+                                            .foregroundStyle(AppColors.warning)
+                                    }
+                                }
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -369,6 +458,39 @@ struct ConfigurationView: View {
                 .frame(width: 44, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var weatherStatusColor: Color {
+        switch nmeaManager.liveWeatherStatus.state {
+        case .idle:
+            return .secondary
+        case .fetching:
+            return .blue
+        case .ready:
+            return .green
+        case .failed:
+            return .orange
+        }
+    }
+
+    private var weatherStatusSystemImage: String {
+        switch nmeaManager.liveWeatherStatus.state {
+        case .idle:
+            return "cloud"
+        case .fetching:
+            return "arrow.triangle.2.circlepath"
+        case .ready:
+            return "checkmark.circle"
+        case .failed:
+            return "exclamationmark.triangle"
+        }
+    }
+
+    private func weatherValue(_ value: Double?, unit: String) -> String {
+        guard let value else {
+            return "--"
+        }
+        return "\(value.formatted(.number.precision(.fractionLength(1)))) \(unit)"
     }
 }
 

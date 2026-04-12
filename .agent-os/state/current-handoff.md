@@ -1,16 +1,17 @@
 # Current handoff
 
-_Updated: 2026-04-10 02:52 UTC_
+_Updated: 2026-04-10 03:48 UTC_
 
 ## Current work
 
-- Session bootstrap completed.
-- Required Agent OS context files were re-read successfully in order.
-- No active product, UI, or engine task is in progress yet.
+- Latest completed feature: live weather V1.
+- `NMEASimulator` now supports `manual` vs `liveWeather` source mode, persists the selection, and can fetch wind plus sea-surface temperature from Open-Meteo using the current GPS coordinates.
+- `ConfigurationView` now exposes weather source selection, refresh policy, provider status, and manual refresh.
 
 ## Repo state
 
 - Last scan id: 1
+- Working tree is dirty in the latest session, including `.agent-os/` handoff files, several docs, and `Views/Dashboard/BoatMapPreview.swift`.
 
 ## Relevant files (indexed, latest scan)
 
@@ -57,24 +58,29 @@ _Updated: 2026-04-10 02:52 UTC_
 
 ## Relevant docs
 
-- `.agent-os/context/begin-chat.md`
 - `.agent-os/context/cache.md`
-- `.agent-os/context/project-memory.md`
-- `.agent-os/context/open-questions.md`
+- `Docs/CompletedTasks.md`
 - `Docs/CurrentTasks.md`
+- `Docs/InstructionManual.md`
 - `Docs/ManualTestChecklist.md`
+- `Docs/ProjectOverview.md`
 
 ## Open decisions
 
-- None yet.
+- Whether the preview-only crash for `Views/Dashboard/BoatMapPreview.swift` needs immediate investigation.
+- Whether the next weather iteration should add more environmental values/current effects or pause weather work and return to protocol fidelity/manual expansion.
 
 ## Risks
 
-- None yet.
+- Xcode preview rendering still reports a possible app crash for `Views/Dashboard/BoatMapPreview.swift`, even though compile-time diagnostics are clean and the project builds successfully.
+- Future protocol or transport changes may require another manual interoperability pass even though the current checklist has been accepted.
+- Live weather depends on network availability and provider quality; V1 currently does not model coastal current/tide effects.
 
 ## Recommended next actions
 
-- Wait for the user to assign the first product/code task.
-- Inspect only the relevant files for that task before editing.
+- Manually verify live weather in the running app with real GPS coordinates and provider responses.
+- Decide whether to extend weather realism next or return to the remaining fidelity/manual tasks in `Docs/CurrentTasks.md`.
+- Manually verify the floating map toolbar placement with the left controls rail, trailing instruments rail, and console expanded together if that UI tweak has not been visually confirmed yet.
+- Investigate the preview-only crash only if more dashboard preview iteration is needed next.
 - Run `agentos-scan scan` after code changes.
-- Run `agentos export --profile=normal` before a long agent task.
+- Run `agentos export` (default profile **deep**) before a long agent task; use `--profile normal` for a smaller pack.

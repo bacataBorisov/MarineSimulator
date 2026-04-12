@@ -43,8 +43,14 @@ This file tracks finished work that should not remain in the active queue.
 - [x] Expand break-oriented tests to cover timer/lifecycle behavior, sentence-specific invalid-data mutations, and latest transport-status consistency after stop.
 - [x] Fix engine defects in VTG magnetic variation handling, VBW GPS-unavailable ground fields, first-burst GPS jumps, global timer interval clamping, and latest idle transport-status publication.
 - [x] Expand runtime churn tests to cover live secondary-endpoint edits, removals, transport changes, and restart behavior around those changes.
+- [x] Move the dashboard map action buttons into a floating toolbar that stays visible above the console drawer and side inspector, and refresh the control styling to fit the newer dashboard chrome.
+- [x] Complete the focused manual interoperability pass against the external reader app with the current checklist and confirm the present setup is acceptable for continued feature work.
+- [x] Add a first live weather mode that uses the boat's GPS position to fetch wind and sea-surface temperature from Open-Meteo while preserving manual mode as the default fallback.
 
 ## Verification
 
 - [x] Source diagnostics checked for the refactored engine files.
 - [x] Full project build completed successfully after the refactor.
+- [x] Source diagnostics checked for the map-toolbar dashboard update.
+- [x] Full project build completed successfully after the map-toolbar dashboard update.
+- [x] Full project build and engine test suite completed successfully after live-weather integration.

@@ -8,6 +8,7 @@ extension NMEASimulator {
     var calculatedAWD: Double? { computeAWD(from: displaySnapshot) }
     var calculatedTWS: Double? { computeTWS(from: displaySnapshot) }
     var calculatedTWD: Double? { computeTWD(from: displaySnapshot) }
+    var displayedSeaTemperature: Double? { displaySnapshot?.seaTemperature }
     var calculatedVPWKnots: Double? { computeVPWKnots(from: displaySnapshot) }
     var calculatedVPWMS: Double? { computeVPWMS(from: displaySnapshot) }
 
@@ -15,6 +16,8 @@ extension NMEASimulator {
         if isTransmitting, let latestSnapshot {
             return latestSnapshot
         }
+
+        let fallbackLiveWeather = weatherSourceMode == .liveWeather ? latestLiveWeather : nil
 
         let fallbackSignal = latestSnapshot?.gpsSignal ?? GPSSignalSnapshot(
             fixQuality: sensorToggles.hasGPS ? 1 : 0,
@@ -31,15 +34,15 @@ extension NMEASimulator {
 
         return SimulationSnapshot(
             timestamp: Date(),
-            windDirectionTrue: sensorToggles.hasAnemometer ? (twd.value ?? twd.centerValue) : nil,
-            windSpeedTrue: sensorToggles.hasAnemometer ? (tws.value ?? tws.centerValue) : nil,
+            windDirectionTrue: sensorToggles.hasAnemometer ? (fallbackLiveWeather?.trueWindDirection ?? twd.value ?? twd.centerValue) : nil,
+            windSpeedTrue: sensorToggles.hasAnemometer ? (fallbackLiveWeather?.trueWindSpeedKnots ?? tws.value ?? tws.centerValue) : nil,
             magneticHeading: sensorToggles.hasCompass ? (heading.value ?? heading.centerValue) : nil,
             gyroHeading: sensorToggles.hasGyro ? (gyroHeading.value ?? gyroHeading.centerValue) : nil,
             magneticVariation: latestSnapshot?.magneticVariation ?? 0,
             compassDeviation: latestSnapshot?.compassDeviation ?? 0,
             boatSpeed: sensorToggles.hasSpeedLog ? (speed.value ?? speed.centerValue) : nil,
             depth: sensorToggles.hasEchoSounder ? (depth.value ?? depth.centerValue) : nil,
-            seaTemperature: sensorToggles.hasWaterTempSensor ? (seaTemp.value ?? seaTemp.centerValue) : nil,
+            seaTemperature: sensorToggles.hasWaterTempSensor ? (fallbackLiveWeather?.seaSurfaceTemperatureCelsius ?? seaTemp.value ?? seaTemp.centerValue) : nil,
             gpsData: gpsData,
             gpsSignal: fallbackSignal,
             turnRate: latestSnapshot?.turnRate ?? 0,

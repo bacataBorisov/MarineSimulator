@@ -69,6 +69,9 @@ struct SimulatorSettings: Codable {
     var faultInjection: FaultInjectionSettings
     var mwvReferenceMode: MWVReferenceMode
     var selectedPreset: SimulationPreset?
+    var weatherSourceMode: WeatherSourceMode
+    var liveWeatherSettings: LiveWeatherSettings
+    var latestLiveWeather: LiveWeatherSnapshot?
 
     private enum CodingKeys: String, CodingKey {
         case ip
@@ -92,6 +95,9 @@ struct SimulatorSettings: Codable {
         case faultInjection
         case mwvReferenceMode
         case selectedPreset
+        case weatherSourceMode
+        case liveWeatherSettings
+        case latestLiveWeather
     }
 
     init(
@@ -115,7 +121,10 @@ struct SimulatorSettings: Codable {
         gpsData: GPSData,
         faultInjection: FaultInjectionSettings,
         mwvReferenceMode: MWVReferenceMode,
-        selectedPreset: SimulationPreset?
+        selectedPreset: SimulationPreset?,
+        weatherSourceMode: WeatherSourceMode,
+        liveWeatherSettings: LiveWeatherSettings,
+        latestLiveWeather: LiveWeatherSnapshot?
     ) {
         self.ip = ip
         self.port = port
@@ -138,6 +147,9 @@ struct SimulatorSettings: Codable {
         self.faultInjection = faultInjection
         self.mwvReferenceMode = mwvReferenceMode
         self.selectedPreset = selectedPreset
+        self.weatherSourceMode = weatherSourceMode
+        self.liveWeatherSettings = liveWeatherSettings
+        self.latestLiveWeather = latestLiveWeather
     }
 
     init(from decoder: Decoder) throws {
@@ -165,5 +177,8 @@ struct SimulatorSettings: Codable {
         faultInjection = try container.decodeIfPresent(FaultInjectionSettings.self, forKey: .faultInjection) ?? FaultInjectionSettings()
         mwvReferenceMode = try container.decodeIfPresent(MWVReferenceMode.self, forKey: .mwvReferenceMode) ?? .relative
         selectedPreset = try container.decodeIfPresent(SimulationPreset.self, forKey: .selectedPreset)
+        weatherSourceMode = try container.decodeIfPresent(WeatherSourceMode.self, forKey: .weatherSourceMode) ?? .manual
+        liveWeatherSettings = try container.decodeIfPresent(LiveWeatherSettings.self, forKey: .liveWeatherSettings) ?? LiveWeatherSettings()
+        latestLiveWeather = try container.decodeIfPresent(LiveWeatherSnapshot.self, forKey: .latestLiveWeather)
     }
 }

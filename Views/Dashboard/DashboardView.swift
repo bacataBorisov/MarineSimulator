@@ -10,9 +10,10 @@ struct DashboardView: View {
     @AppStorage("dashboard.show_console") private var showConsole = true
 
     @AppStorage("dashboard.console_height") private var storedConsoleHeight: Double = 220
+    @State private var topBarHeight: CGFloat = 168
     private let leftRailWidth: CGFloat = 332
     private let rightRailWidth: CGFloat = 340
-    private let topBarHeight: CGFloat = 112
+    private let topBarMinHeight: CGFloat = 168
     private let consoleHeaderHeight: CGFloat = 28
 
     private var dashboardConsoleHeight: Binding<CGFloat> {
@@ -37,7 +38,13 @@ struct DashboardView: View {
                         showBottom: $showConsole
                     )
                     .environment(nmeaManager)
-                    .frame(maxWidth: .infinity, minHeight: topBarHeight, maxHeight: topBarHeight)
+                    .frame(maxWidth: .infinity, minHeight: topBarMinHeight)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear
+                                .preference(key: TopBarHeightPreferenceKey.self, value: proxy.size.height)
+                        }
+                    }
                     .background(
                         Rectangle()
                             .fill(.ultraThinMaterial)
@@ -104,7 +111,10 @@ struct DashboardView: View {
                     .shadow(color: .black.opacity(0.26), radius: 18, y: -2)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(12)
-                }
+                    }
+            }
+            .onPreferenceChange(TopBarHeightPreferenceKey.self) { height in
+                topBarHeight = max(topBarMinHeight, height)
             }
             .animation(.snappy(duration: 0.28, extraBounce: 0.03), value: showRightInspector)
             .animation(.snappy(duration: 0.28, extraBounce: 0.03), value: showConsole)
@@ -148,5 +158,13 @@ struct DashboardView: View {
         .padding(.top, topBarHeight)
         .padding(.bottom, bottomInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: edge == .leading ? .leading : .trailing)
+    }
+}
+
+private struct TopBarHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 168
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

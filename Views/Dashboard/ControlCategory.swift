@@ -101,8 +101,8 @@ struct WindControls: View {
                 precision: 0,
                 sliderRange: SimulatedValueType.windDirection.defaultRange,
                 onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasAnemometer,
-                disabledReason: !nmea.sensorToggles.hasAnemometer ? "Enable the Anemometer in Configuration to control wind." : nil
+                isDisabled: !nmea.sensorToggles.hasAnemometer || nmea.liveWeatherControlsWind,
+                disabledReason: windDisabledReason
             )
             RailDivider()
             ControlSliderView(
@@ -111,10 +111,22 @@ struct WindControls: View {
                 precision: 1,
                 sliderRange: SimulatedValueType.windSpeed.defaultRange,
                 onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasAnemometer,
-                disabledReason: !nmea.sensorToggles.hasAnemometer ? "Enable the Anemometer in Configuration to control wind." : nil
+                isDisabled: !nmea.sensorToggles.hasAnemometer || nmea.liveWeatherControlsWind,
+                disabledReason: windDisabledReason
             )
         }
+    }
+
+    private var windDisabledReason: String? {
+        if !nmea.sensorToggles.hasAnemometer {
+            return "Enable the Anemometer in Configuration to control wind."
+        }
+
+        if nmea.liveWeatherControlsWind {
+            return "Live Weather mode is driving wind from the boat's current GPS position."
+        }
+
+        return nil
     }
 }
 
@@ -150,10 +162,22 @@ struct HydroControls: View {
                 precision: 1,
                 sliderRange: SimulatedValueType.seaTemp.defaultRange,
                 onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasWaterTempSensor,
-                disabledReason: !nmea.sensorToggles.hasWaterTempSensor ? "Enable the Water Temperature sensor in Configuration to control sea temperature." : nil
+                isDisabled: !nmea.sensorToggles.hasWaterTempSensor || nmea.liveWeatherControlsSeaTemperature,
+                disabledReason: seaTemperatureDisabledReason
             )
         }
+    }
+
+    private var seaTemperatureDisabledReason: String? {
+        if !nmea.sensorToggles.hasWaterTempSensor {
+            return "Enable the Water Temperature sensor in Configuration to control sea temperature."
+        }
+
+        if nmea.liveWeatherControlsSeaTemperature {
+            return "Live Weather mode is driving sea temperature from the boat's current GPS position."
+        }
+
+        return nil
     }
 }
 
