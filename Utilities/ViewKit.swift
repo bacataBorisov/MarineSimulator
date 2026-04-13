@@ -8,6 +8,12 @@
 
 import SwiftUI
 
+// MARK: - Circular heading / wind direction (0° ≡ 360°)
+
+private func wrappedCircularSetpoint(_ raw: Double, range: ClosedRange<Double>) -> Double {
+    normalizeAngle(raw).clamped(to: range)
+}
+
 struct ViewKit {
     
     static func displayLabel(_ label: String, value: Double?, precision: Int? = 0) -> some View {
@@ -170,6 +176,8 @@ struct ControlSliderView: View {
     var isDisabled: Bool = false
     var disabledReason: String?
     var supportingNote: String?
+    /// When true, ± nudges and setpoint entry wrap through 0° (e.g. 359° + 1° → 0°).
+    var wrapsCircularDegrees: Bool = false
 
     private var stepAmount: Double {
         switch precision {
@@ -185,7 +193,28 @@ struct ControlSliderView: View {
     private var displayValue: Double {
         value.value ?? value.centerValue
     }
-    
+
+    private var centerValueBinding: Binding<Double> {
+        Binding(
+            get: { value.centerValue },
+            set: { new in
+                if wrapsCircularDegrees {
+                    value.centerValue = wrappedCircularSetpoint(new, range: sliderRange)
+                } else {
+                    value.centerValue = new.clamped(to: sliderRange)
+                }
+            }
+        )
+    }
+
+    private func nudgeCenter(by delta: Double) {
+        if wrapsCircularDegrees {
+            value.centerValue = wrappedCircularSetpoint(value.centerValue + delta, range: sliderRange)
+        } else {
+            value.centerValue = (value.centerValue + delta).clamped(to: sliderRange)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: UIConstants.spacing) {
             HStack(alignment: .firstTextBaseline) {
@@ -206,7 +235,7 @@ struct ControlSliderView: View {
 
             HStack(alignment: .center, spacing: 12) {
                 ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
-                    value.centerValue = (value.centerValue - stepAmount).clamped(to: sliderRange)
+                    nudgeCenter(by: -stepAmount)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -214,7 +243,7 @@ struct ControlSliderView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
-                    TextField("", value: $value.centerValue, format: .number.precision(.fractionLength(precision)))
+                    TextField("", value: centerValueBinding, format: .number.precision(.fractionLength(precision)))
                         .textFieldStyle(.roundedBorder)
                         .monospacedDigit()
                         .frame(width: 92)
@@ -222,7 +251,7 @@ struct ControlSliderView: View {
                 }
 
                 ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {
-                    value.centerValue = (value.centerValue + stepAmount).clamped(to: sliderRange)
+                    nudgeCenter(by: stepAmount)
                 }
 
                 Spacer()
@@ -254,7 +283,7 @@ struct ControlSliderView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                CustomSlider(value: $value.centerValue, range: sliderRange)
+                CustomSlider(value: centerValueBinding, range: sliderRange)
                     .disabled(isDisabled)
             }
                 .disabled(isDisabled)

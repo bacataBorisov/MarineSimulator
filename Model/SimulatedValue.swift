@@ -10,6 +10,9 @@ enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
     case speedOverGround
     case depth
     case seaTemp
+    case airTemp
+    case humidity
+    case barometer
 
     /// Required for Identifiable conformance
     var id: String { rawValue }
@@ -25,6 +28,9 @@ enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
         case .speedOverGround: return "Speed Over Ground"
         case .depth: return "Depth"
         case .seaTemp: return "Sea Temp"
+        case .airTemp: return "Air Temp"
+        case .humidity: return "Humidity"
+        case .barometer: return "Barometer"
         }
     }
 
@@ -39,6 +45,12 @@ enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
             return 0...1000
         case .seaTemp:
             return 0...40
+        case .airTemp:
+            return -20...50
+        case .humidity:
+            return 0...100
+        case .barometer:
+            return 960...1050
         case .gyroCompass:
             return 0...359.9
         }
@@ -55,6 +67,12 @@ enum SimulatedValueType: String, CaseIterable, Codable, Identifiable {
             return 20
         case .seaTemp:
             return 3
+        case .airTemp:
+            return 4
+        case .humidity:
+            return 8
+        case .barometer:
+            return 6
         }
     }
 }

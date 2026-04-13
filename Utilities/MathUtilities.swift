@@ -81,6 +81,13 @@ public func calculateBearing(from start: CLLocationCoordinate2D, to end: CLLocat
     return normalizeAngle(toDegrees(initialBearing)) // Convert to degrees and normalize
 }
 
+/// Standard normal N(0,1) sample (Box–Muller). For simulation noise only.
+public func unitGaussianRandom() -> Double {
+    let u1 = max(Double.leastNormalMagnitude, Double.random(in: 0...1))
+    let u2 = Double.random(in: 0...1)
+    return sqrt(-2 * log(u1)) * cos(2 * Double.pi * u2)
+}
+
 public func calculateShortestRotation(from sourceAngle: Double, to targetAngle: Double) -> Double {
     let delta = (targetAngle - sourceAngle).truncatingRemainder(dividingBy: 360)
     return delta > 180 ? delta - 360 : (delta < -180 ? delta + 360 : delta)

@@ -20,7 +20,6 @@ struct SensorToggleStates: Codable {
 
     // GPS
     var hasGPS: Bool = true
-    var hasAIS: Bool = false
 
     //MARK: - Hydro Data
     // Depth

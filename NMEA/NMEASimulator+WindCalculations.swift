@@ -2,15 +2,21 @@ import Foundation
 
 extension NMEASimulator {
 
-    var calculatedTWA: Double? { computeTWA(from: displaySnapshot) }
-    var calculatedAWS: Double? { computeAWS(from: displaySnapshot) }
-    var calculatedAWA: Double? { computeAWA(from: displaySnapshot) }
-    var calculatedAWD: Double? { computeAWD(from: displaySnapshot) }
+    /// Relative wind vs. the same heading basis as the map (`geographicBearingDegreesForMap`): gyro/true, else magnetic without variation, else COG.
+    var calculatedTWA: Double? { computeTWA(from: displaySnapshot, forInstrumentDisplay: true) }
+    var calculatedAWS: Double? { computeAWS(from: displaySnapshot, forInstrumentDisplay: true) }
+    var calculatedAWA: Double? { computeAWA(from: displaySnapshot, forInstrumentDisplay: true) }
+    var calculatedAWD: Double? { computeAWD(from: displaySnapshot, forInstrumentDisplay: true) }
     var calculatedTWS: Double? { computeTWS(from: displaySnapshot) }
     var calculatedTWD: Double? { computeTWD(from: displaySnapshot) }
+    var calculatedTWDCompassPoint: String? { compassPoint(for: calculatedTWD) }
     var displayedSeaTemperature: Double? { displaySnapshot?.seaTemperature }
-    var calculatedVPWKnots: Double? { computeVPWKnots(from: displaySnapshot) }
-    var calculatedVPWMS: Double? { computeVPWMS(from: displaySnapshot) }
+    var displayedAirTemperature: Double? { displaySnapshot?.airTemperature }
+    var displayedRelativeHumidity: Double? { displaySnapshot?.relativeHumidity }
+    var displayedAirPressure: Double? { displaySnapshot?.airPressure }
+    var displayedWindGustSpeed: Double? { weatherSourceMode == .liveWeather ? latestLiveWeather?.windGustSpeedKnots : nil }
+    var calculatedVPWKnots: Double? { computeVPWKnots(from: displaySnapshot, forInstrumentDisplay: true) }
+    var calculatedVPWMS: Double? { computeVPWMS(from: displaySnapshot, forInstrumentDisplay: true) }
 
     private var displaySnapshot: SimulationSnapshot? {
         if isTransmitting, let latestSnapshot {
@@ -34,15 +40,18 @@ extension NMEASimulator {
 
         return SimulationSnapshot(
             timestamp: Date(),
-            windDirectionTrue: sensorToggles.hasAnemometer ? (fallbackLiveWeather?.trueWindDirection ?? twd.value ?? twd.centerValue) : nil,
-            windSpeedTrue: sensorToggles.hasAnemometer ? (fallbackLiveWeather?.trueWindSpeedKnots ?? tws.value ?? tws.centerValue) : nil,
+            windDirectionTrue: sensorToggles.hasAnemometer ? (twd.value ?? fallbackLiveWeather?.trueWindDirection ?? twd.centerValue) : nil,
+            windSpeedTrue: sensorToggles.hasAnemometer ? (tws.value ?? fallbackLiveWeather?.trueWindSpeedKnots ?? tws.centerValue) : nil,
             magneticHeading: sensorToggles.hasCompass ? (heading.value ?? heading.centerValue) : nil,
             gyroHeading: sensorToggles.hasGyro ? (gyroHeading.value ?? gyroHeading.centerValue) : nil,
             magneticVariation: latestSnapshot?.magneticVariation ?? 0,
             compassDeviation: latestSnapshot?.compassDeviation ?? 0,
             boatSpeed: sensorToggles.hasSpeedLog ? (speed.value ?? speed.centerValue) : nil,
             depth: sensorToggles.hasEchoSounder ? (depth.value ?? depth.centerValue) : nil,
-            seaTemperature: sensorToggles.hasWaterTempSensor ? (fallbackLiveWeather?.seaSurfaceTemperatureCelsius ?? seaTemp.value ?? seaTemp.centerValue) : nil,
+            seaTemperature: sensorToggles.hasWaterTempSensor ? (seaTemp.value ?? fallbackLiveWeather?.seaSurfaceTemperatureCelsius ?? seaTemp.centerValue) : nil,
+            airTemperature: sensorToggles.hasAirTempSensor ? (airTemp.value ?? fallbackLiveWeather?.airTemperatureCelsius ?? airTemp.centerValue) : nil,
+            relativeHumidity: sensorToggles.hasHumidtySensor ? (humidity.value ?? fallbackLiveWeather?.relativeHumidityPercent ?? humidity.centerValue) : nil,
+            airPressure: sensorToggles.hasBarometer ? (barometer.value ?? fallbackLiveWeather?.airPressureHectopascals ?? barometer.centerValue) : nil,
             gpsData: gpsData,
             gpsSignal: fallbackSignal,
             turnRate: latestSnapshot?.turnRate ?? 0,
@@ -51,26 +60,34 @@ extension NMEASimulator {
         )
     }
 
-    func computeTWA(from snapshot: SimulationSnapshot?) -> Double? {
+    func computeTWA(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
         guard let snapshot, let twd = snapshot.windDirectionTrue else { return nil }
 
-        guard let heading = resolvedTrueHeadingForWind(in: snapshot) else {
+        let heading = forInstrumentDisplay
+            ? resolvedHeadingForInstrumentWindAngles(in: snapshot)
+            : resolvedTrueHeadingForWind(in: snapshot)
+
+        guard let heading else {
             return twd
         }
 
         return normalizeAngle(twd - heading)
     }
 
-    func computeAWS(from snapshot: SimulationSnapshot?) -> Double? {
+    func computeAWS(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
         guard let snapshot, let tws = snapshot.windSpeedTrue else { return nil }
 
         if snapshot.boatSpeed == nil || snapshot.boatSpeed == 0 {
             return tws
         }
 
+        let heading = forInstrumentDisplay
+            ? resolvedHeadingForInstrumentWindAngles(in: snapshot)
+            : resolvedTrueHeadingForWind(in: snapshot)
+
         guard
             let twd = snapshot.windDirectionTrue,
-            let heading = resolvedTrueHeadingForWind(in: snapshot),
+            let heading,
             let boatSpeed = snapshot.boatSpeed
         else {
             return tws
@@ -85,11 +102,15 @@ extension NMEASimulator {
         return sqrt(apparentX * apparentX + apparentY * apparentY)
     }
 
-    func computeAWA(from snapshot: SimulationSnapshot?) -> Double? {
+    func computeAWA(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
         guard let snapshot, let tws = snapshot.windSpeedTrue else { return nil }
 
+        let heading = forInstrumentDisplay
+            ? resolvedHeadingForInstrumentWindAngles(in: snapshot)
+            : resolvedTrueHeadingForWind(in: snapshot)
+
         if snapshot.boatSpeed == nil || snapshot.boatSpeed == 0 {
-            if let twd = snapshot.windDirectionTrue, let heading = resolvedTrueHeadingForWind(in: snapshot) {
+            if let twd = snapshot.windDirectionTrue, let heading {
                 return normalizeAngle(twd - heading)
             }
             return snapshot.windDirectionTrue
@@ -97,7 +118,7 @@ extension NMEASimulator {
 
         guard
             let twd = snapshot.windDirectionTrue,
-            let heading = resolvedTrueHeadingForWind(in: snapshot),
+            let heading,
             let boatSpeed = snapshot.boatSpeed
         else {
             return nil
@@ -112,8 +133,12 @@ extension NMEASimulator {
         return normalizeAngle(toDegrees(atan2(apparentY, apparentX)))
     }
 
-    func computeAWD(from snapshot: SimulationSnapshot?) -> Double? {
-        guard let snapshot, let heading = resolvedTrueHeadingForWind(in: snapshot), let awa = computeAWA(from: snapshot) else {
+    func computeAWD(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
+        guard let snapshot else { return nil }
+        let heading = forInstrumentDisplay
+            ? resolvedHeadingForInstrumentWindAngles(in: snapshot)
+            : resolvedTrueHeadingForWind(in: snapshot)
+        guard let heading, let awa = computeAWA(from: snapshot, forInstrumentDisplay: forInstrumentDisplay) else {
             return nil
         }
         return normalizeAngle(heading + awa)
@@ -127,18 +152,34 @@ extension NMEASimulator {
         snapshot?.windDirectionTrue
     }
 
-    func computeVPWKnots(from snapshot: SimulationSnapshot?) -> Double? {
-        guard let snapshot, let tws = snapshot.windSpeedTrue, let twa = computeTWA(from: snapshot) else {
+    func computeVPWKnots(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
+        guard let snapshot, let tws = snapshot.windSpeedTrue, let twa = computeTWA(from: snapshot, forInstrumentDisplay: forInstrumentDisplay) else {
             return nil
         }
         return tws * cos(toRadians(twa))
     }
 
-    func computeVPWMS(from snapshot: SimulationSnapshot?) -> Double? {
-        guard let vpwKnots = computeVPWKnots(from: snapshot) else {
+    func computeVPWMS(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
+        guard let vpwKnots = computeVPWKnots(from: snapshot, forInstrumentDisplay: forInstrumentDisplay) else {
             return nil
         }
         return vpwKnots * 0.514444
+    }
+
+    func compassPoint(for direction: Double?) -> String? {
+        guard let direction else {
+            return nil
+        }
+
+        let normalized = normalizeAngle(direction)
+        let points = [
+            "N", "NNE", "NE", "ENE",
+            "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW",
+            "W", "WNW", "NW", "NNW"
+        ]
+        let index = Int((normalized + 11.25) / 22.5) % points.count
+        return points[index]
     }
 
     private func resolvedTrueHeadingForWind(in snapshot: SimulationSnapshot) -> Double? {
@@ -151,5 +192,18 @@ extension NMEASimulator {
         }
 
         return normalizeAngle(magneticHeading + snapshot.magneticVariation)
+    }
+
+    /// Matches `geographicBearingDegreesForMap`: bow direction shown on the chart vs. numeric heading sliders (gyro as true; magnetic uncorrected for variation; else COG).
+    private func resolvedHeadingForInstrumentWindAngles(in snapshot: SimulationSnapshot) -> Double? {
+        if let gyroHeading = snapshot.gyroHeading {
+            return normalizeAngle(gyroHeading)
+        }
+
+        if let magneticHeading = snapshot.magneticHeading {
+            return normalizeAngle(magneticHeading)
+        }
+
+        return normalizeAngle(snapshot.gpsData.courseOverGround)
     }
 }

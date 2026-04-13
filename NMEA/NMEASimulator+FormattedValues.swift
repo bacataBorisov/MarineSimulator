@@ -15,8 +15,8 @@ extension NMEASimulator {
     var formattedAWS: String { FormatKit.formattedValue(calculatedAWS, decimals: 1) }
     var formattedAWD: String { FormatKit.formattedValue(calculatedAWD, decimals: 0) }
     var formattedTWA: String { FormatKit.formattedValue(calculatedTWA, decimals: 0) }
-    var formattedTWS: String { FormatKit.formattedValue(tws.value, decimals: 1) }
-    var formattedTWD: String { FormatKit.formattedValue(twd.value, decimals: 0) }
+    var formattedTWS: String { FormatKit.formattedValue(calculatedTWS, decimals: 1) }
+    var formattedTWD: String { FormatKit.formattedValue(calculatedTWD, decimals: 0) }
     
     // Hydro
     var formattedDepth: String { FormatKit.formattedValue(depth.value, decimals: 1) }

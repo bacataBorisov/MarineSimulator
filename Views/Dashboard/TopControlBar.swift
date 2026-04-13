@@ -15,73 +15,81 @@ struct TopControlBar: View {
     @Binding var showBottom: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 18) {
-                toolbarSection("Panels") {
-                    HStack(spacing: 8) {
-                        ToggleIcon("slider.horizontal.below.rectangle", title: "Controls", isOn: $showLeft)
-                        ToggleIcon("gauge.with.needle", title: "Instruments", isOn: $showRight)
-                        ToggleIcon("terminal", title: "Console", isOn: $showBottom)
-                    }
+        HStack(alignment: .center, spacing: 18) {
+            toolbarSection("Panels") {
+                HStack(spacing: 8) {
+                    ToggleIcon("slider.horizontal.below.rectangle", title: "Controls", isOn: $showLeft)
+                    ToggleIcon("gauge.with.needle", title: "Instruments", isOn: $showRight)
+                    ToggleIcon("terminal", title: "Console", isOn: $showBottom)
                 }
+            }
 
-                toolbarSection("Scenario") {
-                    HStack(spacing: 8) {
-                        ForEach(SimulationPreset.allCases) { preset in
-                            PresetIconButton(
-                                preset: preset,
-                                isSelected: nmea.weatherSourceMode == .manual && (nmea.selectedPreset ?? .lightWeather) == preset,
-                                isDisabled: nmea.weatherSourceMode == .liveWeather
-                            ) {
-                                nmea.applyPreset(preset)
-                            }
+            toolbarSection("Scenario") {
+                HStack(spacing: 8) {
+                    ForEach(SimulationPreset.allCases) { preset in
+                        PresetIconButton(
+                            preset: preset,
+                            isSelected: nmea.weatherSourceMode == .manual && (nmea.selectedPreset ?? .lightWeather) == preset,
+                            isDisabled: nmea.weatherSourceMode == .liveWeather
+                        ) {
+                            nmea.applyPreset(preset)
                         }
                     }
                 }
+            }
 
-                toolbarSection("Status") {
-                    HStack(spacing: 8) {
-                        WeatherModeIconButton(mode: nmea.weatherSourceMode) {
-                            nmea.weatherSourceMode = nmea.weatherSourceMode == .manual ? .liveWeather : .manual
-                        }
+            toolbarSection("Status") {
+                HStack(spacing: 8) {
+                    WeatherModeIconButton(mode: nmea.weatherSourceMode) {
+                        nmea.weatherSourceMode = nmea.weatherSourceMode == .manual ? .liveWeather : .manual
+                    }
 
+                    statusBadge(
+                        title: nmea.weatherSourceMode == .liveWeather ? "Live Weather" : "Manual Weather",
+                        systemImage: nmea.weatherSourceMode == .liveWeather ? "cloud.sun.fill" : "slider.horizontal.3",
+                        tint: nmea.weatherSourceMode == .liveWeather ? .cyan.opacity(0.78) : .gray.opacity(0.7)
+                    )
+
+                    if let preset = nmea.selectedPreset {
                         statusBadge(
-                            title: nmea.weatherSourceMode == .liveWeather ? "Live Weather" : "Manual Weather",
-                            systemImage: nmea.weatherSourceMode == .liveWeather ? "cloud.sun.fill" : "slider.horizontal.3",
-                            tint: nmea.weatherSourceMode == .liveWeather ? .cyan.opacity(0.78) : .gray.opacity(0.7)
+                            title: preset.displayName,
+                            systemImage: "cloud.sun",
+                            tint: nmea.weatherSourceMode == .manual ? .blue.opacity(0.75) : .gray.opacity(0.45),
+                            isActive: nmea.weatherSourceMode == .manual
                         )
+                    }
 
-                        if let preset = nmea.selectedPreset {
-                            statusBadge(
-                                title: preset.displayName,
-                                systemImage: "cloud.sun",
-                                tint: nmea.weatherSourceMode == .manual ? .blue.opacity(0.75) : .gray.opacity(0.45),
-                                isActive: nmea.weatherSourceMode == .manual
-                            )
-                        }
+                    if nmea.sensorToggles.hasGyro {
+                        statusBadge(title: "Gyro Priority", systemImage: "location.north.line", tint: .teal.opacity(0.8))
+                    } else if nmea.sensorToggles.hasCompass {
+                        statusBadge(title: "Magnetic Fallback", systemImage: "safari", tint: .orange.opacity(0.8))
+                    }
 
-                        if nmea.sensorToggles.hasGyro {
-                            statusBadge(title: "Gyro Priority", systemImage: "location.north.line", tint: .teal.opacity(0.8))
-                        } else if nmea.sensorToggles.hasCompass {
-                            statusBadge(title: "Magnetic Fallback", systemImage: "safari", tint: .orange.opacity(0.8))
-                        }
+                    if nmea.boatSpeedMode == .estimated {
+                        statusBadge(title: nmea.boatProfile.shortName, systemImage: "sailboat", tint: .mint.opacity(0.75))
                     }
                 }
-
-                Spacer(minLength: 0)
             }
 
             if nmea.weatherSourceMode == .liveWeather {
-                LiveWeatherSnapshotStrip(
-                    status: nmea.liveWeatherStatus,
-                    snapshot: nmea.latestLiveWeather
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
+                toolbarSection("Weather") {
+                    LiveWeatherSnapshotStrip(
+                        mode: nmea.weatherSourceMode,
+                        status: nmea.liveWeatherStatus,
+                        snapshot: nmea.latestLiveWeather
+                    )
+                }
+
+                toolbarSection("Updated") {
+                    weatherUpdatedTime
+                }
             }
+
+            Spacer(minLength: 0)
         }
         .font(.callout)
         .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -110,31 +118,34 @@ struct TopControlBar: View {
             }
             .opacity(isActive ? 1 : 0.55)
     }
+
+    @ViewBuilder
+    private var weatherUpdatedTime: some View {
+        if let lastUpdated = nmea.liveWeatherStatus.lastUpdated {
+            Text(lastUpdated, style: .time)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        } else {
+            Text("--")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
+    }
 }
 
 private struct LiveWeatherSnapshotStrip: View {
+    let mode: WeatherSourceMode
     let status: LiveWeatherStatus
     let snapshot: LiveWeatherSnapshot?
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             statusSummary
 
-            if let snapshot {
-                summaryRow(for: snapshot)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Text(status.message)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            providerSummary
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .lineLimit(1)
     }
 
     private var statusSummary: some View {
@@ -150,29 +161,50 @@ private struct LiveWeatherSnapshotStrip: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func summaryRow(for snapshot: LiveWeatherSnapshot) -> some View {
-        HStack(spacing: 12) {
-            summaryValue("TWD", value: shortDegrees(snapshot.trueWindDirection))
-            summaryValue("TWS", value: shortKnots(snapshot.trueWindSpeedKnots))
-            summaryValue("Gust", value: shortKnots(snapshot.windGustSpeedKnots))
-            summaryValue("Sea", value: shortCelsius(snapshot.seaSurfaceTemperatureCelsius))
-            summaryValue("Air", value: shortCelsius(snapshot.airTemperatureCelsius))
-            summaryValue("Hum", value: shortPercent(snapshot.relativeHumidityPercent))
-            summaryValue("Press", value: shortPressure(snapshot.airPressureHectopascals))
+    private var providerSummary: some View {
+        HStack(spacing: 8) {
+            Text(sourceSummary)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.primary)
+
+            if let marineSummary {
+                Text(marineSummary)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
         .lineLimit(1)
+    }
+
+    private var sourceSummary: String {
+        switch mode {
+        case .manual:
+            return "Manual controls"
+        case .liveWeather:
+            return snapshot?.sourceName ?? "Live weather"
+        }
+    }
+
+    private var marineSummary: String? {
+        guard mode == .liveWeather else {
+            return nil
+        }
+        guard let marineSource = snapshot?.marineSourceName else {
+            return nil
+        }
+        return "Marine: \(marineSource)"
     }
 
     private var statusLabel: String {
         switch status.state {
         case .idle:
-            return "Live Weather Idle"
+            return ""
         case .fetching:
-            return "Fetching Live Weather"
+            return "Fetching"
         case .ready:
             return ""
         case .failed:
-            return "Live Weather Error"
+            return "Error"
         }
     }
 
@@ -202,44 +234,6 @@ private struct LiveWeatherSnapshotStrip: View {
         }
     }
 
-    @ViewBuilder
-    private func summaryValue(_ title: String, value: String) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-        }
-        .fixedSize()
-    }
-
-    private func shortDegrees(_ value: Double?) -> String {
-        guard let value else { return "--" }
-        return String(format: "%.0f°", value)
-    }
-
-    private func shortKnots(_ value: Double?) -> String {
-        guard let value else { return "--" }
-        return String(format: "%.1f kn", value)
-    }
-
-    private func shortCelsius(_ value: Double?) -> String {
-        guard let value else { return "--" }
-        return String(format: "%.1f °C", value)
-    }
-
-    private func shortPercent(_ value: Double?) -> String {
-        guard let value else { return "--" }
-        return String(format: "%.0f%%", value)
-    }
-}
-
-private func shortPressure(_ value: Double?) -> String {
-    guard let value else {
-        return "--"
-    }
-    return "\(Int(value.rounded())) hPa"
 }
 
 private struct WeatherModeIconButton: View {

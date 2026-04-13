@@ -32,7 +32,9 @@ struct TrailingSidePanel: View {
             RailSection("Wind") {
                 MetricGrid(columns: 2) {
                     MetricRow(label: "TWD", value: deg(nmea.calculatedTWD))
+                    MetricRow(label: "TWD Dir", value: textOrPlaceholder(nmea.calculatedTWDCompassPoint))
                     MetricRow(label: "TWS", value: kn(nmea.calculatedTWS))
+                    MetricRow(label: "Gust", value: kn(nmea.displayedWindGustSpeed))
                     MetricRow(label: "AWA", value: deg(nmea.calculatedAWA))
                     MetricRow(label: "AWS", value: kn(nmea.calculatedAWS))
                     MetricRow(label: "TWA rel", value: deg(nmea.calculatedTWA))
@@ -57,6 +59,16 @@ struct TrailingSidePanel: View {
                 MetricGrid(columns: 2) {
                     MetricRow(label: "Depth", value: meters(nmea.depth.value))
                     MetricRow(label: "Sea Temp", value: degC(nmea.displayedSeaTemperature))
+                }
+            }
+
+            RailDivider()
+
+            RailSection("Atmosphere") {
+                MetricGrid(columns: 2) {
+                    MetricRow(label: "Air Temp", value: degC(nmea.displayedAirTemperature))
+                    MetricRow(label: "Humidity", value: percent(nmea.displayedRelativeHumidity))
+                    MetricRow(label: "Barometer", value: hectopascals(nmea.displayedAirPressure))
                 }
             }
 
@@ -266,10 +278,24 @@ private struct SentencePill: View {
 
 @inline(__always) func degC(_ v: Double?) -> String {
     guard let v else { return "--" }
-    return String(format: "%.1f ℃", v)
+    return String(format: "%.1f °C", v)
 }
 
 @inline(__always) func coord(_ v: Double?) -> String {
     guard let v else { return "--" }
     return String(format: "%.5f", v)
+}
+
+@inline(__always) func percent(_ v: Double?) -> String {
+    guard let v else { return "--" }
+    return String(format: "%.0f %%", v)
+}
+
+@inline(__always) func hectopascals(_ v: Double?) -> String {
+    guard let v else { return "--" }
+    return String(format: "%.1f hPa", v)
+}
+
+@inline(__always) func textOrPlaceholder(_ value: String?) -> String {
+    value ?? "--"
 }

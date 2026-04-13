@@ -4,28 +4,31 @@ Profile: **normal**
 
 ## Scan
 
-- id: 2
+- id: 4
 - type: incremental
 
 ## Recent changes
 
 - `Docs/CompletedTasks.md` — modified
 - `Docs/CurrentTasks.md` — modified
-- `Docs/InstructionManual.md` — modified
-- `Docs/ProjectOverview.md` — modified
+- `Docs/FutureTasks.md` — modified
 - `MarineSimulatorTests/NMEASimulatorEngineTests.swift` — modified
-- `MarineSimulatorTests/OpenMeteoWeatherServiceTests.swift` — new
-- `Model/LiveWeather.swift` — new
+- `Model/AISSettings.swift` — deleted
+- `Model/AISTarget.swift` — deleted
+- `Model/BoatProfile.swift` — modified
+- `Model/LiveWeather.swift` — modified
+- `Model/SensorToggleStates.swift` — modified
 - `Model/SimulatorSettings.swift` — modified
+- `NMEA/NMEASimulator+FormattedValues.swift` — modified
 - `NMEA/NMEASimulator+WindCalculations.swift` — modified
 - `NMEA/NMEASimulator.swift` — modified
-- `Networking/WeatherService.swift` — new
+- `Networking/AISService.swift` — deleted
+- `Utilities/MathUtilities.swift` — modified
+- `Utilities/ViewKit.swift` — modified
 - `Views/ConfigurationView.swift` — modified
+- `Views/Dashboard/BoatMapPreview 2.swift` — deleted
 - `Views/Dashboard/BoatMapPreview.swift` — modified
 - `Views/Dashboard/ControlCategory.swift` — modified
-- `Views/Dashboard/DashboardView.swift` — modified
-- `Views/Dashboard/TopControlBar.swift` — modified
-- `Views/Dashboard/TrailingSidePanel.swift` — modified
 
 ## Sample chunks
 
@@ -74,7 +77,7 @@ Profile: **normal**
   import SwiftUI
 
 ### `Docs/CompletedTasks.md`
-- lines 1–56 `09431211884b…`
+- lines 1–64 `ebe632593643…`
   # Completed Tasks
   
   This file tracks finished work that should not remain in the active queue.
@@ -85,7 +88,7 @@ Profile: **normal**
   - [x] Introduce a coherent simulation tick that produces one snapshot per cycle.
 
 ### `Docs/CurrentTasks.md`
-- lines 1–51 `9e0941132af0…`
+- lines 1–58 `546336ac54f9…`
   # Current Tasks
   
   These are the tasks currently in progress or next in line for the active work stream.
@@ -96,7 +99,7 @@ Profile: **normal**
   - Use this file (`Docs/CurrentTasks.md`) for product/project task tracking and `.agent-os/context/` for editable session workflow and memory.
 
 ### `Docs/FutureTasks.md`
-- lines 1–35 `8c4b1cf1d4d3…`
+- lines 1–38 `ccc40191968e…`
   # Future Tasks
   
   This is the task pool for work that is planned but not currently active.
@@ -189,15 +192,15 @@ Profile: **normal**
       @Test
       func checksumMatchesKnownSentence() {
           let simulator = NMEASimulator(userDefaults: isolatedDefaults())
-- lines 101–200 `bd675a119e1e…`
+- lines 101–200 `820ba3b46b58…`
   },
             "sensorToggles": {
               "hasAnemometer": true,
               "hasCompass": true,
               "hasGyro": true,
               "hasGPS": true,
-              "hasAIS": false,
               "hasEchoSounder": true,
+              "hasSpeedLog": true,
 
 ### `MarineSimulatorTests/OpenMeteoWeatherServiceTests.swift`
 - lines 1–100 `4c39f5aa782a…`
@@ -241,6 +244,26 @@ Profile: **normal**
   
   import XCTest
 
+### `Model/BoatProfile.swift`
+- lines 1–100 `218bf71d1776…`
+  import Foundation
+  
+  enum BoatSpeedMode: String, Codable, CaseIterable, Identifiable {
+      case manual
+      case estimated
+  
+      var id: String { rawValue }
+  
+- lines 101–175 `2f9a80016801…`
+  windSpeeds: [6, 8, 10, 12, 16, 20],
+                  angles: [35, 45, 60, 75, 90, 110, 135, 150, 165],
+                  speeds: [
+                      [3.7, 4.4, 4.9, 5.2, 5.3, 5.1, 4.8, 4.3, 3.8],
+                      [4.4, 5.1, 5.8, 6.2, 6.3, 6.1, 5.8, 5.2, 4.6],
+                      [4.8, 5.6, 6.4, 6.9, 7.1, 7.0, 6.7, 6.0, 5.1],
+                      [5.1, 6.0, 6.8, 7.4, 7.6, 7.6, 7.2, 6.5, 5.5],
+                      [5.4, 6.3, 7.3, 8.0, 8.3, 8.4, 8.0, 7.1, 6.0],
+
 ### `Model/GPSData.swift`
 - lines 1–40 `baf26d012a3d…`
   //
@@ -253,7 +276,7 @@ Profile: **normal**
   
 
 ### `Model/LiveWeather.swift`
-- lines 1–60 `9c82c898cd5f…`
+- lines 1–61 `fc368d54d967…`
   import Foundation
   
   enum WeatherSourceMode: String, Codable, CaseIterable, Identifiable {
@@ -273,14 +296,3 @@ Profile: **normal**
   
       var id: String { rawValue }
   }
-
-### `Model/SensorToggleStates.swift`
-- lines 1–44 `98936ccd5aca…`
-  //
-  //  SensorToggles.swift
-  //  NMEASimulator
-  //
-  //  Created by Vasil Borisov on 24.06.25.
-  //
-  
-  import Foundation

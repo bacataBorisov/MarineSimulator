@@ -17,7 +17,8 @@ enum WeatherSourceMode: String, Codable, CaseIterable, Identifiable {
 }
 
 struct LiveWeatherSettings: Codable, Equatable {
-    var refreshIntervalMinutes: Int = 15
+    /// Default 5 min: well within typical free-tier fair use (e.g. Open-Meteo, MET Norway) for one client.
+    var refreshIntervalMinutes: Int = 5
     var minimumRefreshDistanceNM: Double = 5
 
     var refreshInterval: TimeInterval {

@@ -98,6 +98,15 @@ class NMEASimulator {
     var seaTemp = SimulatedValue(type: .seaTemp) {
         didSet { persistSettingsIfNeeded() }
     }
+    var airTemp = SimulatedValue(type: .airTemp) {
+        didSet { persistSettingsIfNeeded() }
+    }
+    var humidity = SimulatedValue(type: .humidity) {
+        didSet { persistSettingsIfNeeded() }
+    }
+    var barometer = SimulatedValue(type: .barometer) {
+        didSet { persistSettingsIfNeeded() }
+    }
 
     // MARK: - Compass
 
@@ -122,6 +131,12 @@ class NMEASimulator {
     var selectedPreset: SimulationPreset? {
         didSet { persistSettingsIfNeeded() }
     }
+    var boatProfile: BoatProfile = .beneteauFirst407 {
+        didSet { persistSettingsIfNeeded() }
+    }
+    var boatSpeedMode: BoatSpeedMode = .manual {
+        didSet { persistSettingsIfNeeded() }
+    }
     var weatherSourceMode: WeatherSourceMode = .manual {
         didSet {
             guard !isRestoringSettings else { return }
@@ -130,12 +145,16 @@ class NMEASimulator {
                 liveWeatherTask?.cancel()
                 liveWeatherTask = nil
                 liveWeatherStatus = .idle
+                resetLiveWeatherWindNoiseState()
             } else {
                 selectedPreset = nil
                 latestLiveWeather = nil
                 twd.value = nil
                 tws.value = nil
                 seaTemp.value = nil
+                airTemp.value = nil
+                humidity.value = nil
+                barometer.value = nil
                 refreshLiveWeather(force: true)
             }
             persistSettingsIfNeeded()
@@ -165,6 +184,18 @@ class NMEASimulator {
 
     var liveWeatherControlsSeaTemperature: Bool {
         isLiveWeatherActive && sensorToggles.hasWaterTempSensor
+    }
+
+    var liveWeatherControlsAirTemperature: Bool {
+        isLiveWeatherActive && sensorToggles.hasAirTempSensor
+    }
+
+    var liveWeatherControlsHumidity: Bool {
+        isLiveWeatherActive && sensorToggles.hasHumidtySensor
+    }
+
+    var liveWeatherControlsBarometer: Bool {
+        isLiveWeatherActive && sensorToggles.hasBarometer
     }
 
     // MARK: - Dashboard Indicator
@@ -198,6 +229,11 @@ class NMEASimulator {
     private var isSynchronizingEndpoints = false
     private var pendingTransmissions: [PendingTransmission] = []
     @ObservationIgnored private var liveWeatherTask: Task<Bool, Never>?
+
+    /// Mean-reverting offsets around the last live-weather snapshot (OU-style; small, smooth gusts).
+    private var liveWeatherWindSpeedOffsetKt: Double = 0
+    private var liveWeatherWindDirectionOffsetDeg: Double = 0
+    private var liveWeatherNoiseBaselineFetchDate: Date?
 
     init(
         userDefaults: UserDefaults = .standard,
@@ -245,6 +281,9 @@ class NMEASimulator {
             speed = configuredValue(type: .speedLog, center: 4.5, offset: 0.6)
             depth = configuredValue(type: .depth, center: 12, offset: 0.8)
             seaTemp = configuredValue(type: .seaTemp, center: 22, offset: 0.4)
+            airTemp = configuredValue(type: .airTemp, center: 24, offset: 1.2)
+            humidity = configuredValue(type: .humidity, center: 58, offset: 6)
+            barometer = configuredValue(type: .barometer, center: 1017, offset: 2)
             heading = configuredValue(type: .magneticCompass, center: 85, offset: 4)
             gyroHeading = configuredValue(type: .gyroCompass, center: 85, offset: 2)
             gpsData.speedOverGround = 4.5
@@ -256,6 +295,9 @@ class NMEASimulator {
             speed = configuredValue(type: .speedLog, center: 6.8, offset: 1.2)
             depth = configuredValue(type: .depth, center: 18, offset: 1.2)
             seaTemp = configuredValue(type: .seaTemp, center: 19, offset: 0.8)
+            airTemp = configuredValue(type: .airTemp, center: 21, offset: 2)
+            humidity = configuredValue(type: .humidity, center: 68, offset: 8)
+            barometer = configuredValue(type: .barometer, center: 1013, offset: 4)
             heading = configuredValue(type: .magneticCompass, center: 110, offset: 8)
             gyroHeading = configuredValue(type: .gyroCompass, center: 112, offset: 4)
             gpsData.speedOverGround = 7.1
@@ -267,6 +309,9 @@ class NMEASimulator {
             speed = configuredValue(type: .speedLog, center: 10.5, offset: 2.6)
             depth = configuredValue(type: .depth, center: 35, offset: 3)
             seaTemp = configuredValue(type: .seaTemp, center: 14, offset: 1.5)
+            airTemp = configuredValue(type: .airTemp, center: 11, offset: 3)
+            humidity = configuredValue(type: .humidity, center: 84, offset: 10)
+            barometer = configuredValue(type: .barometer, center: 995, offset: 8)
             heading = configuredValue(type: .magneticCompass, center: 200, offset: 20)
             gyroHeading = configuredValue(type: .gyroCompass, center: 205, offset: 12)
             gpsData.speedOverGround = 12
@@ -457,6 +502,10 @@ class NMEASimulator {
                 longitude: gpsData.longitude,
                 date: timestamp
             )
+            guard !Task.isCancelled, weatherSourceMode == .liveWeather else {
+                liveWeatherStatus = .idle
+                return false
+            }
             latestLiveWeather = snapshot
             applyResolvedLiveWeatherValues()
             liveWeatherStatus = LiveWeatherStatus(
@@ -466,6 +515,10 @@ class NMEASimulator {
             )
             return true
         } catch {
+            guard !Task.isCancelled, weatherSourceMode == .liveWeather else {
+                liveWeatherStatus = .idle
+                return false
+            }
             liveWeatherStatus = LiveWeatherStatus(
                 state: .failed,
                 message: latestLiveWeather == nil
@@ -493,22 +546,19 @@ class NMEASimulator {
 
         if weatherSourceMode == .liveWeather {
             if let liveWeather = activeLiveWeather {
-                twd.value = sensorToggles.hasAnemometer
-                    ? generateLiveWeatherValue(
-                        base: liveWeather.trueWindDirection,
-                        jitter: 6,
-                        range: SimulatedValueType.windDirection.defaultRange,
-                        wraps: true
-                    )
-                    : nil
-                tws.value = sensorToggles.hasAnemometer
-                    ? generateLiveWeatherValue(
-                        base: liveWeather.trueWindSpeedKnots,
-                        jitter: 0.9,
-                        range: SimulatedValueType.windSpeed.defaultRange,
-                        wraps: false
-                    )
-                    : nil
+                syncLiveWeatherWindNoiseBaselineIfNeeded(fetchedAt: liveWeather.fetchedAt)
+                evolveLiveWeatherWindNoise(deltaTime: deltaTime)
+
+                if sensorToggles.hasAnemometer, let baseDir = liveWeather.trueWindDirection {
+                    twd.value = normalizeAngle(baseDir + liveWeatherWindDirectionOffsetDeg)
+                } else {
+                    twd.value = nil
+                }
+                if sensorToggles.hasAnemometer, let baseKt = liveWeather.trueWindSpeedKnots {
+                    tws.value = (baseKt + liveWeatherWindSpeedOffsetKt).clamped(to: SimulatedValueType.windSpeed.defaultRange)
+                } else {
+                    tws.value = nil
+                }
                 seaTemp.value = sensorToggles.hasWaterTempSensor
                     ? generateLiveWeatherValue(
                         base: liveWeather.seaSurfaceTemperatureCelsius,
@@ -517,24 +567,60 @@ class NMEASimulator {
                         wraps: false
                     )
                     : nil
+                airTemp.value = sensorToggles.hasAirTempSensor
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.airTemperatureCelsius,
+                        jitter: 0.4,
+                        range: SimulatedValueType.airTemp.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+                humidity.value = sensorToggles.hasHumidtySensor
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.relativeHumidityPercent,
+                        jitter: 1.8,
+                        range: SimulatedValueType.humidity.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+                barometer.value = sensorToggles.hasBarometer
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.airPressureHectopascals,
+                        jitter: 0.8,
+                        range: SimulatedValueType.barometer.defaultRange,
+                        wraps: false
+                    )
+                    : nil
             } else {
                 twd.value = nil
                 tws.value = nil
                 seaTemp.value = nil
+                airTemp.value = nil
+                humidity.value = nil
+                barometer.value = nil
             }
         } else {
             twd.value = twd.generateRandomValue(shouldGenerate: sensorToggles.hasAnemometer)
             tws.value = tws.generateRandomValue(shouldGenerate: sensorToggles.hasAnemometer)
             seaTemp.value = seaTemp.generateRandomValue(shouldGenerate: sensorToggles.hasWaterTempSensor)
+            airTemp.value = airTemp.generateRandomValue(shouldGenerate: sensorToggles.hasAirTempSensor)
+            humidity.value = humidity.generateRandomValue(shouldGenerate: sensorToggles.hasHumidtySensor)
+            barometer.value = barometer.generateRandomValue(shouldGenerate: sensorToggles.hasBarometer)
         }
 
         heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
         gyroHeading.value = gyroHeading.generateRandomValue(shouldGenerate: sensorToggles.hasGyro)
         depth.value = depth.generateRandomValue(shouldGenerate: sensorToggles.hasEchoSounder)
-        speed.value = speed.generateRandomValue(shouldGenerate: sensorToggles.hasSpeedLog)
 
         let magneticVariation = simulatedMagneticVariation(for: gpsData, at: timestamp)
         let boatTrueHeading = resolvedTrueHeading(magneticHeading: heading.value, gyroHeading: gyroHeading.value, variation: magneticVariation) ?? gpsData.courseOverGround
+
+        if boatSpeedMode == .estimated {
+            speed.value = estimatedBoatSpeed(trueHeading: boatTrueHeading)
+        } else {
+            speed.value = speed.generateRandomValue(shouldGenerate: sensorToggles.hasSpeedLog)
+        }
+
         let waterSpeed = speed.value ?? gpsData.speedOverGround
         let movement = simulatedMovement(waterSpeed: waterSpeed, trueHeading: boatTrueHeading, at: timestamp, gpsData: gpsData)
 
@@ -562,6 +648,9 @@ class NMEASimulator {
             boatSpeed: speed.value,
             depth: depth.value,
             seaTemperature: seaTemp.value,
+            airTemperature: airTemp.value,
+            relativeHumidity: humidity.value,
+            airPressure: barometer.value,
             gpsData: gpsData,
             gpsSignal: gpsSignal,
             turnRate: turnRate,
@@ -913,12 +1002,17 @@ class NMEASimulator {
             depth: depth,
             depthOffsetMeters: depthOffsetMeters,
             seaTemp: seaTemp,
+            airTemp: airTemp,
+            humidity: humidity,
+            barometer: barometer,
             heading: heading,
             gyroHeading: gyroHeading,
             gpsData: gpsData,
             faultInjection: faultInjection,
             mwvReferenceMode: mwvReferenceMode,
             selectedPreset: selectedPreset,
+            boatProfile: boatProfile,
+            boatSpeedMode: boatSpeedMode,
             weatherSourceMode: weatherSourceMode,
             liveWeatherSettings: liveWeatherSettings,
             latestLiveWeather: latestLiveWeather
@@ -947,12 +1041,17 @@ class NMEASimulator {
         depth = settings.depth
         depthOffsetMeters = settings.depthOffsetMeters
         seaTemp = settings.seaTemp
+        airTemp = settings.airTemp
+        humidity = settings.humidity
+        barometer = settings.barometer
         heading = settings.heading
         gyroHeading = settings.gyroHeading
         gpsData = settings.gpsData
         faultInjection = settings.faultInjection
         mwvReferenceMode = settings.mwvReferenceMode
         selectedPreset = settings.selectedPreset
+        boatProfile = settings.boatProfile
+        boatSpeedMode = settings.boatSpeedMode
         weatherSourceMode = settings.weatherSourceMode
         liveWeatherSettings = settings.liveWeatherSettings
         latestLiveWeather = settings.latestLiveWeather
@@ -1060,6 +1159,39 @@ class NMEASimulator {
         return distanceNM >= liveWeatherSettings.minimumRefreshDistanceNM
     }
 
+    private func resetLiveWeatherWindNoiseState() {
+        liveWeatherWindSpeedOffsetKt = 0
+        liveWeatherWindDirectionOffsetDeg = 0
+        liveWeatherNoiseBaselineFetchDate = nil
+    }
+
+    private func syncLiveWeatherWindNoiseBaselineIfNeeded(fetchedAt: Date) {
+        if liveWeatherNoiseBaselineFetchDate != fetchedAt {
+            liveWeatherNoiseBaselineFetchDate = fetchedAt
+            liveWeatherWindSpeedOffsetKt = 0
+            liveWeatherWindDirectionOffsetDeg = 0
+        }
+    }
+
+    /// Smooth, mean-reverting variation around the forecast (not i.i.d. each tick).
+    private func evolveLiveWeatherWindNoise(deltaTime: TimeInterval) {
+        let dt = min(max(deltaTime, 0), 4)
+        guard dt > 0 else { return }
+
+        let zSpeed = unitGaussianRandom()
+        let zDir = unitGaussianRandom()
+
+        let thetaSpeed = 0.07
+        let sigmaSpeedKt = 0.017
+        liveWeatherWindSpeedOffsetKt += -thetaSpeed * liveWeatherWindSpeedOffsetKt * dt + sigmaSpeedKt * sqrt(dt) * zSpeed
+        liveWeatherWindSpeedOffsetKt = liveWeatherWindSpeedOffsetKt.clamped(to: -1.1...1.1)
+
+        let thetaDir = 0.06
+        let sigmaDirDeg = 0.22
+        liveWeatherWindDirectionOffsetDeg += -thetaDir * liveWeatherWindDirectionOffsetDeg * dt + sigmaDirDeg * sqrt(dt) * zDir
+        liveWeatherWindDirectionOffsetDeg = liveWeatherWindDirectionOffsetDeg.clamped(to: -10...10)
+    }
+
     private func generateLiveWeatherValue(
         base: Double?,
         jitter: Double,
@@ -1091,6 +1223,15 @@ class NMEASimulator {
             : nil
         seaTemp.value = sensorToggles.hasWaterTempSensor
             ? liveWeather.seaSurfaceTemperatureCelsius
+            : nil
+        airTemp.value = sensorToggles.hasAirTempSensor
+            ? liveWeather.airTemperatureCelsius
+            : nil
+        humidity.value = sensorToggles.hasHumidtySensor
+            ? liveWeather.relativeHumidityPercent
+            : nil
+        barometer.value = sensorToggles.hasBarometer
+            ? liveWeather.airPressureHectopascals
             : nil
     }
 
@@ -1349,11 +1490,52 @@ class NMEASimulator {
         let startIndex = sentence.index(after: sentence.startIndex)
         return String(sentence[startIndex..<starIndex])
     }
+
+    private func estimatedBoatSpeed(trueHeading: Double) -> Double? {
+        guard sensorToggles.hasSpeedLog, let trueWindSpeed = tws.value else {
+            return nil
+        }
+
+        let trueWindDirection = twd.value ?? gpsData.courseOverGround
+        let trueWindAngle = abs(calculateShortestRotation(from: trueHeading, to: trueWindDirection))
+        let baseSpeed = boatProfile.estimatedBoatSpeed(
+            trueWindSpeedKnots: trueWindSpeed,
+            trueWindAngleDegrees: trueWindAngle
+        )
+
+        let seaStatePenalty = weatherSourceMode == .liveWeather ? 0.96 : 1.0
+        let variationPenalty = max(0.88, 1.0 - (speed.offset / 100))
+        return (baseSpeed * seaStatePenalty * variationPenalty).clamped(to: SimulatedValueType.speedLog.defaultRange)
+    }
+
+    private func mapDashboardBearingBeforeFirstSnapshot() -> Double {
+        if sensorToggles.hasGyro, let g = gyroHeading.value {
+            return normalizeAngle(g)
+        }
+        if sensorToggles.hasCompass, let m = heading.value {
+            return normalizeAngle(m)
+        }
+        return normalizeAngle(gpsData.courseOverGround)
+    }
 }
 
 // MARK: - Interlock Helpers
 
 extension NMEASimulator {
+
+    /// Clockwise degrees for map arrow and heading leg: matches the dashboard heading sliders — true heading from gyro when present, otherwise **magnetic** heading without applying simulated chart variation (NMEA still uses variation for true-heading sentences).
+    var geographicBearingDegreesForMap: Double {
+        guard let snapshot = latestSnapshot else {
+            return mapDashboardBearingBeforeFirstSnapshot()
+        }
+        if let gyroHeading = snapshot.gyroHeading {
+            return normalizeAngle(gyroHeading)
+        }
+        if let magneticHeading = snapshot.magneticHeading {
+            return normalizeAngle(magneticHeading)
+        }
+        return normalizeAngle(snapshot.gpsData.courseOverGround)
+    }
 
     var hasAnemometer: Bool {
         sensorToggles.hasAnemometer

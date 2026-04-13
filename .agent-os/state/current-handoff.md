@@ -1,12 +1,12 @@
 # Current handoff
 
-_Updated: 2026-04-12 00:58 UTC_
+_Updated: 2026-04-13 01:11 UTC_
 
 ## Current work
 
 ## Repo state
 
-- Last scan id: 2
+- Last scan id: 4
 
 ## Relevant files (indexed, latest scan)
 
@@ -26,6 +26,7 @@ _Updated: 2026-04-12 00:58 UTC_
 - `MarineSimulatorTests/OpenMeteoWeatherServiceTests.swift`
 - `MarineSimulatorUITests/MarineSimulatorUITests.swift`
 - `MarineSimulatorUITests/MarineSimulatorUITestsLaunchTests.swift`
+- `Model/BoatProfile.swift`
 - `Model/GPSData.swift`
 - `Model/LiveWeather.swift`
 - `Model/OutputEndpoint.swift`
@@ -40,6 +41,7 @@ _Updated: 2026-04-12 00:58 UTC_
 - `NMEA/NMEASimulator.swift`
 - `NMEASimulator/Assets.xcassets/AccentColor.colorset/Contents.json`
 - `NMEASimulator/Assets.xcassets/AppIcon.appiconset/Contents.json`
+- `NMEASimulator/Assets.xcassets/BoatMarker.imageset/Contents.json`
 - `NMEASimulator/Assets.xcassets/Contents.json`
 - `NMEASimulator/Assets.xcassets/dial_gauge_end.colorset/Contents.json`
 - `NMEASimulator/Assets.xcassets/dial_gauge_start.colorset/Contents.json`
@@ -48,8 +50,6 @@ _Updated: 2026-04-12 00:58 UTC_
 - `NMEASimulator/Preview Content/PreviewData.swift`
 - `Networking/TCPClient.swift`
 - `Networking/UDPClient.swift`
-- `Networking/WeatherService.swift`
-- `README.md`
 
 ## Relevant docs
 

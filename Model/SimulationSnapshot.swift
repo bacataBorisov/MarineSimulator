@@ -32,6 +32,9 @@ struct SimulationSnapshot {
     let boatSpeed: Double?
     let depth: Double?
     let seaTemperature: Double?
+    let airTemperature: Double?
+    let relativeHumidity: Double?
+    let airPressure: Double?
     let gpsData: GPSData
     let gpsSignal: GPSSignalSnapshot
     let turnRate: Double

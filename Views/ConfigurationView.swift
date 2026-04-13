@@ -96,7 +96,7 @@ struct ConfigurationView: View {
                                 Grid(horizontalSpacing: 16, verticalSpacing: UIConstants.spacing) {
                                     GridRow {
                                         Text("Refresh Every")
-                                        Stepper(value: $nmeaManager.liveWeatherSettings.refreshIntervalMinutes, in: 5...60, step: 5) {
+                                        Stepper(value: $nmeaManager.liveWeatherSettings.refreshIntervalMinutes, in: 1...60, step: 1) {
                                             Text("\(nmeaManager.liveWeatherSettings.refreshIntervalMinutes) min")
                                                 .monospacedDigit()
                                         }
@@ -248,8 +248,7 @@ struct ConfigurationView: View {
                             title: "Positioning",
                             icon: "location",
                             toggles: [
-                                ("GPS", $nmeaManager.sensorToggles.hasGPS),
-                                ("AIS", $nmeaManager.sensorToggles.hasAIS)
+                                ("GPS", $nmeaManager.sensorToggles.hasGPS)
                             ]
                         )
                     }

@@ -46,6 +46,18 @@ This file tracks finished work that should not remain in the active queue.
 - [x] Move the dashboard map action buttons into a floating toolbar that stays visible above the console drawer and side inspector, and refresh the control styling to fit the newer dashboard chrome.
 - [x] Complete the focused manual interoperability pass against the external reader app with the current checklist and confirm the present setup is acceptable for continued feature work.
 - [x] Add a first live weather mode that uses the boat's GPS position to fetch wind and sea-surface temperature from Open-Meteo while preserving manual mode as the default fallback.
+- [x] Promote MET Norway to the primary live-weather source for atmospheric data, retain Open-Meteo as marine sea-temperature enrichment, and add global fallback behavior.
+- [x] Expand live weather to include gusts, air temperature, humidity, and barometric pressure in simulator state and dashboard UI.
+- [x] Rework the dashboard top bar into clearer sections and simplify live-weather status presentation.
+- [x] Replace the old custom map toolbar with native-style map controls and stabilize the map/control layout.
+- [x] Add selectable boat profiles with a first wind-driven boat-speed estimation mode.
+- [x] Add a nautical chart seamark overlay to the dashboard map.
+- [x] Replace the Beneteau First 40.7 boat-speed polar with the Farr Yacht Design VPP “Best Boatspeeds” grid and scale speed down when true wind angle is inside the polar’s minimum tabulated angle (pinching / no-go behavior).
+- [x] Smooth live-weather wind output with mean-reverting noise, align dashboard wind with the same TWD/TWS as the simulated sensors, default live refresh to five minutes, and allow one-minute refresh steps within free-tier–friendly use.
+- [x] Align dashboard relative wind (TWA/AWA/AWD/VPW) with the same heading basis as the map heading leg; keep NMEA true-wind math on true heading for external receivers.
+- [x] Wrap magnetic heading, gyro heading, and true wind direction setpoints through 0°/360° when nudging or editing setpoints.
+- [x] Remove experimental AIS scaffolding; document AIS as far-future only in task docs.
+- [x] Add a dedicated bitmap boat marker asset for the dashboard map (replacing ad hoc drawing where applicable).
 
 ## Verification
 
@@ -54,3 +66,6 @@ This file tracks finished work that should not remain in the active queue.
 - [x] Source diagnostics checked for the map-toolbar dashboard update.
 - [x] Full project build completed successfully after the map-toolbar dashboard update.
 - [x] Full project build and engine test suite completed successfully after live-weather integration.
+- [x] Full project build and targeted live-weather tests completed successfully after MET Norway, dashboard, and environmental-data updates.
+- [x] Full project build and targeted regression tests completed successfully after boat-profile and nautical-overlay integration.
+- [x] Full project build completed successfully after polar realism, live-weather UX, wind-display alignment, heading wrap, and map marker updates.

@@ -104,7 +104,6 @@ struct NMEASimulatorEngineTests {
             "hasCompass": true,
             "hasGyro": true,
             "hasGPS": true,
-            "hasAIS": false,
             "hasEchoSounder": true,
             "hasSpeedLog": true,
             "hasWaterTempSensor": true,
@@ -318,7 +317,6 @@ struct NMEASimulatorEngineTests {
             "hasCompass": true,
             "hasGyro": true,
             "hasGPS": true,
-            "hasAIS": false,
             "hasEchoSounder": true,
             "hasSpeedLog": true,
             "hasWaterTempSensor": true,
@@ -439,13 +437,13 @@ struct NMEASimulatorEngineTests {
         _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
         simulator.sendAllSelectedNMEA()
 
-        #expect(abs((simulator.latestSnapshot?.windDirectionTrue ?? 0) - 145) <= 6.1)
-        #expect(abs((simulator.latestSnapshot?.windSpeedTrue ?? 0) - 18) <= 0.91)
+        #expect(simulator.latestSnapshot?.windDirectionTrue == 145)
+        #expect(simulator.latestSnapshot?.windSpeedTrue == 18)
         #expect(abs((simulator.latestSnapshot?.seaTemperature ?? 0) - 16.4) <= 0.31)
     }
 
     @Test
-    func liveWeatherAddsSmallVariationBetweenFetches() async {
+    func liveWeatherWindHoldsSnapshotBetweenSimulationCycles() async {
         let simulator = NMEASimulator(
             userDefaults: isolatedDefaults(),
             weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
@@ -465,12 +463,16 @@ struct NMEASimulatorEngineTests {
         #expect(firstSnapshot?.windSpeedTrue != nil)
         #expect(firstSnapshot?.seaTemperature != nil)
 
-        #expect(abs((firstSnapshot?.windDirectionTrue ?? 0) - 145) <= 6.1)
-        #expect(abs((firstSnapshot?.windSpeedTrue ?? 0) - 18) <= 0.91)
+        #expect(firstSnapshot?.windDirectionTrue == 145)
+        #expect(firstSnapshot?.windSpeedTrue == 18)
         #expect(abs((firstSnapshot?.seaTemperature ?? 0) - 16.4) <= 0.31)
 
-        #expect(abs((secondSnapshot?.windDirectionTrue ?? 0) - 145) <= 6.1)
-        #expect(abs((secondSnapshot?.windSpeedTrue ?? 0) - 18) <= 0.91)
+        let dirDelta = abs(calculateShortestRotation(
+            from: firstSnapshot?.windDirectionTrue ?? 0,
+            to: secondSnapshot?.windDirectionTrue ?? 0
+        ))
+        #expect(dirDelta < 1.5)
+        #expect(abs((secondSnapshot?.windSpeedTrue ?? 0) - (firstSnapshot?.windSpeedTrue ?? 0)) < 0.2)
         #expect(abs((secondSnapshot?.seaTemperature ?? 0) - 16.4) <= 0.31)
     }
 
@@ -494,12 +496,18 @@ struct NMEASimulatorEngineTests {
         #expect(simulator.twd.value == nil)
         #expect(simulator.tws.value == nil)
         #expect(simulator.seaTemp.value == nil)
+        #expect(simulator.airTemp.value == nil)
+        #expect(simulator.humidity.value == nil)
+        #expect(simulator.barometer.value == nil)
 
         _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
 
         #expect(simulator.latestLiveWeather?.trueWindDirection == 145)
         #expect(simulator.latestLiveWeather?.trueWindSpeedKnots == 18)
         #expect(simulator.latestLiveWeather?.seaSurfaceTemperatureCelsius == 16.4)
+        #expect(simulator.latestLiveWeather?.airTemperatureCelsius == 21.3)
+        #expect(simulator.latestLiveWeather?.relativeHumidityPercent == 68)
+        #expect(simulator.latestLiveWeather?.airPressureHectopascals == 1014.2)
     }
 
     @Test
@@ -530,6 +538,9 @@ struct NMEASimulatorEngineTests {
             weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
         )
         simulator.outputEndpoints[0].isEnabled = false
+        simulator.sensorToggles.hasAirTempSensor = true
+        simulator.sensorToggles.hasHumidtySensor = true
+        simulator.sensorToggles.hasBarometer = true
         simulator.weatherSourceMode = .liveWeather
         _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
 
@@ -548,6 +559,9 @@ struct NMEASimulatorEngineTests {
             weatherService: StubWeatherService(snapshot: makeLiveWeatherSnapshot())
         )
         simulator.outputEndpoints[0].isEnabled = false
+        simulator.sensorToggles.hasAirTempSensor = true
+        simulator.sensorToggles.hasHumidtySensor = true
+        simulator.sensorToggles.hasBarometer = true
         simulator.weatherSourceMode = .liveWeather
         _ = await simulator.refreshLiveWeatherNow(force: true, at: Date(timeIntervalSince1970: 1_700_000_000))
 
@@ -558,7 +572,11 @@ struct NMEASimulatorEngineTests {
         #expect(simulator.twd.value == 145)
         #expect(simulator.tws.value == 18)
         #expect(simulator.seaTemp.value == 16.4)
+        #expect(simulator.airTemp.value == 21.3)
+        #expect(simulator.humidity.value == 68)
+        #expect(simulator.barometer.value == 1014.2)
         #expect(simulator.calculatedTWD == 145)
+        #expect(simulator.calculatedTWDCompassPoint == "SE")
     }
 
     @Test
@@ -581,6 +599,41 @@ struct NMEASimulatorEngineTests {
         #expect(simulator.liveWeatherStatus.state == .failed)
         #expect(simulator.liveWeatherStatus.lastUpdated == simulator.latestLiveWeather?.fetchedAt)
         #expect(simulator.liveWeatherStatus.message.contains("Using last good weather"))
+    }
+
+    @Test
+    func estimatedBoatSpeedUsesSelectedBoatProfile() {
+        let simulator = NMEASimulator(userDefaults: isolatedDefaults())
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.isTimerSelected = false
+        simulator.boatSpeedMode = .estimated
+        simulator.boatProfile = .beneteauFirst407
+        simulator.sensorToggles.hasAnemometer = true
+        simulator.sensorToggles.hasSpeedLog = true
+        simulator.sensorToggles.hasGyro = true
+
+        // TWA 45° so we exercise full polar (pinching factor only applies below the grid’s minimum angle).
+        simulator.twd = SimulatedValue(type: .windDirection, center: 135, offset: 0, value: 135)
+        simulator.tws = SimulatedValue(type: .windSpeed, center: 12, offset: 0, value: 12)
+        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 90, offset: 0, value: 90)
+        simulator.speed = SimulatedValue(type: .speedLog, center: 0, offset: 0, value: 0)
+
+        simulator.startSimulation()
+
+        #expect(simulator.speed.value != nil)
+        // First 40.7 polar: TWS 12 kt, TWA 45° → table value 7.01 kt.
+        #expect(abs((simulator.speed.value ?? 0) - 7.01) < 0.06)
+
+        simulator.stopSimulation()
+    }
+
+    @Test
+    func estimatedBoatSpeedCollapsesWhenPinchingIntoWind() {
+        let profile = BoatProfile.beneteauFirst407
+        let pinching = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 5)
+        let closeHauled = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 40)
+        #expect(pinching < 0.35)
+        #expect(closeHauled > 5.5)
     }
 
     @Test
@@ -1527,6 +1580,9 @@ private func makeSnapshot(
         boatSpeed: boatSpeed,
         depth: 12,
         seaTemperature: 18,
+        airTemperature: 22,
+        relativeHumidity: 65,
+        airPressure: 1013,
         gpsData: GPSData(latitude: 43.19542, longitude: 27.89615, speedOverGround: 6, courseOverGround: 90),
         gpsSignal: gpsSignal ?? GPSSignalSnapshot(
             fixQuality: 1,

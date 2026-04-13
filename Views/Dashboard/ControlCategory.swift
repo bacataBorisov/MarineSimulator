@@ -10,7 +10,10 @@ import Observation
 
 // MARK: - Category Enum
 enum ControlCategory: String, CaseIterable {
-    case wind = "Wind", hydro = "Hydro", heading = "Heading"
+    case wind = "Wind"
+    case hydro = "Hydro"
+    case heading = "Heading"
+    case environment = "Environment"
 }
 
 // MARK: - Main Left Panel
@@ -33,6 +36,7 @@ struct LeftControlsPanel: View {
                     case .wind: WindControls(nmea: nmea)
                     case .hydro: HydroControls(nmea: nmea)
                     case .heading: HeadingControls(nmea: nmea)
+                    case .environment: EnvironmentControls(nmea: nmea)
                     }
                 }
                 .padding(.top, 2)
@@ -98,16 +102,19 @@ struct WindControls: View {
             ControlSliderView(
                 value: $nmea.twd,
                 title: "True Wind Direction",
+                unit: "°",
                 precision: 0,
                 sliderRange: SimulatedValueType.windDirection.defaultRange,
                 onChange: nmea.persistLiveSettings,
                 isDisabled: !nmea.sensorToggles.hasAnemometer || nmea.liveWeatherControlsWind,
-                disabledReason: windDisabledReason
+                disabledReason: windDisabledReason,
+                wrapsCircularDegrees: true
             )
             RailDivider()
             ControlSliderView(
                 value: $nmea.tws,
                 title: "True Wind Speed",
+                unit: "kn",
                 precision: 1,
                 sliderRange: SimulatedValueType.windSpeed.defaultRange,
                 onChange: nmea.persistLiveSettings,
@@ -136,19 +143,50 @@ struct HydroControls: View {
     var body: some View {
         @Bindable var nmea = nmea
         VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Boat Speed Model")
+                    .font(.headline)
+
+                Picker("Boat Speed Model", selection: $nmea.boatSpeedMode) {
+                    ForEach(BoatSpeedMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if nmea.boatSpeedMode == .estimated {
+                    Picker("Boat Profile", selection: $nmea.boatProfile) {
+                        ForEach(BoatProfile.allCases) { profile in
+                            Text(profile.shortName).tag(profile)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Text(nmea.boatProfile.summary)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 10)
+
+            RailDivider()
+
             ControlSliderView(
                 value: $nmea.speed,
                 title: "Speed Through Water",
+                unit: "kn",
                 precision: 1,
                 sliderRange: SimulatedValueType.speedLog.defaultRange,
                 onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasSpeedLog,
-                disabledReason: !nmea.sensorToggles.hasSpeedLog ? "Enable the Speed Log in Configuration to control water speed." : nil
+                isDisabled: !nmea.sensorToggles.hasSpeedLog || nmea.boatSpeedMode == .estimated,
+                disabledReason: speedDisabledReason
             )
             RailDivider()
             ControlSliderView(
                 value: $nmea.depth,
                 title: "Depth",
+                unit: "m",
                 precision: 1,
                 sliderRange: SimulatedValueType.depth.defaultRange,
                 onChange: nmea.persistLiveSettings,
@@ -159,6 +197,7 @@ struct HydroControls: View {
             ControlSliderView(
                 value: $nmea.seaTemp,
                 title: "Sea Water Temperature",
+                unit: "°C",
                 precision: 1,
                 sliderRange: SimulatedValueType.seaTemp.defaultRange,
                 onChange: nmea.persistLiveSettings,
@@ -179,6 +218,18 @@ struct HydroControls: View {
 
         return nil
     }
+
+    private var speedDisabledReason: String? {
+        if !nmea.sensorToggles.hasSpeedLog {
+            return "Enable the Speed Log in Configuration to control water speed."
+        }
+
+        if nmea.boatSpeedMode == .estimated {
+            return "Boat speed is currently estimated from wind, heading, and the selected boat profile."
+        }
+
+        return nil
+    }
 }
 
 // MARK: - Heading Controls
@@ -190,25 +241,108 @@ struct HeadingControls: View {
             ControlSliderView(
                 value: $nmea.heading,
                 title: "Heading",
+                unit: "°",
                 precision: 0,
                 sliderRange: SimulatedValueType.magneticCompass.defaultRange,
                 onChange: nmea.persistLiveSettings,
                 isDisabled: !nmea.sensorToggles.hasCompass,
                 disabledReason: !nmea.sensorToggles.hasCompass ? "Enable the Magnetic Compass in Configuration to control magnetic heading." : nil,
-                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the primary source while the gyro is enabled." : "Magnetic heading is the active heading source because no gyro is enabled."
+                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the primary source while the gyro is enabled." : "Magnetic heading is the active heading source because no gyro is enabled.",
+                wrapsCircularDegrees: true
             )
             RailDivider()
             ControlSliderView(
                 value: $nmea.gyroHeading,
                 title: "Gyro Heading",
+                unit: "°",
                 precision: 0,
                 sliderRange: SimulatedValueType.gyroCompass.defaultRange,
                 onChange: nmea.persistLiveSettings,
                 isDisabled: !nmea.sensorToggles.hasGyro,
                 disabledReason: !nmea.sensorToggles.hasGyro ? "Enable the Gyro Compass in Configuration to control true heading." : nil,
-                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the preferred heading source for derived calculations and true-heading sentences." : nil
+                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the preferred heading source for derived calculations and true-heading sentences." : nil,
+                wrapsCircularDegrees: true
             )
         }
+    }
+}
+
+struct EnvironmentControls: View {
+    @Bindable var nmea: NMEASimulator
+
+    var body: some View {
+        @Bindable var nmea = nmea
+
+        VStack(alignment: .leading, spacing: 0) {
+            ControlSliderView(
+                value: $nmea.airTemp,
+                title: "Air Temperature",
+                unit: "°C",
+                precision: 1,
+                sliderRange: SimulatedValueType.airTemp.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasAirTempSensor || nmea.liveWeatherControlsAirTemperature,
+                disabledReason: airTemperatureDisabledReason
+            )
+            RailDivider()
+            ControlSliderView(
+                value: $nmea.humidity,
+                title: "Relative Humidity",
+                unit: "%",
+                precision: 0,
+                sliderRange: SimulatedValueType.humidity.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasHumidtySensor || nmea.liveWeatherControlsHumidity,
+                disabledReason: humidityDisabledReason
+            )
+            RailDivider()
+            ControlSliderView(
+                value: $nmea.barometer,
+                title: "Barometer",
+                unit: "hPa",
+                precision: 1,
+                sliderRange: SimulatedValueType.barometer.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasBarometer || nmea.liveWeatherControlsBarometer,
+                disabledReason: barometerDisabledReason
+            )
+        }
+    }
+
+    private var airTemperatureDisabledReason: String? {
+        if !nmea.sensorToggles.hasAirTempSensor {
+            return "Enable the Air Temperature sensor in Configuration to control air temperature."
+        }
+
+        if nmea.liveWeatherControlsAirTemperature {
+            return "Live Weather mode is driving air temperature from the boat's current GPS position."
+        }
+
+        return nil
+    }
+
+    private var humidityDisabledReason: String? {
+        if !nmea.sensorToggles.hasHumidtySensor {
+            return "Enable the Humidity sensor in Configuration to control relative humidity."
+        }
+
+        if nmea.liveWeatherControlsHumidity {
+            return "Live Weather mode is driving humidity from the boat's current GPS position."
+        }
+
+        return nil
+    }
+
+    private var barometerDisabledReason: String? {
+        if !nmea.sensorToggles.hasBarometer {
+            return "Enable the Barometer in Configuration to control air pressure."
+        }
+
+        if nmea.liveWeatherControlsBarometer {
+            return "Live Weather mode is driving air pressure from the boat's current GPS position."
+        }
+
+        return nil
     }
 }
 

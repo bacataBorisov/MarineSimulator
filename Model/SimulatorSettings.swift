@@ -63,12 +63,17 @@ struct SimulatorSettings: Codable {
     var depth: SimulatedValue
     var depthOffsetMeters: Double
     var seaTemp: SimulatedValue
+    var airTemp: SimulatedValue
+    var humidity: SimulatedValue
+    var barometer: SimulatedValue
     var heading: SimulatedValue
     var gyroHeading: SimulatedValue
     var gpsData: GPSData
     var faultInjection: FaultInjectionSettings
     var mwvReferenceMode: MWVReferenceMode
     var selectedPreset: SimulationPreset?
+    var boatProfile: BoatProfile
+    var boatSpeedMode: BoatSpeedMode
     var weatherSourceMode: WeatherSourceMode
     var liveWeatherSettings: LiveWeatherSettings
     var latestLiveWeather: LiveWeatherSnapshot?
@@ -89,12 +94,17 @@ struct SimulatorSettings: Codable {
         case depth
         case depthOffsetMeters
         case seaTemp
+        case airTemp
+        case humidity
+        case barometer
         case heading
         case gyroHeading
         case gpsData
         case faultInjection
         case mwvReferenceMode
         case selectedPreset
+        case boatProfile
+        case boatSpeedMode
         case weatherSourceMode
         case liveWeatherSettings
         case latestLiveWeather
@@ -116,12 +126,17 @@ struct SimulatorSettings: Codable {
         depth: SimulatedValue,
         depthOffsetMeters: Double,
         seaTemp: SimulatedValue,
+        airTemp: SimulatedValue,
+        humidity: SimulatedValue,
+        barometer: SimulatedValue,
         heading: SimulatedValue,
         gyroHeading: SimulatedValue,
         gpsData: GPSData,
         faultInjection: FaultInjectionSettings,
         mwvReferenceMode: MWVReferenceMode,
         selectedPreset: SimulationPreset?,
+        boatProfile: BoatProfile,
+        boatSpeedMode: BoatSpeedMode,
         weatherSourceMode: WeatherSourceMode,
         liveWeatherSettings: LiveWeatherSettings,
         latestLiveWeather: LiveWeatherSnapshot?
@@ -141,12 +156,17 @@ struct SimulatorSettings: Codable {
         self.depth = depth
         self.depthOffsetMeters = depthOffsetMeters
         self.seaTemp = seaTemp
+        self.airTemp = airTemp
+        self.humidity = humidity
+        self.barometer = barometer
         self.heading = heading
         self.gyroHeading = gyroHeading
         self.gpsData = gpsData
         self.faultInjection = faultInjection
         self.mwvReferenceMode = mwvReferenceMode
         self.selectedPreset = selectedPreset
+        self.boatProfile = boatProfile
+        self.boatSpeedMode = boatSpeedMode
         self.weatherSourceMode = weatherSourceMode
         self.liveWeatherSettings = liveWeatherSettings
         self.latestLiveWeather = latestLiveWeather
@@ -171,12 +191,17 @@ struct SimulatorSettings: Codable {
         depth = try container.decode(SimulatedValue.self, forKey: .depth)
         depthOffsetMeters = try container.decode(Double.self, forKey: .depthOffsetMeters)
         seaTemp = try container.decode(SimulatedValue.self, forKey: .seaTemp)
+        airTemp = try container.decodeIfPresent(SimulatedValue.self, forKey: .airTemp) ?? SimulatedValue(type: .airTemp)
+        humidity = try container.decodeIfPresent(SimulatedValue.self, forKey: .humidity) ?? SimulatedValue(type: .humidity)
+        barometer = try container.decodeIfPresent(SimulatedValue.self, forKey: .barometer) ?? SimulatedValue(type: .barometer)
         heading = try container.decode(SimulatedValue.self, forKey: .heading)
         gyroHeading = try container.decode(SimulatedValue.self, forKey: .gyroHeading)
         gpsData = try container.decode(GPSData.self, forKey: .gpsData)
         faultInjection = try container.decodeIfPresent(FaultInjectionSettings.self, forKey: .faultInjection) ?? FaultInjectionSettings()
         mwvReferenceMode = try container.decodeIfPresent(MWVReferenceMode.self, forKey: .mwvReferenceMode) ?? .relative
         selectedPreset = try container.decodeIfPresent(SimulationPreset.self, forKey: .selectedPreset)
+        boatProfile = try container.decodeIfPresent(BoatProfile.self, forKey: .boatProfile) ?? .beneteauFirst407
+        boatSpeedMode = try container.decodeIfPresent(BoatSpeedMode.self, forKey: .boatSpeedMode) ?? .manual
         weatherSourceMode = try container.decodeIfPresent(WeatherSourceMode.self, forKey: .weatherSourceMode) ?? .manual
         liveWeatherSettings = try container.decodeIfPresent(LiveWeatherSettings.self, forKey: .liveWeatherSettings) ?? LiveWeatherSettings()
         latestLiveWeather = try container.decodeIfPresent(LiveWeatherSnapshot.self, forKey: .latestLiveWeather)

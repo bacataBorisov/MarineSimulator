@@ -74,6 +74,7 @@
 		06883DEE2F78C6CD005DE47D /* ManualView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06883DED2F78C6CD005DE47D /* ManualView.swift */; };
 		06AFA93A2F8B049400A76F15 /* LiveWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AFA9392F8B049300A76F15 /* LiveWeather.swift */; };
 		06AFA93C2F8B049400A76F15 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AFA93B2F8B049400A76F15 /* WeatherService.swift */; };
+		06AFA9622F8C4DA900A76F15 /* BoatProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06AFA9612F8C4DA900A76F15 /* BoatProfile.swift */; };
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
@@ -171,6 +172,7 @@
 		06883DED2F78C6CD005DE47D /* ManualView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualView.swift; sourceTree = "<group>"; };
 		06AFA9392F8B049300A76F15 /* LiveWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWeather.swift; sourceTree = "<group>"; };
 		06AFA93B2F8B049400A76F15 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
+		06AFA9612F8C4DA900A76F15 /* BoatProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatProfile.swift; sourceTree = "<group>"; };
 		06B4B2912DF50AB6005DC523 /* MarineSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarineSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulator.swift; sourceTree = "<group>"; };
 		06B4B2962DF50AB6005DC523 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
@@ -464,6 +466,7 @@
 				06883DE72F78B5AE005DE47D /* SimulationSnapshot.swift */,
 				06883DE92F78B925005DE47D /* SimulatorSettings.swift */,
 				06AFA9392F8B049300A76F15 /* LiveWeather.swift */,
+				06AFA9612F8C4DA900A76F15 /* BoatProfile.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -739,6 +742,7 @@
 				06B4B2D42DFA5391005DC523 /* SimulatedValue.swift in Sources */,
 				06AFA93C2F8B049400A76F15 /* WeatherService.swift in Sources */,
 				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
+				06AFA9622F8C4DA900A76F15 /* BoatProfile.swift in Sources */,
 				06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */,
 				06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */,
 				06212DF02E10DF3B007A4537 /* VHWHelpView.swift in Sources */,
