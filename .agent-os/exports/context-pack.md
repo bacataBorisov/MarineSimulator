@@ -4,31 +4,35 @@ Profile: **normal**
 
 ## Scan
 
-- id: 4
+- id: 5
 - type: incremental
 
 ## Recent changes
 
+- `AGENTS.md` — modified
 - `Docs/CompletedTasks.md` — modified
 - `Docs/CurrentTasks.md` — modified
 - `Docs/FutureTasks.md` — modified
+- `Docs/ProjectOverview.md` — modified
 - `MarineSimulatorTests/NMEASimulatorEngineTests.swift` — modified
-- `Model/AISSettings.swift` — deleted
-- `Model/AISTarget.swift` — deleted
 - `Model/BoatProfile.swift` — modified
-- `Model/LiveWeather.swift` — modified
-- `Model/SensorToggleStates.swift` — modified
-- `Model/SimulatorSettings.swift` — modified
-- `NMEA/NMEASimulator+FormattedValues.swift` — modified
-- `NMEA/NMEASimulator+WindCalculations.swift` — modified
+- `NMEA/NMEANumericFormatting.swift` — new
+- `NMEA/NMEASimulator+SentenceBuilder.swift` — modified
 - `NMEA/NMEASimulator.swift` — modified
-- `Networking/AISService.swift` — deleted
-- `Utilities/MathUtilities.swift` — modified
+- `README.md` — modified
+- `Utilities/FormatKit.swift` — modified
+- `Utilities/Shapes.swift` — modified
 - `Utilities/ViewKit.swift` — modified
-- `Views/ConfigurationView.swift` — modified
-- `Views/Dashboard/BoatMapPreview 2.swift` — deleted
+- `Views/ConsoleView.swift` — modified
 - `Views/Dashboard/BoatMapPreview.swift` — modified
 - `Views/Dashboard/ControlCategory.swift` — modified
+- `Views/Dashboard/DashboardChrome.swift` — new
+- `Views/Dashboard/DashboardView.swift` — modified
+- `Views/Dashboard/WindCompass.swift` — modified
+- `Views/HelpViews/ManualView.swift` — modified
+- `Views/MainView.swift` — modified
+- `Views/WindCompassView/AnemometerView.swift` — modified
+- `Views/WindCompassView/CompassView/CompassView.swift` — modified
 
 ## Sample chunks
 
@@ -44,7 +48,7 @@ Profile: **normal**
   *.xcuserdatad
 
 ### `AGENTS.md`
-- lines 1–15 `b394bb75acb5…`
+- lines 1–17 `f8eccae249ea…`
   # Agent Guidance
   
   Source of truth for agent workflow lives in `.agent-os/context/`.
@@ -77,7 +81,7 @@ Profile: **normal**
   import SwiftUI
 
 ### `Docs/CompletedTasks.md`
-- lines 1–64 `ebe632593643…`
+- lines 1–71 `8fdd3c8b795a…`
   # Completed Tasks
   
   This file tracks finished work that should not remain in the active queue.
@@ -88,7 +92,7 @@ Profile: **normal**
   - [x] Introduce a coherent simulation tick that produces one snapshot per cycle.
 
 ### `Docs/CurrentTasks.md`
-- lines 1–58 `546336ac54f9…`
+- lines 1–62 `2e62f96dc443…`
   # Current Tasks
   
   These are the tasks currently in progress or next in line for the active work stream.
@@ -99,7 +103,7 @@ Profile: **normal**
   - Use this file (`Docs/CurrentTasks.md`) for product/project task tracking and `.agent-os/context/` for editable session workflow and memory.
 
 ### `Docs/FutureTasks.md`
-- lines 1–38 `ccc40191968e…`
+- lines 1–37 `20b3aee86291…`
   # Future Tasks
   
   This is the task pool for work that is planned but not currently active.
@@ -107,7 +111,7 @@ Profile: **normal**
   ## Engine
   
   - [ ] Add isolated wind modes so AWA/TWA/TWD/TWS can be driven independently when needed.
-  - [ ] Add damping/filtering options for instrument behavior.
+  - [ ] Add simulator mode and read/ingest mode.
 
 ### `Docs/InstructionManual.md`
 - lines 1–100 `e67fc0470df0…`
@@ -141,7 +145,7 @@ Profile: **normal**
   - [ ] Verify TCP output reaches a local reader that expects a stream socket.
 
 ### `Docs/ProjectOverview.md`
-- lines 1–100 `e46c5e9382a1…`
+- lines 1–100 `9987a70f7dc5…`
   # Marine Simulator
   
   ## Purpose
@@ -150,15 +154,15 @@ Profile: **normal**
   
   The project exists to provide a better test environment than a simple script-based simulator, especially for validating navigation software such as Extasy Complete Navigation when real boat time is limited.
   
-- lines 101–200 `fcc765221190…`
+- lines 101–200 `30fae27ac607…`
+  ### Core Simulation
+  
+  - [ ] Refactor the simulator to produce one coherent state snapshot per tick.
+  - [ ] Add logic for isolated wind modes such as direct AWA/TWA cases instead of deriving everything from TWD.
+  - [ ] Add damping or optional filtering for more realistic instrument behavior.
+  - [ ] Add preset sea/weather modes such as calm, breezy, and storm.
   - [ ] Validate sentence correctness more rigorously.
   - [ ] Add optional invalid/corrupted sentence simulation for receiver robustness testing.
-  - [ ] Improve VHW logic:
-    - use gyro heading when available
-    - otherwise derive true heading from magnetic heading plus variation
-  - [ ] Add simulator mode and read mode so the app can also ingest live sensor/network data.
-  
-  ### Networking
 
 ### `LICENSE`
 - lines 1–21 `5be1d5d336fc…`
@@ -245,7 +249,7 @@ Profile: **normal**
   import XCTest
 
 ### `Model/BoatProfile.swift`
-- lines 1–100 `218bf71d1776…`
+- lines 1–100 `abdfc00fc218…`
   import Foundation
   
   enum BoatSpeedMode: String, Codable, CaseIterable, Identifiable {
@@ -254,15 +258,15 @@ Profile: **normal**
   
       var id: String { rawValue }
   
-- lines 101–175 `2f9a80016801…`
+- lines 101–200 `5fb54daebe0a…`
   windSpeeds: [6, 8, 10, 12, 16, 20],
                   angles: [35, 45, 60, 75, 90, 110, 135, 150, 165],
                   speeds: [
-                      [3.7, 4.4, 4.9, 5.2, 5.3, 5.1, 4.8, 4.3, 3.8],
-                      [4.4, 5.1, 5.8, 6.2, 6.3, 6.1, 5.8, 5.2, 4.6],
-                      [4.8, 5.6, 6.4, 6.9, 7.1, 7.0, 6.7, 6.0, 5.1],
-                      [5.1, 6.0, 6.8, 7.4, 7.6, 7.6, 7.2, 6.5, 5.5],
-                      [5.4, 6.3, 7.3, 8.0, 8.3, 8.4, 8.0, 7.1, 6.0],
+                      [4.0, 4.9, 5.5, 5.8, 5.7, 5.5, 5.1, 4.5, 3.9],
+                      [4.9, 5.8, 6.6, 7.0, 7.1, 6.8, 6.3, 5.6, 4.9],
+                      [5.4, 6.4, 7.4, 8.0, 8.2, 8.0, 7.5, 6.7, 5.6],
+                      [5.8, 6.9, 8.0, 8.7, 9.0, 8.9, 8.3, 7.5, 6.1],
+                      [6.1, 7.3, 8.4, 9.2, 9.6, 9.8, 9.2, 8.2, 6.8],
 
 ### `Model/GPSData.swift`
 - lines 1–40 `baf26d012a3d…`

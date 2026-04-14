@@ -1,12 +1,12 @@
 {
-  "scan_id": 4,
+  "scan_id": 5,
   "repo_root": "/Users/bacataborisov/Documents/Projects/MarineSimulator",
-  "started_at": "2026-04-13 01:11:50",
-  "finished_at": "2026-04-13 01:11:50",
+  "started_at": "2026-04-14 23:09:31",
+  "finished_at": "2026-04-14 23:09:31",
   "scan_type": "incremental",
   "counts": {
-    "indexed_files": 92,
-    "chunks": 190,
-        "changes": 96
+    "indexed_files": 94,
+    "chunks": 196,
+        "changes": 94
   }
 }

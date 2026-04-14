@@ -1,12 +1,12 @@
 # Current handoff
 
-_Updated: 2026-04-13 01:11 UTC_
+_Updated: 2026-04-14 23:09 UTC_
 
 ## Current work
 
 ## Repo state
 
-- Last scan id: 4
+- Last scan id: 5
 
 ## Relevant files (indexed, latest scan)
 
@@ -35,6 +35,7 @@ _Updated: 2026-04-13 01:11 UTC_
 - `Model/SimulatedValue.swift`
 - `Model/SimulationSnapshot.swift`
 - `Model/SimulatorSettings.swift`
+- `NMEA/NMEANumericFormatting.swift`
 - `NMEA/NMEASimulator+FormattedValues.swift`
 - `NMEA/NMEASimulator+SentenceBuilder.swift`
 - `NMEA/NMEASimulator+WindCalculations.swift`
@@ -49,7 +50,6 @@ _Updated: 2026-04-13 01:11 UTC_
 - `NMEASimulator/Preview Content/Preview Assets.xcassets/Contents.json`
 - `NMEASimulator/Preview Content/PreviewData.swift`
 - `Networking/TCPClient.swift`
-- `Networking/UDPClient.swift`
 
 ## Relevant docs
 
