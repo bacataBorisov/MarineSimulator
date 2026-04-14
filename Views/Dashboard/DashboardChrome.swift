@@ -17,13 +17,14 @@ enum AppChrome {
     static let railPadding: CGFloat = 16
     static let railSectionSpacing: CGFloat = 18
     /// Must match `DashboardView` frame on `LeftControlsPanel` so scroll content width is deterministic.
-    static let liveControlRailOuterWidth: CGFloat = 332
+    /// Wide enough for `ControlSliderView` (setpoint + variation stepper) without clipping; Boat tab pickers still fit.
+    static let liveControlRailOuterWidth: CGFloat = 352
     /// Scroll column width inside the rail (after `railPadding` only). Stops tab bodies from sizing to intrinsic width.
     static var liveControlScrollViewportWidth: CGFloat {
         liveControlRailOuterWidth - 2 * railPadding
     }
     /// Sole horizontal inset for live-controls tab scroll content (Wind / Env / … / Boat share this width model).
-    static let liveControlContentHorizontalPadding: CGFloat = 6
+    static let liveControlContentHorizontalPadding: CGFloat = 10
     static let railDivider = Color.white.opacity(0.08)
     static let subtleFill = Color.white.opacity(0.04)
     static let raisedFill = Color.white.opacity(0.06)
@@ -176,8 +177,23 @@ struct ControlSliderView: View {
                 } else {
                     value.centerValue = new.clamped(to: sliderRange)
                 }
+                notifyPersist()
             }
         )
+    }
+
+    private var offsetBinding: Binding<Double> {
+        Binding(
+            get: { value.offset },
+            set: { new in
+                value.offset = new
+                notifyPersist()
+            }
+        )
+    }
+
+    private func notifyPersist() {
+        onChange?()
     }
 
     private func nudgeCenter(by delta: Double) {
@@ -186,6 +202,7 @@ struct ControlSliderView: View {
         } else {
             value.centerValue = (value.centerValue + delta).clamped(to: sliderRange)
         }
+        notifyPersist()
     }
 
     var body: some View {
@@ -195,7 +212,7 @@ struct ControlSliderView: View {
                 .monospacedDigit()
         }, content: {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                HStack(alignment: .center, spacing: 12) {
+                HStack(alignment: .center, spacing: 8) {
                     ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
                         nudgeCenter(by: -stepAmount)
                     }
@@ -208,7 +225,7 @@ struct ControlSliderView: View {
                         TextField("", value: centerValueBinding, format: .number.precision(.fractionLength(precision)))
                             .textFieldStyle(.roundedBorder)
                             .monospacedDigit()
-                            .frame(width: 92)
+                            .frame(width: 84)
                             .disabled(isDisabled)
                     }
 
@@ -216,7 +233,7 @@ struct ControlSliderView: View {
                         nudgeCenter(by: stepAmount)
                     }
 
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 4)
 
                     VStack(alignment: .trailing, spacing: 6) {
                         Text("Variation")
@@ -224,12 +241,12 @@ struct ControlSliderView: View {
                             .foregroundStyle(.secondary)
                         Stepper(
                             "\(value.offset.formatted(.number.precision(.fractionLength(precision))))",
-                            value: $value.offset,
+                            value: offsetBinding,
                             in: 0...180,
                             step: stepAmount
                         )
                         .monospacedDigit()
-                        .frame(width: 108, alignment: .trailing)
+                        .frame(minWidth: 96, maxWidth: 104, alignment: .trailing)
                         .disabled(isDisabled)
                     }
                 }
@@ -258,9 +275,6 @@ struct ControlSliderView: View {
             }
         })
         .opacity(isDisabled ? 0.55 : 1)
-        .onChange(of: value) { _, _ in
-            onChange?()
-        }
     }
 }
 

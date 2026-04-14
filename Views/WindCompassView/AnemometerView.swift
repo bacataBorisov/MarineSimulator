@@ -9,16 +9,11 @@
 import SwiftUI
 
 struct AnemometerView: View {
-    
-    let trueWindAngle: Double
-    let apparentWindAngle: Double
 
-    @AppStorage("storedTrueWindAngle") private var storedTrueWindAngle: Double = 0.0
-    @AppStorage("storedApparentWindAngle") private var storedApparentWindAngle: Double = 0.0
-    @AppStorage("anemometerShouldAnimate") private var shouldAnimate: Bool = false
-
-    @State private var displayedTrueWindAngle: Double = 0.0
-    @State private var displayedApparentWindAngle: Double = 0.0
+    @Binding var displayedTrueWindAngle: Double
+    @Binding var displayedApparentWindAngle: Double
+    /// Per-step rotation animation for wind arrows (`nil` = jump to target).
+    var arrowRotationAnimation: Animation?
 
     var body: some View {
         GeometryReader { geometry in
@@ -35,7 +30,7 @@ struct AnemometerView: View {
                         lineWidth: width / 14
                     )
                     .padding(width / 20 / 2)
-                
+
                 // STBD Sector
                 SectorView(
                     gradientColors: [Color.green.opacity(0.7), Color.teal.opacity(0.7)],
@@ -43,7 +38,7 @@ struct AnemometerView: View {
                     lineWidth: width / 14,
                     padding: width / 20 / 2
                 )
-                
+
                 // PORT Sector
                 SectorView(
                     gradientColors: [Color.red.opacity(0.7), Color.purple.opacity(0.7)],
@@ -51,10 +46,10 @@ struct AnemometerView: View {
                     lineWidth: width / 14,
                     padding: width / 20 / 2
                 )
-                
+
                 // Dial Gauge Indicators
                 DialGaugeIndicators(width: width)
-                
+
                 // True Wind Arrow
                 WindArrow(
                     label: "T",
@@ -62,9 +57,9 @@ struct AnemometerView: View {
                     delta: displayedTrueWindAngle,
                     fontSize: width / 13,
                     offset: width / 2.15,
-                    shouldAnimate: shouldAnimate
+                    rotationAnimation: arrowRotationAnimation
                 )
-                
+
                 // Apparent Wind Arrow
                 WindArrow(
                     label: "A",
@@ -72,44 +67,11 @@ struct AnemometerView: View {
                     delta: displayedApparentWindAngle,
                     fontSize: width / 13,
                     offset: width / 2.15,
-                    shouldAnimate: shouldAnimate
+                    rotationAnimation: arrowRotationAnimation
                 )
             }
         }
         .aspectRatio(1, contentMode: .fit)
-        .onAppear {
-            // Restore last known values when view appears
-            displayedTrueWindAngle = storedTrueWindAngle
-            displayedApparentWindAngle = storedApparentWindAngle
-            shouldAnimate = false
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                updateArrowRotation(&displayedTrueWindAngle, to: trueWindAngle)
-                updateArrowRotation(&displayedApparentWindAngle, to: apparentWindAngle)
-                shouldAnimate = true
-            }
-        }
-        .onChange(of: trueWindAngle) { _, newAngle in
-            updateArrowRotation(&displayedTrueWindAngle, to: newAngle)
-            storedTrueWindAngle = newAngle
-        }
-        .onChange(of: apparentWindAngle) { _, newAngle in
-            updateArrowRotation(&displayedApparentWindAngle, to: newAngle)
-            storedApparentWindAngle = newAngle
-        }
-    }
-
-    // MARK: - Rotation Logic
-
-    private func updateArrowRotation(_ displayedAngle: inout Double, to newAngle: Double) {
-        let shortestDelta = calculateShortestRotation(from: displayedAngle, to: newAngle)
-        if shouldAnimate {
-            withAnimation(.easeInOut(duration: 1)) {
-                displayedAngle += shortestDelta
-            }
-        } else {
-            displayedAngle += shortestDelta
-        }
     }
 }
 
@@ -160,7 +122,7 @@ struct WindArrow: View {
     let delta: Double
     let fontSize: CGFloat
     let offset: CGFloat
-    let shouldAnimate: Bool  // Add shouldAnimate parameter
+    let rotationAnimation: Animation?
 
     var body: some View {
         ZStack {
@@ -177,16 +139,15 @@ struct WindArrow: View {
                 .foregroundStyle(Color(.white))
         }
         .rotationEffect(.degrees(delta))
-        .animation(shouldAnimate ? .easeInOut(duration: 1) : .none, value: delta) // Smooth rotation animation
+        .animation(rotationAnimation, value: delta)
     }
 }
 
 // MARK: - Preview
 #Preview {
-    AnemometerView(
-        trueWindAngle: 350,
-        apparentWindAngle: 10
-    )
-    .frame(width: 400, height: 400)
-    .padding()
+    @Previewable @State var twa = 0.0
+    @Previewable @State var awa = 180.0
+    AnemometerView(displayedTrueWindAngle: $twa, displayedApparentWindAngle: $awa, arrowRotationAnimation: .easeInOut(duration: 1))
+        .frame(width: 400, height: 400)
+        .padding()
 }

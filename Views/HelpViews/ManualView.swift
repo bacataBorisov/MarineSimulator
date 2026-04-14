@@ -63,9 +63,23 @@ struct ManualView: View {
             .onAppear {
                 selectedTopicID = selectedTopicID ?? topics.first?.id
             }
-            .onChange(of: searchText) {
-                if filteredTopics.contains(where: { $0.id == selectedTopicID }) == false {
-                    selectedTopicID = filteredTopics.first?.id
+            .onChange(of: searchText) { _, newText in
+                let capturedTopics = topics
+                let capturedSelection = selectedTopicID
+                Task { @MainActor in
+                    await Task.yield()
+                    let filtered: [ManualTopic] = {
+                        guard !newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                            return capturedTopics
+                        }
+                        let needle = newText.lowercased()
+                        return capturedTopics.filter { topic in
+                            topic.searchBlob.localizedCaseInsensitiveContains(needle)
+                        }
+                    }()
+                    if filtered.contains(where: { $0.id == capturedSelection }) == false {
+                        selectedTopicID = filtered.first?.id
+                    }
                 }
             }
 

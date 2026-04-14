@@ -57,7 +57,9 @@ struct ConsoleView: View {
             )
             .onChange(of: scrollTargetID) {
                 guard let scrollTargetID else { return }
-                proxy.scrollTo(scrollTargetID, anchor: .bottom)
+                DispatchQueue.main.async {
+                    proxy.scrollTo(scrollTargetID, anchor: .bottom)
+                }
             }
         }
     }

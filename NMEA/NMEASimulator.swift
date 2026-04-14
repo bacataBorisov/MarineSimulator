@@ -5,6 +5,13 @@ import CoreLocation
 
 @Observable
 class NMEASimulator {
+
+    /// Same interval as `scheduleTackTimer` (60 Hz). UI can use short linear motion aligned to tack steps.
+    static let tackAnimationTickInterval: TimeInterval = 1.0 / 60.0
+
+    /// Posted on the main thread after each tack heading update (see `applySimulatedTrueHeading`). Wind/compass use this instead of SwiftUI `onChange` so 60 Hz steps are not coalesced or deferred.
+    static let tackInstrumentStepNotification = Notification.Name("MarineSimulator.NMEASimulator.tackInstrumentStep")
+
     private struct PendingTransmission {
         let sentence: String
         let dueDate: Date
@@ -1521,7 +1528,7 @@ class NMEASimulator {
 
     private func scheduleTackTimer() {
         tackAnimationTimer?.invalidate()
-        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: Self.tackAnimationTickInterval, repeats: true) { [weak self] _ in
             self?.advanceTackAnimation(at: Date())
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -1582,6 +1589,10 @@ class NMEASimulator {
                 tripDistanceNm: previous.tripDistanceNm
             )
         }
+
+        if tackAnimationState != nil {
+            NotificationCenter.default.post(name: Self.tackInstrumentStepNotification, object: self)
+        }
     }
 
     private func estimatedBoatSpeed(trueHeading: Double) -> Double? {
@@ -1617,17 +1628,10 @@ class NMEASimulator {
 extension NMEASimulator {
 
     /// Clockwise degrees for map arrow and heading leg: matches the dashboard heading sliders — true heading from gyro when present, otherwise **magnetic** heading without applying simulated chart variation (NMEA still uses variation for true-heading sentences).
+    ///
+    /// Always reads **live** `gyroHeading` / `heading` / GPS COG, not `latestSnapshot`, so UI such as tack animation updates while idle (snapshot is only refreshed on transmit ticks).
     var geographicBearingDegreesForMap: Double {
-        guard let snapshot = latestSnapshot else {
-            return mapDashboardBearingBeforeFirstSnapshot()
-        }
-        if let gyroHeading = snapshot.gyroHeading {
-            return normalizeAngle(gyroHeading)
-        }
-        if let magneticHeading = snapshot.magneticHeading {
-            return normalizeAngle(magneticHeading)
-        }
-        return normalizeAngle(snapshot.gpsData.courseOverGround)
+        mapDashboardBearingBeforeFirstSnapshot()
     }
 
     var hasAnemometer: Bool {
