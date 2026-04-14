@@ -51,20 +51,21 @@ extension NMEASimulator {
             let reference = nextMWVReference(in: snapshot)
             if reference == "R" {
                 guard let awa = computeAWA(from: snapshot), let aws = computeAWS(from: snapshot) else { return [] }
-                return ["$\(talkerID)MWV,\(String(format: "%.0f", awa)),R,\(String(format: "%.1f", aws)),N,A"]
+                return ["$\(talkerID)MWV,\(NMEANumericFormatting.format(awa, fractionDigits: 0)),R,\(NMEANumericFormatting.format(aws, fractionDigits: 1)),N,A"]
             }
 
             guard let twa = computeTWA(from: snapshot), let tws = computeTWS(from: snapshot) else { return [] }
-            return ["$\(talkerID)MWV,\(String(format: "%.0f", twa)),T,\(String(format: "%.1f", tws)),N,A"]
+            return ["$\(talkerID)MWV,\(NMEANumericFormatting.format(twa, fractionDigits: 0)),T,\(NMEANumericFormatting.format(tws, fractionDigits: 1)),N,A"]
 
         case .mwd:
             guard let twd = computeTWD(from: snapshot), let tws = computeTWS(from: snapshot) else { return [] }
             let magneticDirection = normalizeAngle(twd - snapshot.magneticVariation)
-            return ["$\(talkerID)MWD,\(String(format: "%.1f", twd)),T,\(String(format: "%.1f", magneticDirection)),M,\(String(format: "%.1f", tws)),N,\(String(format: "%.1f", tws * 0.514444)),M"]
+            let twsMS = tws * 0.514444
+            return ["$\(talkerID)MWD,\(NMEANumericFormatting.format(twd, fractionDigits: 1)),T,\(NMEANumericFormatting.format(magneticDirection, fractionDigits: 1)),M,\(NMEANumericFormatting.format(tws, fractionDigits: 1)),N,\(NMEANumericFormatting.format(twsMS, fractionDigits: 1)),M"]
 
         case .vpw:
             guard let vpwKnots = computeVPWKnots(from: snapshot), let vpwMS = computeVPWMS(from: snapshot) else { return [] }
-            return ["$\(talkerID)VPW,\(String(format: "%.1f", vpwKnots)),N,\(String(format: "%.1f", vpwMS)),M"]
+            return ["$\(talkerID)VPW,\(NMEANumericFormatting.format(vpwKnots, fractionDigits: 1)),N,\(NMEANumericFormatting.format(vpwMS, fractionDigits: 1)),M"]
 
         default:
             return []
@@ -81,7 +82,7 @@ extension NMEASimulator {
         let variationDeg = abs(snapshot.magneticVariation)
         let variationHemisphere = snapshot.magneticVariation >= 0 ? "E" : "W"
 
-        return ["$\(talkerID)HDG,\(String(format: "%.1f", headingMag)),\(String(format: "%.1f", deviationDeg)),\(deviationHemisphere),\(String(format: "%.1f", variationDeg)),\(variationHemisphere)"]
+        return ["$\(talkerID)HDG,\(NMEANumericFormatting.format(headingMag, fractionDigits: 1)),\(NMEANumericFormatting.format(deviationDeg, fractionDigits: 1)),\(deviationHemisphere),\(NMEANumericFormatting.format(variationDeg, fractionDigits: 1)),\(variationHemisphere)"]
     }
 
     private func buildGyroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
@@ -90,11 +91,11 @@ extension NMEASimulator {
             guard let headingTrue = resolvedTrueHeading(in: snapshot) else {
                 return []
             }
-            return ["$\(talkerID)HDT,\(String(format: "%.1f", headingTrue)),T"]
+            return ["$\(talkerID)HDT,\(NMEANumericFormatting.format(headingTrue, fractionDigits: 1)),T"]
 
         case .rot:
             let status = abs(snapshot.turnRate) < 0.01 ? "V" : "A"
-            return ["$\(talkerID)ROT,\(String(format: "%.1f", snapshot.turnRate)),\(status)"]
+            return ["$\(talkerID)ROT,\(NMEANumericFormatting.format(snapshot.turnRate, fractionDigits: 1)),\(status)"]
 
         default:
             return []
@@ -107,15 +108,15 @@ extension NMEASimulator {
             guard let depthMeters = snapshot.depth else { return [] }
             let depthFeet = depthMeters * 3.28084
             let depthFathoms = depthMeters / 1.8288
-            return ["$\(talkerID)DBT,\(String(format: "%.1f", depthFeet)),f,\(String(format: "%.1f", depthMeters)),M,\(String(format: "%.1f", depthFathoms)),F"]
+            return ["$\(talkerID)DBT,\(NMEANumericFormatting.format(depthFeet, fractionDigits: 1)),f,\(NMEANumericFormatting.format(depthMeters, fractionDigits: 1)),M,\(NMEANumericFormatting.format(depthFathoms, fractionDigits: 1)),F"]
 
         case .dpt:
             guard let depthMeters = snapshot.depth else { return [] }
-            return ["$\(talkerID)DPT,\(String(format: "%.1f", depthMeters)),\(String(format: "%.1f", depthOffsetMeters))"]
+            return ["$\(talkerID)DPT,\(NMEANumericFormatting.format(depthMeters, fractionDigits: 1)),\(NMEANumericFormatting.format(depthOffsetMeters, fractionDigits: 1))"]
 
         case .mtw:
             guard let seaTemperature = snapshot.seaTemperature else { return [] }
-            return ["$\(talkerID)MTW,\(String(format: "%.1f", seaTemperature)),C"]
+            return ["$\(talkerID)MTW,\(NMEANumericFormatting.format(seaTemperature, fractionDigits: 1)),C"]
 
         case .vhw:
             let headingTrue = resolvedTrueHeading(in: snapshot)
@@ -141,7 +142,7 @@ extension NMEASimulator {
             return ["$\(talkerID)VBW,\(formatted(longWater, decimals: 1)),\(formatted(transWater, decimals: 1)),\(waterStatus),\(formatted(longGround, decimals: 1)),\(formatted(transGround, decimals: 1)),\(groundStatus)"]
 
         case .vlw:
-            return ["$\(talkerID)VLW,\(String(format: "%.2f", snapshot.logDistanceNm)),N,\(String(format: "%.2f", snapshot.tripDistanceNm)),N"]
+            return ["$\(talkerID)VLW,\(NMEANumericFormatting.format(snapshot.logDistanceNm, fractionDigits: 2)),N,\(NMEANumericFormatting.format(snapshot.tripDistanceNm, fractionDigits: 2)),N"]
 
         default:
             return []
@@ -155,22 +156,23 @@ extension NMEASimulator {
         let longitude = snapshot.gpsData.longitude
         let latString = FormatKit.formatLatitude(latitude)
         let lonString = FormatKit.formatLongitude(longitude)
-        let cogString = String(format: "%.1f", snapshot.gpsData.courseOverGround)
-        let sogString = String(format: "%.1f", snapshot.gpsData.speedOverGround)
+        let cogString = NMEANumericFormatting.format(snapshot.gpsData.courseOverGround, fractionDigits: 1)
+        let sogString = NMEANumericFormatting.format(snapshot.gpsData.speedOverGround, fractionDigits: 1)
 
         switch type {
         case .rmc:
             let variation = abs(snapshot.magneticVariation)
             let variationHemisphere = snapshot.magneticVariation >= 0 ? "E" : "W"
-            return ["$\(talkerID)RMC,\(timeString),A,\(latString),\(lonString),\(sogString),\(cogString),\(dateString),\(String(format: "%.1f", variation)),\(variationHemisphere),A"]
+            return ["$\(talkerID)RMC,\(timeString),A,\(latString),\(lonString),\(sogString),\(cogString),\(dateString),\(NMEANumericFormatting.format(variation, fractionDigits: 1)),\(variationHemisphere),A"]
 
         case .gga:
             let gpsSignal = snapshot.gpsSignal
-            return ["$\(talkerID)GGA,\(timeString),\(latString),\(lonString),\(gpsSignal.fixQuality),\(String(format: "%02d", gpsSignal.satellitesUsed)),\(String(format: "%.1f", gpsSignal.hdop)),\(String(format: "%.1f", gpsSignal.altitudeMeters)),M,\(String(format: "%.1f", gpsSignal.geoidalSeparationMeters)),M,,"]
+            return ["$\(talkerID)GGA,\(timeString),\(latString),\(lonString),\(gpsSignal.fixQuality),\(String(format: "%02d", gpsSignal.satellitesUsed)),\(NMEANumericFormatting.format(gpsSignal.hdop, fractionDigits: 1)),\(NMEANumericFormatting.format(gpsSignal.altitudeMeters, fractionDigits: 1)),M,\(NMEANumericFormatting.format(gpsSignal.geoidalSeparationMeters, fractionDigits: 1)),M,,"]
 
         case .vtg:
             let magneticCourse = normalizedMagneticCourse(fromTrue: snapshot.gpsData.courseOverGround, variation: snapshot.magneticVariation)
-            return ["$\(talkerID)VTG,\(cogString),T,\(String(format: "%.1f", magneticCourse)),M,\(sogString),N,\(String(format: "%.1f", snapshot.gpsData.speedOverGround * 1.852)),K,A"]
+            let sogKmh = snapshot.gpsData.speedOverGround * 1.852
+            return ["$\(talkerID)VTG,\(cogString),T,\(NMEANumericFormatting.format(magneticCourse, fractionDigits: 1)),M,\(sogString),N,\(NMEANumericFormatting.format(sogKmh, fractionDigits: 1)),K,A"]
 
         case .gll:
             return ["$\(talkerID)GLL,\(latString),\(lonString),\(timeString),A,A"]
@@ -182,7 +184,7 @@ extension NMEASimulator {
                 .prefix(12)
                 .map { String(format: "%02d", $0.prn) }
             let paddedPRNs = usedPRNs + Array(repeating: "", count: max(0, 12 - usedPRNs.count))
-            return ["$\(talkerID)GSA,\(gpsSignal.selectionMode),\(gpsSignal.fixMode),\(paddedPRNs.joined(separator: ",")),\(String(format: "%.1f", gpsSignal.pdop)),\(String(format: "%.1f", gpsSignal.hdop)),\(String(format: "%.1f", gpsSignal.vdop))"]
+            return ["$\(talkerID)GSA,\(gpsSignal.selectionMode),\(gpsSignal.fixMode),\(paddedPRNs.joined(separator: ",")),\(NMEANumericFormatting.format(gpsSignal.pdop, fractionDigits: 1)),\(NMEANumericFormatting.format(gpsSignal.hdop, fractionDigits: 1)),\(NMEANumericFormatting.format(gpsSignal.vdop, fractionDigits: 1))"]
 
         case .gsv:
             let satellites = snapshot.gpsSignal.satellites
@@ -245,8 +247,7 @@ extension NMEASimulator {
     }
 
     private func formatted(_ value: Double?, decimals: Int) -> String {
-        guard let value else { return "" }
-        return String(format: "%.\(decimals)f", value)
+        NMEANumericFormatting.formatOptional(value, fractionDigits: decimals)
     }
 
     func addChecksum(to sentence: String) -> String {

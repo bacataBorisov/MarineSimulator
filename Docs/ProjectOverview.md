@@ -27,6 +27,12 @@ Current realism expansion now includes a first location-driven weather path:
 
 - Live weather mode can fetch wind and sea-surface temperature from the boat's GPS position.
 
+## UI stack and design intent
+
+The product UI is implemented **primarily in SwiftUI** and should follow **Apple Human Interface Guidelines** and **Swift API Design Guidelines** so the app feels at home on macOS and remains maintainable.
+
+**Convention:** prefer standard **SwiftUI** views and controls for layout and interaction. Introduce **AppKit** or **`NSViewRepresentable`** only when necessary (for example, **MapKit** map and system map accessories on the dashboard, or another capability SwiftUI does not reasonably provide on the project’s deployment target). Keep bridges narrow and justified.
+
 ## Current Scope
 
 Implemented or partially implemented areas:

@@ -11,9 +11,21 @@ import Observation
 // MARK: - Category Enum
 enum ControlCategory: String, CaseIterable {
     case wind = "Wind"
+    case environment = "Environment"
     case hydro = "Hydro"
     case heading = "Heading"
-    case environment = "Environment"
+    case boat = "Boat"
+
+    /// Short labels so five segments fit the dashboard rail while keeping one unified segmented control (same container as every tab).
+    var segmentTitle: String {
+        switch self {
+        case .wind: "Wind"
+        case .environment: "Env"
+        case .hydro: "Hydro"
+        case .heading: "Heading"
+        case .boat: "Boat"
+        }
+    }
 }
 
 // MARK: - Main Left Panel
@@ -24,27 +36,37 @@ struct LeftControlsPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppChrome.railSectionSpacing) {
             RailSection("Live Controls", subtitle: "Adjust installed instruments directly from the dashboard. Disabled controls reflect missing sensors.") {
-                Picker("", selection: $category) {
-                    ForEach(ControlCategory.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                Picker("Live control category", selection: $category) {
+                    ForEach(ControlCategory.allCases, id: \.self) { cat in
+                        Text(cat.segmentTitle)
+                            .tag(cat)
+                            .accessibilityLabel(cat.rawValue)
+                    }
                 }
+                .labelsHidden()
                 .pickerStyle(.segmented)
+                .frame(maxWidth: .infinity)
             }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    switch category {
-                    case .wind: WindControls(nmea: nmea)
-                    case .hydro: HydroControls(nmea: nmea)
-                    case .heading: HeadingControls(nmea: nmea)
-                    case .environment: EnvironmentControls(nmea: nmea)
+                LiveControlsTabPage {
+                    Group {
+                        switch category {
+                        case .wind: WindControls(nmea: nmea)
+                        case .environment: EnvironmentControls(nmea: nmea)
+                        case .hydro: HydroControls(nmea: nmea)
+                        case .heading: HeadingControls(nmea: nmea)
+                        case .boat: BoatControls(nmea: nmea, chrome: .dashboardRail)
+                        }
                     }
+                    .animation(nil, value: category)
                 }
-                .padding(.top, 2)
             }
             .scrollIndicators(.never)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(AppChrome.railPadding)
-        .frame(minWidth: 300, maxHeight: .infinity)
     }
 }
 
@@ -122,6 +144,7 @@ struct WindControls: View {
                 disabledReason: windDisabledReason
             )
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var windDisabledReason: String? {
@@ -137,41 +160,136 @@ struct WindControls: View {
     }
 }
 
-// MARK: - Hydro Controls
-struct HydroControls: View {
+// MARK: - Boat Controls
+enum BoatControlsChrome {
+    /// Dashboard rail: thin `RailDivider` like other live-control tabs.
+    case dashboardRail
+    /// Setup / GroupBox: standard `Divider` so spacing matches Configuration-style forms.
+    case setupForm
+}
+
+struct BoatControls: View {
     @Bindable var nmea: NMEASimulator
+    var chrome: BoatControlsChrome = .dashboardRail
+
     var body: some View {
         @Bindable var nmea = nmea
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Boat Speed Model")
-                    .font(.headline)
+        let tws = nmea.tws.value ?? nmea.tws.centerValue
+        let optimal = nmea.boatProfile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: tws)
 
+        VStack(alignment: .leading, spacing: 0) {
+            LiveControlRailBlock(title: "Boat Speed Model", subtitle: "Live output", trailing: {
+                Text(nmea.boatSpeedMode.displayName)
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }, content: {
                 Picker("Boat Speed Model", selection: $nmea.boatSpeedMode) {
                     ForEach(BoatSpeedMode.allCases) { mode in
                         Text(mode.displayName).tag(mode)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.segmented)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("Boat Speed Model")
+            })
 
-                if nmea.boatSpeedMode == .estimated {
+            chromeSeparator
+
+            LiveControlRailBlock(title: "Boat Profile", subtitle: "Polar basis", trailing: {
+                Text(nmea.boatProfile.shortName)
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }, content: {
+                VStack(alignment: .leading, spacing: UIConstants.spacing) {
                     Picker("Boat Profile", selection: $nmea.boatProfile) {
                         ForEach(BoatProfile.allCases) { profile in
                             Text(profile.shortName).tag(profile)
                         }
                     }
+                    .labelsHidden()
                     .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("Boat Profile")
 
                     Text(nmea.boatProfile.summary)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-            .padding(.vertical, 10)
+            })
 
+            chromeSeparator
+
+            LiveControlRailBlock(title: "Tack", subtitle: "Close-hauled", trailing: {
+                Text("±\(optimal, specifier: "%.1f")°")
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }, content: {
+                VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                    Text("Target uses true wind angle ±\(optimal, specifier: "%.1f")° at \(tws, specifier: "%.1f") kn TWS for this profile.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        nmea.beginTackManeuver()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Text(nmea.isTackInProgress ? "Tacking…" : "Tack")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!nmea.canExecuteTackManeuver || nmea.isTackInProgress)
+
+                    if let reason = tackDisabledReason {
+                        Text(reason)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            })
+        }
+    }
+
+    @ViewBuilder
+    private var chromeSeparator: some View {
+        switch chrome {
+        case .dashboardRail:
             RailDivider()
+        case .setupForm:
+            Divider()
+                .padding(.vertical, 2)
+        }
+    }
 
+    private var tackDisabledReason: String? {
+        if nmea.isTackInProgress {
+            return nil
+        }
+        if !nmea.sensorToggles.hasAnemometer {
+            return "Enable the Anemometer in Configuration to use tack (needs true wind direction)."
+        }
+        if !nmea.sensorToggles.hasGyro && !nmea.sensorToggles.hasCompass {
+            return "Enable the Gyro or Magnetic Compass to animate heading through the tack."
+        }
+        return nil
+    }
+}
+
+// MARK: - Hydro Controls
+struct HydroControls: View {
+    @Bindable var nmea: NMEASimulator
+    var body: some View {
+        @Bindable var nmea = nmea
+        VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
                 value: $nmea.speed,
                 title: "Speed Through Water",
@@ -343,6 +461,35 @@ struct EnvironmentControls: View {
         }
 
         return nil
+    }
+}
+
+// MARK: - Setup (sidebar) boat panel
+struct BoatSetupDetailView: View {
+    @Bindable var nmeaManager: NMEASimulator
+
+    var body: some View {
+        GeometryReader { _ in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 3 * UIConstants.spacing) {
+                    Text("Boat")
+                        .font(.largeTitle)
+                    Text("Choose the polar profile, speed model, and execute a timed tack onto the opposite close-hauled heading.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    GroupBox(label: Label("Profile & maneuver", systemImage: "sailboat")) {
+                        BoatControls(nmea: nmeaManager, chrome: .setupForm)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.vertical)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

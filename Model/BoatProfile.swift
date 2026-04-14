@@ -63,6 +63,19 @@ enum BoatProfile: String, Codable, CaseIterable, Identifiable {
         )
     }
 
+    /// True wind angle (degrees) used for close-hauled tack targets — interpolated vs true wind speed where a table exists.
+    func optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: Double) -> Double {
+        let tws = trueWindSpeedKnots.clamped(to: 0.5...60)
+        switch self {
+        case .beneteauFirst407:
+            return Self.interpolateAngleTable(Self.first407UpwindSamples, windSpeedKnots: tws)
+        case .j109:
+            return Self.interpolateAngleTable(Self.j109UpwindSamples, windSpeedKnots: tws)
+        case .hanse458:
+            return Self.interpolateAngleTable(Self.hanse458UpwindSamples, windSpeedKnots: tws)
+        }
+    }
+
     private var polarTable: PolarTable {
         switch self {
         case .beneteauFirst407:
@@ -110,6 +123,38 @@ enum BoatProfile: String, Codable, CaseIterable, Identifiable {
                 ]
             )
         }
+    }
+
+    // MARK: - Upwind angle samples (TWS kt → optimal TWA °)
+
+    private static let first407UpwindSamples: [(tw: Double, angle: Double)] = [
+        (4, 38.0), (6, 36.5), (8, 35.2), (10, 34.3), (12, 33.8), (14, 33.5), (16, 33.2),
+        (20, 33.0), (25, 33.2), (30, 33.5)
+    ]
+
+    private static let j109UpwindSamples: [(tw: Double, angle: Double)] = [
+        (6, 34.2), (10, 33.0), (16, 32.4), (20, 32.0)
+    ]
+
+    private static let hanse458UpwindSamples: [(tw: Double, angle: Double)] = [
+        (6, 42.0), (10, 40.0), (16, 38.5), (20, 37.5)
+    ]
+
+    private static func interpolateAngleTable(_ samples: [(tw: Double, angle: Double)], windSpeedKnots: Double) -> Double {
+        guard let first = samples.first else { return 40 }
+        guard samples.count > 1 else { return first.angle }
+        let tws = windSpeedKnots.clamped(to: first.tw...samples.last!.tw)
+        guard let upperIndex = samples.firstIndex(where: { $0.tw >= tws }) else {
+            return samples.last!.angle
+        }
+        if upperIndex == 0 {
+            return samples[0].angle
+        }
+        let lower = samples[upperIndex - 1]
+        let upper = samples[upperIndex]
+        guard upper.tw > lower.tw else { return upper.angle }
+        let t = (tws - lower.tw) / (upper.tw - lower.tw)
+        return lower.angle + (upper.angle - lower.angle) * t
     }
 }
 

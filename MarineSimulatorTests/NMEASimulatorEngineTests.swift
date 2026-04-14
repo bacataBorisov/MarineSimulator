@@ -1517,6 +1517,23 @@ struct NMEASimulatorEngineTests {
         #expect(simulator.isTransmitting == false)
         #expect(simulator.transportHistory.contains { $0.message == "Timer re-enabled" } == false)
     }
+
+    @Test
+    func nmeaNumericFormattingUsesAsciiDecimalSeparator() {
+        #expect(NMEANumericFormatting.format(3.5, fractionDigits: 1) == "3.5")
+        #expect(NMEANumericFormatting.format(12.3, fractionDigits: 1) == "12.3")
+        #expect(NMEANumericFormatting.formatOptional(nil, fractionDigits: 1) == "")
+    }
+
+    @Test
+    func nmeaCoordinateMinutesPreserveLatitudeFieldShape() {
+        let lat = 43.19542
+        let absLat = abs(lat)
+        let degrees = Int(absLat)
+        let minutes = (absLat - Double(degrees)) * 60
+        #expect(NMEANumericFormatting.formatCoordinateMinutes(minutes) == "11.7252")
+        #expect(FormatKit.formatLatitude(lat) == "4311.7252,N")
+    }
 }
 
 private func configuredSimulatorForDeterministicOutput() -> NMEASimulator {

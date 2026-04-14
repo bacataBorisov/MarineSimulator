@@ -13,3 +13,5 @@ Rules:
 - Treat the codebase and `.agent-os/context/` as authoritative over prior chat.
 - Keep handoff files small and prune stale history instead of growing them indefinitely.
 - Prefer one commit for grouped handoff-doc updates when committing.
+- **SwiftUI-first UI:** Prefer SwiftUI components and layout for all new and refactored surfaces unless there is a clear platform gap; when AppKit or `NSViewRepresentable` is required, keep the boundary small and note why (see `.agent-os/context/project-memory.md`).
+- Follow Apple **Human Interface Guidelines** and **Swift API Design Guidelines**; see `.agent-os/context/project-memory.md` for project-specific conventions (e.g. NMEA POSIX formatting, dashboard file layout).

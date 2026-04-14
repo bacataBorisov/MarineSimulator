@@ -10,7 +10,7 @@ struct DashboardView: View {
 
     @AppStorage("dashboard.console_height") private var storedConsoleHeight: Double = 220
 
-    private let leftRailWidth: CGFloat = 332
+    private var leftRailWidth: CGFloat { AppChrome.liveControlRailOuterWidth }
     private let rightRailWidth: CGFloat = 340
     private let consoleHeaderHeight: CGFloat = 28
 

@@ -235,6 +235,28 @@ class NMEASimulator {
     private var liveWeatherWindDirectionOffsetDeg: Double = 0
     private var liveWeatherNoiseBaselineFetchDate: Date?
 
+    private struct TackAnimationState {
+        let startDate: Date
+        let duration: TimeInterval
+        let fromTrueHeading: Double
+        let toTrueHeading: Double
+
+        func trueHeading(at date: Date) -> Double {
+            let rawT = date.timeIntervalSince(startDate) / duration
+            let t = min(1, max(0, rawT))
+            let smooth = t * t * (3 - 2 * t)
+            let delta = calculateShortestRotation(from: fromTrueHeading, to: toTrueHeading)
+            return normalizeAngle(fromTrueHeading + delta * smooth)
+        }
+
+        func isComplete(at date: Date) -> Bool {
+            date.timeIntervalSince(startDate) >= duration - 1e-4
+        }
+    }
+
+    private var tackAnimationState: TackAnimationState?
+    @ObservationIgnored private var tackAnimationTimer: Timer?
+
     init(
         userDefaults: UserDefaults = .standard,
         weatherService: any WeatherService = GlobalFallbackWeatherService()
@@ -249,6 +271,10 @@ class NMEASimulator {
         if weatherSourceMode == .liveWeather {
             refreshLiveWeather(force: true)
         }
+    }
+
+    deinit {
+        tackAnimationTimer?.invalidate()
     }
 
     func persistLiveSettings() {
@@ -608,8 +634,10 @@ class NMEASimulator {
             barometer.value = barometer.generateRandomValue(shouldGenerate: sensorToggles.hasBarometer)
         }
 
-        heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
-        gyroHeading.value = gyroHeading.generateRandomValue(shouldGenerate: sensorToggles.hasGyro)
+        if tackAnimationState == nil {
+            heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
+            gyroHeading.value = gyroHeading.generateRandomValue(shouldGenerate: sensorToggles.hasGyro)
+        }
         depth.value = depth.generateRandomValue(shouldGenerate: sensorToggles.hasEchoSounder)
 
         let magneticVariation = simulatedMagneticVariation(for: gpsData, at: timestamp)
@@ -1491,6 +1519,71 @@ class NMEASimulator {
         return String(sentence[startIndex..<starIndex])
     }
 
+    private func scheduleTackTimer() {
+        tackAnimationTimer?.invalidate()
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+            self?.advanceTackAnimation(at: Date())
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        tackAnimationTimer = timer
+    }
+
+    private func advanceTackAnimation(at date: Date) {
+        guard let state = tackAnimationState else {
+            tackAnimationTimer?.invalidate()
+            tackAnimationTimer = nil
+            return
+        }
+
+        if state.isComplete(at: date) {
+            applySimulatedTrueHeading(state.toTrueHeading, at: date)
+            tackAnimationState = nil
+            tackAnimationTimer?.invalidate()
+            tackAnimationTimer = nil
+            persistSettingsIfNeeded()
+            return
+        }
+
+        applySimulatedTrueHeading(state.trueHeading(at: date), at: date)
+    }
+
+    private func applySimulatedTrueHeading(_ trueDeg: Double, at date: Date) {
+        let variation = simulatedMagneticVariation(for: gpsData, at: date)
+        let trueNorm = normalizeAngle(trueDeg)
+        if sensorToggles.hasGyro {
+            gyroHeading.value = trueNorm
+            gyroHeading.centerValue = trueNorm.clamped(to: gyroHeading.range)
+        }
+        if sensorToggles.hasCompass {
+            let mag = normalizeAngle(trueNorm - variation)
+            heading.value = mag
+            heading.centerValue = mag.clamped(to: heading.range)
+        }
+
+        if isTransmitting, let previous = latestSnapshot {
+            latestSnapshot = SimulationSnapshot(
+                timestamp: date,
+                windDirectionTrue: previous.windDirectionTrue,
+                windSpeedTrue: previous.windSpeedTrue,
+                magneticHeading: heading.value,
+                gyroHeading: gyroHeading.value,
+                magneticVariation: variation,
+                compassDeviation: simulatedCompassDeviation(heading: heading.value),
+                boatSpeed: previous.boatSpeed,
+                depth: previous.depth,
+                seaTemperature: previous.seaTemperature,
+                airTemperature: previous.airTemperature,
+                relativeHumidity: previous.relativeHumidity,
+                airPressure: previous.airPressure,
+                gpsData: previous.gpsData,
+                gpsSignal: previous.gpsSignal,
+                turnRate: previous.turnRate,
+                logDistanceNm: previous.logDistanceNm,
+                tripDistanceNm: previous.tripDistanceNm
+            )
+        }
+    }
+
     private func estimatedBoatSpeed(trueHeading: Double) -> Double? {
         guard sensorToggles.hasSpeedLog, let trueWindSpeed = tws.value else {
             return nil
@@ -1555,5 +1648,63 @@ extension NMEASimulator {
 
     var canSendFullWindData: Bool {
         canSendTrueWind && hasTrueHeading
+    }
+
+    /// Whether a tack animation is currently driving heading / gyro.
+    var isTackInProgress: Bool {
+        tackAnimationState != nil
+    }
+
+    /// Tack needs wind direction and at least one heading source (gyro and/or compass).
+    var canExecuteTackManeuver: Bool {
+        sensorToggles.hasAnemometer && (sensorToggles.hasGyro || sensorToggles.hasCompass)
+    }
+
+    /// Animates true heading through the shortest path onto the opposite close-hauled tack using the selected boat profile’s optimal upwind angle.
+    func beginTackManeuver() {
+        guard canExecuteTackManeuver else { return }
+
+        let run: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.tackAnimationTimer?.invalidate()
+            self.tackAnimationTimer = nil
+
+            let twsSample = self.tws.value ?? self.tws.centerValue
+            let optimal = self.boatProfile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: twsSample)
+            let twdDeg = normalizeAngle(self.twd.value ?? self.twd.centerValue)
+
+            let variation = self.simulatedMagneticVariation(for: self.gpsData, at: Date())
+            let currentTrue = self.resolvedTrueHeading(
+                magneticHeading: self.heading.value,
+                gyroHeading: self.gyroHeading.value,
+                variation: variation
+            ) ?? normalizeAngle(self.gpsData.courseOverGround)
+
+            let portCloseHauled = normalizeAngle(twdDeg + optimal)
+            let stbdCloseHauled = normalizeAngle(twdDeg - optimal)
+
+            let distToPort = abs(calculateShortestRotation(from: currentTrue, to: portCloseHauled))
+            let distToStbd = abs(calculateShortestRotation(from: currentTrue, to: stbdCloseHauled))
+            let targetTrue = distToPort <= distToStbd ? stbdCloseHauled : portCloseHauled
+
+            let turnSize = abs(calculateShortestRotation(from: currentTrue, to: targetTrue))
+            guard turnSize > 0.5 else { return }
+
+            let duration = (6 + turnSize / 18 * 10).clamped(to: 6...20)
+            self.tackAnimationState = TackAnimationState(
+                startDate: Date(),
+                duration: duration,
+                fromTrueHeading: currentTrue,
+                toTrueHeading: targetTrue
+            )
+            self.applySimulatedTrueHeading(currentTrue, at: Date())
+            self.scheduleTackTimer()
+        }
+
+        if Thread.isMainThread {
+            run()
+        } else {
+            DispatchQueue.main.async(execute: run)
+        }
     }
 }

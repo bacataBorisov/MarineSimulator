@@ -37,7 +37,8 @@ enum FormatKit {
         let absLat = abs(latitude)
         let degrees = Int(absLat)
         let minutes = (absLat - Double(degrees)) * 60
-        return String(format: "%02d%07.4f,%@", degrees, minutes, hemisphere)
+        let minutesField = NMEANumericFormatting.formatCoordinateMinutes(minutes)
+        return String(format: "%02d%@,%@", degrees, minutesField, hemisphere)
     }
 
     static func formatLongitude(_ longitude: Double) -> String {
@@ -45,6 +46,7 @@ enum FormatKit {
         let absLon = abs(longitude)
         let degrees = Int(absLon)
         let minutes = (absLon - Double(degrees)) * 60
-        return String(format: "%03d%07.4f,%@", degrees, minutes, hemisphere)
+        let minutesField = NMEANumericFormatting.formatCoordinateMinutes(minutes)
+        return String(format: "%03d%@,%@", degrees, minutesField, hemisphere)
     }
 }

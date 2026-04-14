@@ -2,6 +2,12 @@ import SwiftUI
 import MapKit
 import AppKit
 
+/// Map overlay controls: match `MKCompassButton` / `MKZoomControl` footprint (circle diameter and slot width).
+private enum MapFloatingChrome {
+    static let controlDiameter: CGFloat = 38
+    static let slotWidth: CGFloat = 38
+}
+
 struct BoatMapView: NSViewRepresentable {
     @Environment(NMEASimulator.self) private var nmeaManager
 
@@ -109,13 +115,24 @@ struct BoatMapView: NSViewRepresentable {
         }
 
         private func centerMap(on coordinate: CLLocationCoordinate2D, in mapView: MKMapView, animated: Bool) {
+            let previous = mapView.camera
+            let distance = Self.resolvedCameraGroundDistance(previous)
             let camera = MKMapCamera(
                 lookingAtCenter: coordinate,
-                fromDistance: 120_000,
-                pitch: 0,
-                heading: 0
+                fromDistance: distance,
+                pitch: previous.pitch,
+                heading: previous.heading
             )
             mapView.setCamera(camera, animated: animated)
+        }
+
+        /// Preserves zoom when recentering: use the current camera range instead of a fixed default.
+        private static func resolvedCameraGroundDistance(_ camera: MKMapCamera) -> CLLocationDistance {
+            let d = camera.centerCoordinateDistance
+            if d > 1 { return d }
+            let a = camera.altitude
+            if a > 1 { return a }
+            return 120_000
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -252,20 +269,31 @@ final class BoatMapContainerView: NSView {
         compassButton.compassVisibility = .visible
         zoomControl.mapView = mapView
 
-        if let image = NSImage(systemSymbolName: "location.viewfinder", accessibilityDescription: "Center on Boat") {
-            recenterButton.image = image
+        let mapControlPointSize: CGFloat = 17
+        let mapControlSymbolConfig = NSImage.SymbolConfiguration(pointSize: mapControlPointSize, weight: .semibold)
+        if let base = NSImage(systemSymbolName: "location.viewfinder", accessibilityDescription: "Center on Boat") {
+            recenterButton.image = base.withSymbolConfiguration(mapControlSymbolConfig)
         }
         recenterButton.imagePosition = .imageOnly
-        recenterButton.bezelStyle = .circular
-        recenterButton.isBordered = true
-        recenterButton.controlSize = .large
+        recenterButton.imageScaling = .scaleProportionallyDown
+        recenterButton.bezelStyle = .regularSquare
+        recenterButton.isBordered = false
         recenterButton.toolTip = "Center on Boat"
-        recenterButton.contentTintColor = .labelColor
+        recenterButton.contentTintColor = .white
         recenterButton.setButtonType(.momentaryPushIn)
+        recenterButton.focusRingType = .none
+        recenterButton.wantsLayer = true
+        if let layer = recenterButton.layer {
+            layer.cornerRadius = MapFloatingChrome.controlDiameter / 2
+            layer.masksToBounds = true
+            layer.backgroundColor = NSColor.black.withAlphaComponent(0.78).cgColor
+            layer.borderWidth = 0.5
+            layer.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
+        }
 
-        compassSlot.embed(compassButton)
-        recenterSlot.embed(recenterButton)
-        zoomSlot.embed(zoomControl)
+        compassSlot.embed(compassButton, fixedHeight: MapFloatingChrome.controlDiameter)
+        recenterSlot.embed(recenterButton, fixedHeight: MapFloatingChrome.controlDiameter)
+        zoomSlot.embed(zoomControl, fixedHeight: nil)
 
         controlStack.orientation = .vertical
         controlStack.alignment = .centerX
@@ -284,13 +312,11 @@ final class BoatMapContainerView: NSView {
             mapView.topAnchor.constraint(equalTo: topAnchor),
             mapView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            compassSlot.widthAnchor.constraint(equalToConstant: 38),
-            recenterSlot.widthAnchor.constraint(equalToConstant: 38),
-            zoomSlot.widthAnchor.constraint(equalToConstant: 38),
-            recenterButton.widthAnchor.constraint(equalToConstant: 32),
-            recenterButton.heightAnchor.constraint(equalToConstant: 32),
-            compassButton.widthAnchor.constraint(equalToConstant: 32),
-            compassButton.heightAnchor.constraint(equalToConstant: 32)
+            compassSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
+            compassSlot.heightAnchor.constraint(equalToConstant: MapFloatingChrome.controlDiameter),
+            recenterSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
+            recenterSlot.heightAnchor.constraint(equalToConstant: MapFloatingChrome.controlDiameter),
+            zoomSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth)
         ])
 
         let topConstraint = controlStack.topAnchor.constraint(equalTo: topAnchor, constant: 12)
@@ -302,14 +328,26 @@ final class BoatMapContainerView: NSView {
 }
 
 private final class CenteredControlSlot: NSView {
-    func embed(_ view: NSView) {
+    /// When `fixedHeight` is set (compass / recenter), the slot does not stretch vertically—keeps circular controls round.
+    func embed(_ view: NSView, fixedHeight: CGFloat?) {
         addSubview(view)
 
-        NSLayoutConstraint.activate([
-            view.centerXAnchor.constraint(equalTo: centerXAnchor),
-            view.topAnchor.constraint(equalTo: topAnchor),
-            view.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
+        var constraints: [NSLayoutConstraint] = [
+            view.centerXAnchor.constraint(equalTo: centerXAnchor)
+        ]
+        if let h = fixedHeight {
+            constraints.append(contentsOf: [
+                view.centerYAnchor.constraint(equalTo: centerYAnchor),
+                view.widthAnchor.constraint(equalToConstant: h),
+                view.heightAnchor.constraint(equalToConstant: h)
+            ])
+        } else {
+            constraints.append(contentsOf: [
+                view.topAnchor.constraint(equalTo: topAnchor),
+                view.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
+        }
+        NSLayoutConstraint.activate(constraints)
     }
 }
 

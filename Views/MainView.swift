@@ -3,7 +3,7 @@ import AppKit
 
 enum SidebarItem: Hashable {
     case gps, config
-    case wind, hydro, compass
+    case wind, hydro, compass, boat
     case dashboard, manual
 }
 
@@ -39,6 +39,9 @@ struct MainView: View {
                 Section("Setup") {
                     NavigationLink(value: SidebarItem.config) {
                         Label("Configuration", systemImage: "gear")
+                    }
+                    NavigationLink(value: SidebarItem.boat) {
+                        Label("Boat", systemImage: "sailboat")
                     }
                     NavigationLink(value: SidebarItem.manual) {
                         Label("Manual", systemImage: "book.closed")
@@ -81,6 +84,8 @@ struct MainView: View {
                             HydroConfig(nmeaManager: nmeaManager)
                         case .compass:
                             HeadingConfig(nmeaManager: nmeaManager)
+                        case .boat:
+                            BoatSetupDetailView(nmeaManager: nmeaManager)
                         case .none:
                             Text("Select a panel").foregroundColor(.secondary)
                         }
@@ -207,6 +212,8 @@ extension SidebarItem: RawRepresentable {
             self = .hydro
         case "compass":
             self = .compass
+        case "boat":
+            self = .boat
         case "dashboard":
             self = .dashboard
         case "manual":
@@ -228,6 +235,8 @@ extension SidebarItem: RawRepresentable {
             return "hydro"
         case .compass:
             return "compass"
+        case .boat:
+            return "boat"
         case .dashboard:
             return "dashboard"
         case .manual:

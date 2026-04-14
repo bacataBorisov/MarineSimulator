@@ -30,6 +30,12 @@ The current dashboard is centered around a live map with overlay tooling:
 
 The console drawer includes timestamps for NMEA lines and can be collapsed or expanded during testing.
 
+## UI and design approach
+
+The app is built **primarily in SwiftUI** and is intended to stay aligned with **Apple Human Interface Guidelines** and **Swift API Design Guidelines**: standard SwiftUI controls and materials, clear hierarchy, and accessibility-friendly labels where it matters.
+
+Prefer **SwiftUI components** for new and refactored UI. Use **AppKit** or **`NSViewRepresentable`** only when SwiftUI does not reasonably expose the capability or when a **first-party** view owns the feature (for example, MapKit on the dashboard). Keep any bridge small and intentional.
+
 ## Current Capabilities
 
 - Coherent snapshot-based simulation tick
