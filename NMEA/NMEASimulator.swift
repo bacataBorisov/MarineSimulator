@@ -895,7 +895,13 @@ class NMEASimulator {
         let previousStatus = endpointStatuses[status.endpointID]
         endpointStatuses[status.endpointID] = status
 
-        if latestTransportStatus == nil || status.level == .error || status.level == .warning || latestTransportStatus?.level == .connected {
+        // Update the top-bar indicator:
+        //   • Always update for the same endpoint so errors can recover to connected.
+        //   • For a different endpoint, surface errors/warnings over idle/connected.
+        if latestTransportStatus == nil
+            || status.endpointID == latestTransportStatus?.endpointID
+            || status.level == .error
+            || status.level == .warning {
             latestTransportStatus = status
         }
 
