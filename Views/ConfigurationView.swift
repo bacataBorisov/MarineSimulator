@@ -13,12 +13,28 @@ struct ConfigurationView: View {
                         Grid(horizontalSpacing: 16, verticalSpacing: 8) {
                             GridRow {
                                 Text("IP")
-                                TextField("IP Address", text: $nmeaManager.ip)
-                                    .gridColumnAlignment(.leading)
+                                if nmeaManager.isBroadcast {
+                                    Text("255.255.255.255")
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .gridColumnAlignment(.leading)
+                                } else {
+                                    TextField("IP Address", text: $nmeaManager.ip)
+                                        .gridColumnAlignment(.leading)
+                                }
                                 Text("Port")
                                 TextField("Port", value: $nmeaManager.port, formatter: FormatKit.plainNumberFormatter)
                                 Text("Talker ID")
                                 TextField("Talker ID", text: $nmeaManager.talkerID)
+                            }
+                            GridRow {
+                                Text("Broadcast")
+                                    .foregroundStyle(.secondary)
+                                Toggle("Broadcast", isOn: $nmeaManager.isBroadcast)
+                                    .labelsHidden()
+                                    .toggleStyle(.switch)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .gridCellColumns(5)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -436,11 +452,30 @@ struct ConfigurationView: View {
                     .pickerStyle(.segmented)
                 }
 
-                GridRow {
-                    Text("Host")
-                    TextField("Host", text: endpoint.host)
-                    Text("Port")
-                    TextField("Port", value: endpoint.port, formatter: FormatKit.plainNumberFormatter)
+                if endpoint.wrappedValue.transport == .udp {
+                    GridRow {
+                        Text("Broadcast")
+                            .foregroundStyle(.secondary)
+                        Toggle("Broadcast", isOn: endpoint.isBroadcast)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                        Text("Port")
+                        TextField("Port", value: endpoint.port, formatter: FormatKit.plainNumberFormatter)
+                    }
+                    if !endpoint.wrappedValue.isBroadcast {
+                        GridRow {
+                            Text("Host")
+                            TextField("Host", text: endpoint.host)
+                                .gridCellColumns(3)
+                        }
+                    }
+                } else {
+                    GridRow {
+                        Text("Host")
+                        TextField("Host", text: endpoint.host)
+                        Text("Port")
+                        TextField("Port", value: endpoint.port, formatter: FormatKit.plainNumberFormatter)
+                    }
                 }
             }
             .textFieldStyle(.roundedBorder)

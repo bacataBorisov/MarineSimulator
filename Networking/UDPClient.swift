@@ -56,7 +56,7 @@ final class UDPClient {
             return
         }
 
-        let host = endpoint.host
+        let host = endpoint.effectiveHost
         let port = endpoint.port
         let key  = "\(host):\(port)"
 

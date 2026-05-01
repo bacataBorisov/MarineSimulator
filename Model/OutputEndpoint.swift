@@ -10,10 +10,15 @@ enum NetworkTransport: String, Codable, CaseIterable, Identifiable {
 struct OutputEndpoint: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
     var name: String
-    var host: String
+    var host: String        // unicast fallback IP; used when isBroadcast == false
     var port: UInt16
     var transport: NetworkTransport
     var isEnabled: Bool
+    var isBroadcast: Bool   // UDP-only; sends to all subnet broadcast addresses
+
+    /// The address actually used when sending.
+    /// Returns "255.255.255.255" in broadcast mode, otherwise `host`.
+    var effectiveHost: String { isBroadcast ? "255.255.255.255" : host }
 
     init(
         id: UUID = UUID(),
@@ -21,7 +26,8 @@ struct OutputEndpoint: Codable, Identifiable, Equatable {
         host: String,
         port: UInt16,
         transport: NetworkTransport = .udp,
-        isEnabled: Bool = true
+        isEnabled: Bool = true,
+        isBroadcast: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -29,6 +35,33 @@ struct OutputEndpoint: Codable, Identifiable, Equatable {
         self.port = port
         self.transport = transport
         self.isEnabled = isEnabled
+        self.isBroadcast = isBroadcast
+    }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, host, port, transport, isEnabled, isBroadcast
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id        = try c.decode(UUID.self,             forKey: .id)
+        name      = try c.decode(String.self,           forKey: .name)
+        let rawHost = try c.decode(String.self,         forKey: .host)
+        port      = try c.decode(UInt16.self,           forKey: .port)
+        transport = try c.decode(NetworkTransport.self, forKey: .transport)
+        isEnabled = try c.decode(Bool.self,             forKey: .isEnabled)
+
+        if let stored = try c.decodeIfPresent(Bool.self, forKey: .isBroadcast) {
+            // New format: isBroadcast is explicit in JSON.
+            isBroadcast = stored
+            host = rawHost
+        } else {
+            // Migrate old saves that stored "255.255.255.255" as the host.
+            isBroadcast = rawHost == "255.255.255.255"
+            host = isBroadcast ? "127.0.0.1" : rawHost
+        }
     }
 }
 

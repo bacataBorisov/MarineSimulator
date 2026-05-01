@@ -41,6 +41,12 @@ class NMEASimulator {
             persistSettingsIfNeeded()
         }
     }
+    var isBroadcast: Bool = false {
+        didSet {
+            syncPrimaryOutputEndpoint()
+            persistSettingsIfNeeded()
+        }
+    }
     var port: UInt16 = 4950 {
         didSet {
             syncPrimaryOutputEndpoint()
@@ -435,7 +441,7 @@ class NMEASimulator {
             let idleStatus = OutputEndpointStatus(
                 endpointID: endpoint.id,
                 level: .idle,
-                message: "\(endpoint.transport.rawValue.uppercased()) \(endpoint.host):\(endpoint.port) idle"
+                message: "\(endpoint.transport.rawValue.uppercased()) \(endpoint.effectiveHost):\(endpoint.port) idle"
             )
             endpointStatuses[endpoint.id] = idleStatus
             if latestIdleStatus == nil {
@@ -819,7 +825,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: .connected,
-                        message: "\(endpoint.transport.rawValue.uppercased()) connected to \(endpoint.host):\(endpoint.port)"
+                        message: "\(endpoint.transport.rawValue.uppercased()) connected to \(endpoint.effectiveHost):\(endpoint.port)"
                     )
                 )
             case .failure(let error):
@@ -837,7 +843,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: level,
-                        message: "\(endpoint.transport.rawValue.uppercased()) \(endpoint.host):\(endpoint.port) - \(self.transportErrorSummary(error))"
+                        message: "\(endpoint.transport.rawValue.uppercased()) \(endpoint.effectiveHost):\(endpoint.port) - \(self.transportErrorSummary(error))"
                     )
                 )
             }
@@ -852,7 +858,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: .idle,
-                        message: "TCP connecting to \(endpoint.host):\(endpoint.port)"
+                        message: "TCP connecting to \(endpoint.effectiveHost):\(endpoint.port)"
                     )
                 )
             case .ready:
@@ -860,7 +866,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: .connected,
-                        message: "TCP connected to \(endpoint.host):\(endpoint.port)"
+                        message: "TCP connected to \(endpoint.effectiveHost):\(endpoint.port)"
                     )
                 )
             case .waiting:
@@ -868,7 +874,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: .warning,
-                        message: "TCP waiting for \(endpoint.host):\(endpoint.port)"
+                        message: "TCP waiting for \(endpoint.effectiveHost):\(endpoint.port)"
                     )
                 )
             case .failed(let error, let retryAfter):
@@ -876,7 +882,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: .error,
-                        message: "TCP \(endpoint.host):\(endpoint.port) - \(self.transportErrorSummary(error)) (retry after \(retryAfter.formatted(date: .omitted, time: .standard)))"
+                        message: "TCP \(endpoint.effectiveHost):\(endpoint.port) - \(self.transportErrorSummary(error)) (retry after \(retryAfter.formatted(date: .omitted, time: .standard)))"
                     )
                 )
             case .cancelled:
@@ -884,7 +890,7 @@ class NMEASimulator {
                     OutputEndpointStatus(
                         endpointID: endpoint.id,
                         level: .idle,
-                        message: "TCP \(endpoint.host):\(endpoint.port) idle"
+                        message: "TCP \(endpoint.effectiveHost):\(endpoint.port) idle"
                     )
                 )
             }
@@ -966,6 +972,7 @@ class NMEASimulator {
         }
 
         outputEndpoints[0].host = ip
+        outputEndpoints[0].isBroadcast = isBroadcast
         outputEndpoints[0].port = port
         outputEndpoints[0].isEnabled = true
     }
@@ -990,7 +997,9 @@ class NMEASimulator {
         if ip != outputEndpoints[0].host {
             ip = outputEndpoints[0].host
         }
-
+        if isBroadcast != outputEndpoints[0].isBroadcast {
+            isBroadcast = outputEndpoints[0].isBroadcast
+        }
         if port != outputEndpoints[0].port {
             port = outputEndpoints[0].port
         }
