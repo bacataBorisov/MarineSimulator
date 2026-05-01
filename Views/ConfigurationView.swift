@@ -13,15 +13,15 @@ struct ConfigurationView: View {
                         Grid(horizontalSpacing: 16, verticalSpacing: 8) {
                             GridRow {
                                 Text("IP")
-                                if nmeaManager.isBroadcast {
-                                    Text("255.255.255.255")
-                                        .foregroundStyle(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .gridColumnAlignment(.leading)
-                                } else {
-                                    TextField("IP Address", text: $nmeaManager.ip)
-                                        .gridColumnAlignment(.leading)
-                                }
+                                // Always a TextField — disabled + shows broadcast address when broadcast is on.
+                                // This keeps the row height stable; only the toggle moves.
+                                TextField("IP Address", text: Binding(
+                                    get: { nmeaManager.isBroadcast ? "255.255.255.255" : nmeaManager.ip },
+                                    set: { if !nmeaManager.isBroadcast { nmeaManager.ip = $0 } }
+                                ))
+                                .disabled(nmeaManager.isBroadcast)
+                                .foregroundStyle(nmeaManager.isBroadcast ? Color.secondary : Color.primary)
+                                .gridColumnAlignment(.leading)
                                 Text("Port")
                                 TextField("Port", value: $nmeaManager.port, formatter: FormatKit.plainNumberFormatter)
                                 Text("Talker ID")
@@ -29,7 +29,6 @@ struct ConfigurationView: View {
                             }
                             GridRow {
                                 Text("Broadcast")
-                                    .foregroundStyle(.secondary)
                                 Toggle("Broadcast", isOn: $nmeaManager.isBroadcast)
                                     .labelsHidden()
                                     .toggleStyle(.switch)
@@ -453,21 +452,26 @@ struct ConfigurationView: View {
                 }
 
                 if endpoint.wrappedValue.transport == .udp {
+                    // Broadcast toggle + Port always on the same row.
                     GridRow {
                         Text("Broadcast")
-                            .foregroundStyle(.secondary)
                         Toggle("Broadcast", isOn: endpoint.isBroadcast)
                             .labelsHidden()
                             .toggleStyle(.switch)
                         Text("Port")
                         TextField("Port", value: endpoint.port, formatter: FormatKit.plainNumberFormatter)
                     }
-                    if !endpoint.wrappedValue.isBroadcast {
-                        GridRow {
-                            Text("Host")
-                            TextField("Host", text: endpoint.host)
-                                .gridCellColumns(3)
-                        }
+                    // Host row is always present so the card never resizes when toggling.
+                    // When broadcast is on it shows the effective address, disabled + grayed.
+                    GridRow {
+                        Text("Host")
+                        TextField("Host", text: Binding(
+                            get: { endpoint.wrappedValue.effectiveHost },
+                            set: { if !endpoint.wrappedValue.isBroadcast { endpoint.wrappedValue.host = $0 } }
+                        ))
+                        .disabled(endpoint.wrappedValue.isBroadcast)
+                        .foregroundStyle(endpoint.wrappedValue.isBroadcast ? Color.secondary : Color.primary)
+                        .gridCellColumns(3)
                     }
                 } else {
                     GridRow {
