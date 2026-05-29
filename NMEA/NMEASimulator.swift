@@ -994,6 +994,12 @@ class NMEASimulator {
         outputEndpoints[0].port = outputEndpoints[0].port
         outputEndpoints[0].isEnabled = true
 
+        // Broadcast is UDP-only. Auto-clear an invalid persisted state so the
+        // toggle is never left ON-and-disabled with no way for the user to fix it.
+        if outputEndpoints[0].transport == .tcp && outputEndpoints[0].isBroadcast {
+            outputEndpoints[0].isBroadcast = false
+        }
+
         if ip != outputEndpoints[0].host {
             ip = outputEndpoints[0].host
         }
