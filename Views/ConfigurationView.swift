@@ -15,12 +15,14 @@ struct ConfigurationView: View {
                                 Text("IP")
                                 // Always a TextField — disabled + shows broadcast address when broadcast is on.
                                 // This keeps the row height stable; only the toggle moves.
+                                let primaryIsTCP = nmeaManager.outputEndpoints.first?.transport == .tcp
+                                let broadcastActive = nmeaManager.isBroadcast && !primaryIsTCP
                                 TextField("IP Address", text: Binding(
-                                    get: { nmeaManager.isBroadcast ? "255.255.255.255" : nmeaManager.ip },
-                                    set: { if !nmeaManager.isBroadcast { nmeaManager.ip = $0 } }
+                                    get: { broadcastActive ? "255.255.255.255" : nmeaManager.ip },
+                                    set: { if !broadcastActive { nmeaManager.ip = $0 } }
                                 ))
-                                .disabled(nmeaManager.isBroadcast)
-                                .foregroundStyle(nmeaManager.isBroadcast ? Color.secondary : Color.primary)
+                                .disabled(broadcastActive)
+                                .foregroundStyle(broadcastActive ? Color.secondary : Color.primary)
                                 .gridColumnAlignment(.leading)
                                 Text("Port")
                                 TextField("Port", value: $nmeaManager.port, formatter: FormatKit.plainNumberFormatter)
@@ -28,10 +30,13 @@ struct ConfigurationView: View {
                                 TextField("Talker ID", text: $nmeaManager.talkerID)
                             }
                             GridRow {
+                                let primaryIsTCP = nmeaManager.outputEndpoints.first?.transport == .tcp
                                 Text("Broadcast")
+                                    .foregroundStyle(primaryIsTCP ? Color.secondary : Color.primary)
                                 Toggle("Broadcast", isOn: $nmeaManager.isBroadcast)
                                     .labelsHidden()
                                     .toggleStyle(.switch)
+                                    .disabled(primaryIsTCP)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .gridCellColumns(5)
                             }
@@ -449,6 +454,9 @@ struct ConfigurationView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
+                    .onChange(of: endpoint.wrappedValue.transport) { _, newTransport in
+                        if newTransport == .tcp { endpoint.wrappedValue.isBroadcast = false }
+                    }
                 }
 
                 if endpoint.wrappedValue.transport == .udp {

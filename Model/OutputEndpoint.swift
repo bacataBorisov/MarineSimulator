@@ -17,8 +17,8 @@ struct OutputEndpoint: Codable, Identifiable, Equatable {
     var isBroadcast: Bool   // UDP-only; sends to all subnet broadcast addresses
 
     /// The address actually used when sending.
-    /// Returns "255.255.255.255" in broadcast mode, otherwise `host`.
-    var effectiveHost: String { isBroadcast ? "255.255.255.255" : host }
+    /// Broadcast only applies to UDP — TCP connections always use the stored host.
+    var effectiveHost: String { (isBroadcast && transport == .udp) ? "255.255.255.255" : host }
 
     init(
         id: UUID = UUID(),
