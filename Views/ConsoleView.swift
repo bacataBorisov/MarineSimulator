@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import Combine
 
 struct ConsoleView: View {
     enum Mode: String, CaseIterable, Identifiable {
@@ -18,9 +19,17 @@ struct ConsoleView: View {
 
     @Environment(NMEASimulator.self) private var nmeaManager
     let mode: Mode
+    @State private var statsRefreshDate = Date()
+
+    private let statsTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollViewReader { proxy in
+        VStack(spacing: 0) {
+            if mode == .nmea {
+                statsBar
+            }
+
+            ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if mode == .nmea {
@@ -61,7 +70,49 @@ struct ConsoleView: View {
                     proxy.scrollTo(scrollTargetID, anchor: .bottom)
                 }
             }
+            }
         }
+        .onReceive(statsTimer) { date in
+            statsRefreshDate = date
+        }
+    }
+
+    @ViewBuilder
+    private var statsBar: some View {
+        let _ = statsRefreshDate
+
+        HStack(spacing: 16) {
+            statItem(title: "Sent/sec", value: "\(nmeaManager.sentPerSecond())")
+            statItem(title: "Total sent", value: "\(nmeaManager.totalSentCount)")
+            statItem(title: "Interval", value: formattedSimulatorInterval)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(AppColors.consoleChrome.opacity(0.55))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(.white.opacity(0.08))
+                .frame(height: 1)
+        }
+    }
+
+    private func statItem(title: String, value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+    }
+
+    private var formattedSimulatorInterval: String {
+        if nmeaManager.interval >= 1.0 {
+            return String(format: "%.1f s", nmeaManager.interval)
+        }
+        return String(format: "%.0f ms", nmeaManager.interval * 1000)
     }
 
     @ViewBuilder

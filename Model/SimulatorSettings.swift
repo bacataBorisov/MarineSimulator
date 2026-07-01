@@ -72,6 +72,9 @@ struct SimulatorSettings: Codable {
     var faultInjection: FaultInjectionSettings
     var mwvReferenceMode: MWVReferenceMode
     var selectedPreset: SimulationPreset?
+    var selectedProfile: HardwareProfile
+    var sentenceRateMode: SentenceRateMode
+    var perSentenceTalkerID: [String: String]
     var boatProfile: BoatProfile
     var boatSpeedMode: BoatSpeedMode
     var weatherSourceMode: WeatherSourceMode
@@ -103,6 +106,9 @@ struct SimulatorSettings: Codable {
         case faultInjection
         case mwvReferenceMode
         case selectedPreset
+        case selectedProfile
+        case sentenceRateMode
+        case perSentenceTalkerID
         case boatProfile
         case boatSpeedMode
         case weatherSourceMode
@@ -135,6 +141,9 @@ struct SimulatorSettings: Codable {
         faultInjection: FaultInjectionSettings,
         mwvReferenceMode: MWVReferenceMode,
         selectedPreset: SimulationPreset?,
+        selectedProfile: HardwareProfile = .bngTriton2,
+        sentenceRateMode: SentenceRateMode = .realistic,
+        perSentenceTalkerID: [String: String] = [:],
         boatProfile: BoatProfile,
         boatSpeedMode: BoatSpeedMode,
         weatherSourceMode: WeatherSourceMode,
@@ -165,6 +174,9 @@ struct SimulatorSettings: Codable {
         self.faultInjection = faultInjection
         self.mwvReferenceMode = mwvReferenceMode
         self.selectedPreset = selectedPreset
+        self.selectedProfile = selectedProfile
+        self.sentenceRateMode = sentenceRateMode
+        self.perSentenceTalkerID = perSentenceTalkerID
         self.boatProfile = boatProfile
         self.boatSpeedMode = boatSpeedMode
         self.weatherSourceMode = weatherSourceMode
@@ -200,6 +212,9 @@ struct SimulatorSettings: Codable {
         faultInjection = try container.decodeIfPresent(FaultInjectionSettings.self, forKey: .faultInjection) ?? FaultInjectionSettings()
         mwvReferenceMode = try container.decodeIfPresent(MWVReferenceMode.self, forKey: .mwvReferenceMode) ?? .relative
         selectedPreset = try container.decodeIfPresent(SimulationPreset.self, forKey: .selectedPreset)
+        selectedProfile = try container.decodeIfPresent(HardwareProfile.self, forKey: .selectedProfile) ?? .bngTriton2
+        sentenceRateMode = try container.decodeIfPresent(SentenceRateMode.self, forKey: .sentenceRateMode) ?? .realistic
+        perSentenceTalkerID = try container.decodeIfPresent([String: String].self, forKey: .perSentenceTalkerID) ?? [:]
         boatProfile = try container.decodeIfPresent(BoatProfile.self, forKey: .boatProfile) ?? .beneteauFirst407
         boatSpeedMode = try container.decodeIfPresent(BoatSpeedMode.self, forKey: .boatSpeedMode) ?? .manual
         weatherSourceMode = try container.decodeIfPresent(WeatherSourceMode.self, forKey: .weatherSourceMode) ?? .manual

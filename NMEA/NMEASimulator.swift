@@ -144,6 +144,20 @@ class NMEASimulator {
     var selectedPreset: SimulationPreset? {
         didSet { persistSettingsIfNeeded() }
     }
+    var selectedProfile: HardwareProfile = .bngTriton2 {
+        didSet { persistSettingsIfNeeded() }
+    }
+    var sentenceRateMode: SentenceRateMode = .realistic {
+        didSet {
+            if sentenceRateMode == .realistic, oldValue == .custom, !isApplyingHardwareProfile {
+                applyDefaultSentenceIntervals()
+            }
+            persistSettingsIfNeeded()
+        }
+    }
+    var perSentenceTalkerID: [NMEASentenceType: String] = [:] {
+        didSet { persistSettingsIfNeeded() }
+    }
     var boatProfile: BoatProfile = .beneteauFirst407 {
         didSet { persistSettingsIfNeeded() }
     }
@@ -222,6 +236,7 @@ class NMEASimulator {
 
     var outputMessages: [String] = []
     private(set) var outputMessageTimestamps: [Date] = []
+    private(set) var totalSentCount: Int = 0
 
     // MARK: - Engine State
 
@@ -229,9 +244,7 @@ class NMEASimulator {
 
     private var lastSimulationTickDate: Date?
     private var lastEmissionDates: [NMEASentenceType: Date] = [:]
-    private var sentenceIntervals: [NMEASentenceType: TimeInterval] = Dictionary(
-        uniqueKeysWithValues: NMEASentenceType.allCases.map { ($0, 0) }
-    ) {
+    var sentenceIntervals: [NMEASentenceType: TimeInterval] = [:] {
         didSet { persistSettingsIfNeeded() }
     }
     private var sendRelativeWind = true
@@ -239,6 +252,7 @@ class NMEASimulator {
     private var totalLogDistanceNm: Double = 0
     private var totalTripDistanceNm: Double = 0
     private var isRestoringSettings = false
+    var isApplyingHardwareProfile = false
     private var isSynchronizingEndpoints = false
     private var pendingTransmissions: [PendingTransmission] = []
     @ObservationIgnored private var liveWeatherTask: Task<Bool, Never>?
@@ -274,13 +288,17 @@ class NMEASimulator {
         userDefaults: UserDefaults = .standard,
         weatherService: any WeatherService = GlobalFallbackWeatherService()
     ) {
+        isRestoringSettings = true
         self.userDefaults = userDefaults
         self.weatherService = weatherService
+        sentenceIntervals = Self.defaultSentenceIntervals
+        perSentenceTalkerID = Self.defaultTalkerIDs
         tcpClient.onStateChange = { [weak self] endpoint, state in
             self?.handleTCPStateUpdate(state, for: endpoint)
         }
         loadPersistedSettings()
         normalizeOutputEndpoints()
+        isRestoringSettings = false
         if weatherSourceMode == .liveWeather {
             refreshLiveWeather(force: true)
         }
@@ -459,11 +477,31 @@ class NMEASimulator {
     }
 
     func setInterval(_ interval: TimeInterval, for sentence: NMEASentenceType) {
+        if sentenceRateMode == .realistic {
+            sentenceRateMode = .custom
+            selectedProfile = .custom
+        }
         sentenceIntervals[sentence] = max(0, interval)
     }
 
     func sentenceInterval(for sentence: NMEASentenceType) -> Double {
-        sentenceIntervals[sentence] ?? 0
+        effectiveInterval(for: sentence)
+    }
+
+    var isSentenceIntervalEditable: Bool {
+        sentenceRateMode == .custom
+    }
+
+    func talkerID(for sentence: NMEASentenceType) -> String {
+        perSentenceTalkerID[sentence] ?? talkerID
+    }
+
+    func effectiveInterval(for sentence: NMEASentenceType) -> TimeInterval {
+        sentenceIntervals[sentence] ?? Self.defaultSentenceIntervals[sentence] ?? 1.0
+    }
+
+    func applyDefaultSentenceIntervals() {
+        sentenceIntervals = Self.defaultSentenceIntervals
     }
 
     func addOutputEndpoint() {
@@ -573,9 +611,31 @@ class NMEASimulator {
         flushPendingTransmissions(at: timestamp)
         let snapshot = tickSimulation(at: timestamp)
         let dueSentences = scheduledSentenceTypes(at: timestamp, snapshot: snapshot)
+        let count = dueSentences.count
+        guard count > 0 else { return }
 
-        for type in dueSentences {
-            sendNMEA(talkerID: talkerID, type: type, snapshot: snapshot)
+        let staggerWindow = min(interval * 0.8, Double(count - 1) * 0.05)
+        let gap = count > 1 ? staggerWindow / Double(count - 1) : 0
+
+        for (index, type) in dueSentences.enumerated() {
+            let delay = gap * Double(index)
+            if delay < 0.001 {
+                sendNMEA(type: type, snapshot: snapshot)
+            } else {
+                let due = timestamp.addingTimeInterval(delay)
+                let sentences = applyFaultInjection(
+                    to: buildNMEASentences(talkerID: talkerID(for: type), type: type, snapshot: snapshot),
+                    for: type,
+                    at: snapshot.timestamp
+                )
+                for sentence in sentences {
+                    pendingTransmissions.append(PendingTransmission(sentence: sentence, dueDate: due))
+                }
+            }
+        }
+
+        if count > 1 {
+            flushPendingTransmissions(at: timestamp.addingTimeInterval(staggerWindow + 0.001))
         }
     }
 
@@ -704,9 +764,10 @@ class NMEASimulator {
         return snapshot
     }
 
-    private func sendNMEA(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) {
+    private func sendNMEA(type: NMEASentenceType, snapshot: SimulationSnapshot) {
+        let effectiveTalkerID = talkerID(for: type)
         let sentences = applyFaultInjection(
-            to: buildNMEASentences(talkerID: talkerID, type: type, snapshot: snapshot),
+            to: buildNMEASentences(talkerID: effectiveTalkerID, type: type, snapshot: snapshot),
             for: type,
             at: snapshot.timestamp
         )
@@ -725,7 +786,7 @@ class NMEASimulator {
 
     private func scheduledSentenceTypes(at timestamp: Date, snapshot: SimulationSnapshot) -> [NMEASentenceType] {
         activeSentenceTypes(snapshot: snapshot).filter { type in
-            let minimumInterval = sentenceIntervals[type] ?? 0
+            let minimumInterval = effectiveInterval(for: type)
             guard minimumInterval > 0 else {
                 lastEmissionDates[type] = timestamp
                 return true
@@ -1067,6 +1128,9 @@ class NMEASimulator {
             faultInjection: faultInjection,
             mwvReferenceMode: mwvReferenceMode,
             selectedPreset: selectedPreset,
+            selectedProfile: selectedProfile,
+            sentenceRateMode: sentenceRateMode,
+            perSentenceTalkerID: Dictionary(uniqueKeysWithValues: perSentenceTalkerID.map { ($0.key.rawValue, $0.value) }),
             boatProfile: boatProfile,
             boatSpeedMode: boatSpeedMode,
             weatherSourceMode: weatherSourceMode,
@@ -1084,7 +1148,14 @@ class NMEASimulator {
         outputEndpoints = settings.outputEndpoints
         sentenceIntervals = Dictionary(
             uniqueKeysWithValues: NMEASentenceType.allCases.map { type in
-                (type, settings.sentenceIntervals[type.rawValue] ?? 0)
+                (type, settings.sentenceIntervals[type.rawValue] ?? Self.defaultSentenceIntervals[type] ?? 1.0)
+            }
+        )
+        selectedProfile = settings.selectedProfile
+        sentenceRateMode = settings.sentenceRateMode
+        perSentenceTalkerID = Dictionary(
+            uniqueKeysWithValues: NMEASentenceType.allCases.map { type in
+                (type, settings.perSentenceTalkerID[type.rawValue] ?? Self.defaultTalkerIDs[type] ?? settings.talkerID)
             }
         )
         isTimerSelected = settings.isTimerSelected
@@ -1435,6 +1506,7 @@ class NMEASimulator {
     private func recordOutputMessage(_ sentence: String, timestamp: Date) {
         outputMessages.append(sentence)
         outputMessageTimestamps.append(timestamp)
+        totalSentCount += 1
 
         if outputMessages.count > 100 {
             outputMessages.removeFirst(outputMessages.count - 100)
@@ -1443,6 +1515,14 @@ class NMEASimulator {
         if outputMessageTimestamps.count > 100 {
             outputMessageTimestamps.removeFirst(outputMessageTimestamps.count - 100)
         }
+
+        let cutoff = timestamp.addingTimeInterval(-2)
+        outputMessageTimestamps.removeAll { $0 < cutoff }
+    }
+
+    func sentPerSecond(at timestamp: Date = .now) -> Int {
+        let windowStart = timestamp.addingTimeInterval(-1)
+        return outputMessageTimestamps.filter { $0 >= windowStart }.count
     }
 
     private func applyFaultInjection(

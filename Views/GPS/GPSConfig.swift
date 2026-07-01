@@ -132,7 +132,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .rmc) },
                         set: { nmeaManager.setInterval($0, for: .rmc) }
                     ),
-                    isDisabled: !shouldSendRMC || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendRMC || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -146,7 +146,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .gga) },
                         set: { nmeaManager.setInterval($0, for: .gga) }
                     ),
-                    isDisabled: !shouldSendGGA || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendGGA || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -160,7 +160,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .vtg) },
                         set: { nmeaManager.setInterval($0, for: .vtg) }
                     ),
-                    isDisabled: !shouldSendVTG || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendVTG || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -174,7 +174,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .gll) },
                         set: { nmeaManager.setInterval($0, for: .gll) }
                     ),
-                    isDisabled: !shouldSendGLL || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendGLL || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -188,7 +188,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .gsa) },
                         set: { nmeaManager.setInterval($0, for: .gsa) }
                     ),
-                    isDisabled: !shouldSendGSA || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendGSA || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -202,7 +202,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .gsv) },
                         set: { nmeaManager.setInterval($0, for: .gsv) }
                     ),
-                    isDisabled: !shouldSendGSV || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendGSV || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 ViewKit.ToggleRowWithInfo(
@@ -216,7 +216,7 @@ private struct GPSSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .zda) },
                         set: { nmeaManager.setInterval($0, for: .zda) }
                     ),
-                    isDisabled: !shouldSendZDA || !nmeaManager.sensorToggles.hasGPS
+                    isDisabled: !shouldSendZDA || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if(!GPSSentencesSection.isGPSEnabled(nmeaManager)){

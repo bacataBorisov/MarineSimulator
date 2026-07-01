@@ -94,7 +94,7 @@ private struct HydroSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .dbt) },
                         set: { nmeaManager.setInterval($0, for: .dbt) }
                     ),
-                    isDisabled: !shouldSendDBT || !HydroUIConditions.isDBTEnabled(nmeaManager)
+                    isDisabled: !shouldSendDBT || !HydroUIConditions.isDBTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 
@@ -112,7 +112,7 @@ private struct HydroSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .dpt) },
                         set: { nmeaManager.setInterval($0, for: .dpt) }
                     ),
-                    isDisabled: !shouldSendDPT || !HydroUIConditions.isDPTEnabled(nmeaManager)
+                    isDisabled: !shouldSendDPT || !HydroUIConditions.isDPTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HydroUIConditions.showEchoSounderWarning(nmeaManager) {
@@ -181,7 +181,7 @@ private struct HydroSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .mtw) },
                         set: { nmeaManager.setInterval($0, for: .mtw) }
                     ),
-                    isDisabled: !shouldSendMTW || !HydroUIConditions.isMTWEnabled(nmeaManager)
+                    isDisabled: !shouldSendMTW || !HydroUIConditions.isMTWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HydroUIConditions.showMTWWarning(nmeaManager) {
@@ -208,7 +208,7 @@ private struct HydroSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .vhw) },
                         set: { nmeaManager.setInterval($0, for: .vhw) }
                     ),
-                    isDisabled: !shouldSendVHW || !HydroUIConditions.isVHWEnabled(nmeaManager)
+                    isDisabled: !shouldSendVHW || !HydroUIConditions.isVHWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HydroUIConditions.showVHWMissingBothNote(nmeaManager) {
@@ -245,7 +245,7 @@ private struct HydroSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .vbw) },
                         set: { nmeaManager.setInterval($0, for: .vbw) }
                     ),
-                    isDisabled: !shouldSendVBW || !HydroUIConditions.isVBWEnabled(nmeaManager)
+                    isDisabled: !shouldSendVBW || !HydroUIConditions.isVBWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HydroUIConditions.showVBWMissingBothNote(nmeaManager) {
@@ -282,7 +282,7 @@ private struct HydroSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .vlw) },
                         set: { nmeaManager.setInterval($0, for: .vlw) }
                     ),
-                    isDisabled: !shouldSendVLW || !HydroUIConditions.isVLWEnabled(nmeaManager)
+                    isDisabled: !shouldSendVLW || !HydroUIConditions.isVLWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HydroUIConditions.showVLWSpeedLogNote(nmeaManager) {

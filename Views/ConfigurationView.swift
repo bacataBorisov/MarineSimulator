@@ -46,6 +46,64 @@ struct ConfigurationView: View {
                     }
                     .padding(.horizontal)
 
+                    GroupBox(label: Label("Hardware Profile", systemImage: "cpu")) {
+                        VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                            Text("Match real instrument clusters for realistic NMEA timing, talker IDs, and sentence sets.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Picker("Hardware Profile", selection: Binding(
+                                get: { nmeaManager.selectedProfile },
+                                set: { nmeaManager.applyHardwareProfile($0) }
+                            )) {
+                                ForEach(HardwareProfile.allCases) { profile in
+                                    Text(profile.rawValue).tag(profile)
+                                }
+                            }
+                            .pickerStyle(.menu)
+
+                            Text(nmeaManager.selectedProfile.summary)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal)
+
+                    GroupBox(label: Label("Sentence Update Rates", systemImage: "timer")) {
+                        VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                            Text("Realistic mode uses hardware-accurate per-sentence intervals. Custom mode enables per-sentence editing in each instrument panel.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            Picker("Rate Mode", selection: $nmeaManager.sentenceRateMode) {
+                                ForEach(SentenceRateMode.allCases) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .onChange(of: nmeaManager.sentenceRateMode) { _, newMode in
+                                if newMode == .realistic {
+                                    nmeaManager.selectedProfile = nmeaManager.selectedProfile == .custom
+                                        ? .bngTriton2
+                                        : nmeaManager.selectedProfile
+                                }
+                            }
+
+                            if nmeaManager.sentenceRateMode == .realistic {
+                                Text("Per-sentence intervals follow the selected hardware profile defaults.")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Edit intervals in Wind, Heading, Hydro, and GPS panels.")
+                                    .font(.caption2)
+                                    .foregroundStyle(AppColors.warning)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal)
+
                     GroupBox(label: Label("Core Setup", systemImage: "slider.horizontal.3")) {
                         VStack(alignment: .leading, spacing: UIConstants.spacing) {
                             Text("Keep the setup small: choose where to send data, how often to send it, and which onboard sensors should exist. Advanced testing tools stay hidden until you need them.")

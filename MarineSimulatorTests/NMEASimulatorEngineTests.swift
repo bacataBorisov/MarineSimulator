@@ -849,10 +849,10 @@ struct NMEASimulatorEngineTests {
         simulator.setInterval(60, for: .rmc)
 
         simulator.sendAllSelectedNMEA()
-        let firstBurstCount = simulator.outputMessages.filter { $0.hasPrefix("$IIRMC") }.count
+        let firstBurstCount = simulator.outputMessages.filter { $0.hasPrefix("$GPRMC") }.count
 
         simulator.sendAllSelectedNMEA()
-        let secondBurstCount = simulator.outputMessages.filter { $0.hasPrefix("$IIRMC") }.count
+        let secondBurstCount = simulator.outputMessages.filter { $0.hasPrefix("$GPRMC") }.count
 
         #expect(firstBurstCount == 1)
         #expect(secondBurstCount == 1)
@@ -1083,7 +1083,7 @@ struct NMEASimulatorEngineTests {
         Thread.sleep(forTimeInterval: 0.12)
         simulator.sendAllSelectedNMEA()
 
-        #expect(simulator.outputMessages.contains(where: { $0.hasPrefix("$IIRMC") }))
+        #expect(simulator.outputMessages.contains(where: { $0.hasPrefix("$GPRMC") }))
         #expect(simulator.transportHistory.contains { $0.category == .fault && $0.message.contains("Delayed RMC") })
     }
 
@@ -1428,8 +1428,8 @@ struct NMEASimulatorEngineTests {
         simulator.startSimulation()
         let secondBurstMessages = simulator.outputMessages.suffix(firstBurstMessages.count)
 
-        #expect(firstBurstMessages.contains(where: { $0.hasPrefix("$IIRMC") }))
-        #expect(secondBurstMessages.contains(where: { $0.hasPrefix("$IIRMC") }))
+        #expect(firstBurstMessages.contains(where: { $0.hasPrefix("$GPRMC") }))
+        #expect(secondBurstMessages.contains(where: { $0.hasPrefix("$GPRMC") }))
         #expect(secondBurstMessages.contains(where: { $0.hasPrefix("$IIVLW,") && $0.contains(",0.00,N") }))
     }
 
@@ -1516,6 +1516,34 @@ struct NMEASimulatorEngineTests {
 
         #expect(simulator.isTransmitting == false)
         #expect(simulator.transportHistory.contains { $0.message == "Timer re-enabled" } == false)
+    }
+
+    @Test
+    func bngTriton2ProfileAppliesRealisticSentenceIntervals() {
+        let simulator = NMEASimulator(userDefaults: isolatedDefaults())
+
+        simulator.applyHardwareProfile(.bngTriton2)
+
+        #expect(simulator.sentenceIntervals[.hdg] == 0.1)
+        #expect(simulator.sentenceIntervals[.gsa] == 5.0)
+        #expect(simulator.selectedProfile == .bngTriton2)
+        #expect(simulator.sentenceRateMode == .realistic)
+    }
+
+    @Test
+    func realisticModeSendRateIsHardwareBounded() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.sentenceRateMode = .realistic
+        simulator.applyHardwareProfile(.bngTriton2)
+
+        simulator.sendAllSelectedNMEA()
+        Thread.sleep(forTimeInterval: 1.5)
+        simulator.sendAllSelectedNMEA()
+        Thread.sleep(forTimeInterval: 1.5)
+
+        #expect(simulator.totalSentCount >= 25)
+        #expect(simulator.totalSentCount <= 45)
     }
 
     @Test

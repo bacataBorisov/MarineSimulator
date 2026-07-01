@@ -77,7 +77,7 @@ private struct WindSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .mwv) },
                         set: { nmeaManager.setInterval($0, for: .mwv) }
                     ),
-                    isDisabled: !shouldSendMWV || !WindUIConditions.isMWVEnabled(nmeaManager)
+                    isDisabled: !shouldSendMWV || !WindUIConditions.isMWVEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if !WindUIConditions.isMWVEnabled(nmeaManager) {
@@ -101,7 +101,7 @@ private struct WindSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .mwd) },
                         set: { nmeaManager.setInterval($0, for: .mwd) }
                     ),
-                    isDisabled: !shouldSendMWD || !WindUIConditions.isMWDEnabled(nmeaManager)
+                    isDisabled: !shouldSendMWD || !WindUIConditions.isMWDEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
 
                 if WindUIConditions.showMWDDependencyWarning(nmeaManager) {
@@ -125,7 +125,7 @@ private struct WindSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .vpw) },
                         set: { nmeaManager.setInterval($0, for: .vpw) }
                     ),
-                    isDisabled: !shouldSendVPW || !WindUIConditions.isVPWEnabled(nmeaManager)
+                    isDisabled: !shouldSendVPW || !WindUIConditions.isVPWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
 
                 if WindUIConditions.showVPWDependencyWarning(nmeaManager) {

@@ -71,7 +71,7 @@ private struct HeadingSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .hdg) },
                         set: { nmeaManager.setInterval($0, for: .hdg) }
                     ),
-                    isDisabled: !shouldSendHDG || !HeadingUIConditions.isHDGEnabled(nmeaManager)
+                    isDisabled: !shouldSendHDG || !HeadingUIConditions.isHDGEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HeadingUIConditions.showHDGWarning(nmeaManager) {
@@ -99,7 +99,7 @@ private struct HeadingSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .hdt) },
                         set: { nmeaManager.setInterval($0, for: .hdt) }
                     ),
-                    isDisabled: !shouldSendHDT || !HeadingUIConditions.isHDTEnabled(nmeaManager)
+                    isDisabled: !shouldSendHDT || !HeadingUIConditions.isHDTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 // ROT – Rate of Turn
@@ -116,7 +116,7 @@ private struct HeadingSentencesSection: View {
                         get: { nmeaManager.sentenceInterval(for: .rot) },
                         set: { nmeaManager.setInterval($0, for: .rot) }
                     ),
-                    isDisabled: !shouldSendROT || !HeadingUIConditions.isROTEnabled(nmeaManager)
+                    isDisabled: !shouldSendROT || !HeadingUIConditions.isROTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
                 )
                 
                 if HeadingUIConditions.showGyroWarning(nmeaManager) {
