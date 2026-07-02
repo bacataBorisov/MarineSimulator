@@ -2,6 +2,22 @@ import Foundation
 
 extension NMEASimulator {
 
+    private static let utcTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "HHmmss.SS"
+        return formatter
+    }()
+
+    private static let utcDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "ddMMyy"
+        return formatter
+    }()
+
     enum NMEASentenceType: String, CaseIterable {
         case mwv
         case mwd
@@ -22,6 +38,8 @@ extension NMEASimulator {
         case vbw
         case vlw
         case mtw
+        case rmb
+        case xte
     }
 
     func buildNMEASentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
@@ -38,6 +56,8 @@ extension NMEASimulator {
             payloads = buildGPSSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .dbt, .dpt, .vhw, .vbw, .vlw, .mtw:
             payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+        case .rmb, .xte:
+            payloads = buildNavigationSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         }
 
         return payloads
@@ -206,6 +226,73 @@ extension NMEASimulator {
         }
     }
 
+    private func buildNavigationSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
+        guard let nav = snapshot.navigationTarget else { return [] }
+
+        let boatLat = toRadians(snapshot.gpsData.latitude)
+        let boatLon = toRadians(snapshot.gpsData.longitude)
+        let destLat = toRadians(nav.destinationLatitude)
+        let destLon = toRadians(nav.destinationLongitude)
+        let origLat = toRadians(nav.originLatitude)
+        let origLon = toRadians(nav.originLongitude)
+
+        let earthRadiusNm = 3440.065
+
+        // Haversine: range to destination (NM)
+        let dLatDest = destLat - boatLat
+        let dLonDest = destLon - boatLon
+        let aDest = sin(dLatDest / 2) * sin(dLatDest / 2) + cos(boatLat) * cos(destLat) * sin(dLonDest / 2) * sin(dLonDest / 2)
+        let cDest = 2 * atan2(sqrt(aDest), sqrt(1 - aDest))
+        let rangeNm = earthRadiusNm * cDest
+
+        // Bearing to destination (true degrees)
+        let yDest = sin(destLon - boatLon) * cos(destLat)
+        let xDest = cos(boatLat) * sin(destLat) - sin(boatLat) * cos(destLat) * cos(destLon - boatLon)
+        let bearingToDest = normalizeAngle(toDegrees(atan2(yDest, xDest)))
+
+        // Cross-track error (XTE)
+        // Distance from origin to boat (angular, radians)
+        let dLatOrig = boatLat - origLat
+        let dLonOrig = boatLon - origLon
+        let aOrig = sin(dLatOrig / 2) * sin(dLatOrig / 2) + cos(origLat) * cos(boatLat) * sin(dLonOrig / 2) * sin(dLonOrig / 2)
+        let cOrig = 2 * atan2(sqrt(aOrig), sqrt(1 - aOrig))
+
+        // Bearing from origin to boat
+        let yOB = sin(boatLon - origLon) * cos(boatLat)
+        let xOB = cos(origLat) * sin(boatLat) - sin(origLat) * cos(boatLat) * cos(boatLon - origLon)
+        let bearingOrigToBoat = atan2(yOB, xOB)
+
+        // Bearing from origin to destination
+        let yOD = sin(destLon - origLon) * cos(destLat)
+        let xOD = cos(origLat) * sin(destLat) - sin(origLat) * cos(destLat) * cos(destLon - origLon)
+        let bearingOrigToDest = atan2(yOD, xOD)
+
+        let xteRad = asin(sin(cOrig) * sin(bearingOrigToBoat - bearingOrigToDest))
+        let xteNm = abs(xteRad) * earthRadiusNm
+        let xteDirection = xteRad > 0 ? "R" : "L"
+
+        // VMC: velocity made good toward destination
+        let cogRad = toRadians(snapshot.gpsData.courseOverGround)
+        let bearingToDestRad = toRadians(bearingToDest)
+        let vmc = snapshot.gpsData.speedOverGround * cos(cogRad - bearingToDestRad)
+
+        // Arrival status
+        let arrived = rangeNm < nav.arrivalRadiusNm
+
+        switch type {
+        case .rmb:
+            let destLatStr = FormatKit.formatLatitude(nav.destinationLatitude)
+            let destLonStr = FormatKit.formatLongitude(nav.destinationLongitude)
+            return ["$\(talkerID)RMB,A,\(NMEANumericFormatting.format(xteNm, fractionDigits: 1)),\(xteDirection),\(nav.originName),\(nav.destinationName),\(destLatStr),\(destLonStr),\(NMEANumericFormatting.format(rangeNm, fractionDigits: 1)),\(NMEANumericFormatting.format(bearingToDest, fractionDigits: 1)),\(NMEANumericFormatting.format(vmc, fractionDigits: 1)),\(arrived ? "A" : "V")"]
+
+        case .xte:
+            return ["$\(talkerID)XTE,A,A,\(NMEANumericFormatting.format(xteNm, fractionDigits: 1)),\(xteDirection),N"]
+
+        default:
+            return []
+        }
+    }
+
     private func resolvedTrueHeading(in snapshot: SimulationSnapshot) -> Double? {
         if let gyroHeading = snapshot.gyroHeading {
             return normalizeAngle(gyroHeading)
@@ -233,17 +320,11 @@ extension NMEASimulator {
     }
 
     private func utcTimeString(from date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "HHmmss.SS"
-        return formatter.string(from: date)
+        Self.utcTimeFormatter.string(from: date)
     }
 
     private func utcDateString(from date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "ddMMyy"
-        return formatter.string(from: date)
+        Self.utcDateFormatter.string(from: date)
     }
 
     private func formatted(_ value: Double?, decimals: Int) -> String {

@@ -33,13 +33,19 @@ struct ConsoleView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if mode == .nmea {
-                        ForEach(nmeaManager.outputMessages.indices, id: \.self) { index in
+                        // Snapshot once per render: `Array(...)` eagerly copies the current
+                        // records (value semantics / COW), so later mutations of
+                        // `nmeaManager.outputMessageRecords` (the fast simulation tick prunes
+                        // it every ~50ms) can never invalidate indices `LazyVStack` resolves
+                        // later when a row actually scrolls into view. Text and timestamp both
+                        // come from the same `record`, so they can't desync either.
+                        ForEach(Array(nmeaManager.outputMessageRecords.enumerated()), id: \.element.id) { index, record in
                             consoleRow(
-                                timestamp: nmeaManager.outputMessageTimestamp(at: index),
-                                text: nmeaManager.outputMessages[index],
+                                timestamp: record.timestamp,
+                                text: record.sentence,
                                 color: index.isMultiple(of: 2) ? AppColors.consoleLinePrimary : AppColors.consoleLineSecondary
                             )
-                            .id(index)
+                            .id(record.id)
                         }
                     } else {
                         ForEach(Array(nmeaManager.transportHistory.enumerated()), id: \.element.id) { index, event in
@@ -174,7 +180,7 @@ struct ConsoleView: View {
     private var scrollTargetID: AnyHashable? {
         switch mode {
         case .nmea:
-            return nmeaManager.outputMessages.indices.last
+            return nmeaManager.outputMessageRecords.last?.id
         case .transport:
             return nmeaManager.transportHistory.last?.id
         }

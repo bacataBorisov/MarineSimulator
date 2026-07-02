@@ -9,6 +9,7 @@ Required session flow:
 
 Rules:
 
+- **Repo layout — NMEA folders:** The top-level `NMEASimulator/` folder holds Xcode template assets, entitlements, and unused SwiftData scaffold (`Item.swift`) only — it is **not** the simulator engine. The actual NMEA engine lives under `NMEA/` (`NMEASimulator.swift` and its extensions).
 - Do not invent product requirements or timelines.
 - Treat the codebase and `.agent-os/context/` as authoritative over prior chat.
 - Keep handoff files small and prune stale history instead of growing them indefinitely.

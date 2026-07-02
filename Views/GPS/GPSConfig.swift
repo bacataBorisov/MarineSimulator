@@ -26,6 +26,8 @@ struct GPSConfig: View {
     @State private var showGSA: Bool = false
     @State private var showGSV: Bool = false
     @State private var showZDA: Bool = false
+    @State private var showRMB: Bool = false
+    @State private var showXTE: Bool = false
 
     
     var body: some View {
@@ -41,13 +43,17 @@ struct GPSConfig: View {
                         shouldSendGSA: $nmeaManager.sentenceToggles.shouldSendGSA,
                         shouldSendGSV: $nmeaManager.sentenceToggles.shouldSendGSV,
                         shouldSendZDA: $nmeaManager.sentenceToggles.shouldSendZDA,
+                        shouldSendRMB: $nmeaManager.sentenceToggles.shouldSendRMB,
+                        shouldSendXTE: $nmeaManager.sentenceToggles.shouldSendXTE,
                         showRMC: $showRMC,
                         showGGA: $showGGA,
                         showVTG: $showVTG,
                         showGLL: $showGLL,
                         showGSA: $showGSA,
                         showGSV: $showGSV,
-                        showZDA: $showZDA
+                        showZDA: $showZDA,
+                        showRMB: $showRMB,
+                        showXTE: $showXTE
                     )
                 }
                 .padding()
@@ -72,6 +78,8 @@ private struct GPSSentencesSection: View {
     @Binding var shouldSendGSA: Bool
     @Binding var shouldSendGSV: Bool
     @Binding var shouldSendZDA: Bool
+    @Binding var shouldSendRMB: Bool
+    @Binding var shouldSendXTE: Bool
     
     @Binding var showRMC: Bool
     @Binding var showGGA: Bool
@@ -80,6 +88,8 @@ private struct GPSSentencesSection: View {
     @Binding var showGSA: Bool
     @Binding var showGSV: Bool
     @Binding var showZDA: Bool
+    @Binding var showRMB: Bool
+    @Binding var showXTE: Bool
     
     private var latitudeBinding: Binding<Double> {
         Binding(
@@ -255,6 +265,108 @@ private struct GPSSentencesSection: View {
                 }
             }
             .disabled(!nmeaManager.sensorToggles.hasGPS)
+        }
+
+        GroupBox(label: Label("Waypoint Navigation (RMB / XTE)", systemImage: "mappin.and.ellipse.circle")) {
+            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                Toggle("Active Waypoint", isOn: $nmeaManager.waypointNavigation.isActive)
+
+                GroupBox("Origin Waypoint") {
+                    VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                        HStack {
+                            Text("Name:")
+                            TextField("", text: $nmeaManager.waypointNavigation.originName)
+                                .frame(width: 60)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        HStack {
+                            Text("Lat:")
+                            TextField("", value: $nmeaManager.waypointNavigation.originLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                                .frame(width: 100)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Lon:")
+                            TextField("", value: $nmeaManager.waypointNavigation.originLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                                .frame(width: 100)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        Button("Set to Current Position") {
+                            nmeaManager.waypointNavigation.originLatitude = nmeaManager.gpsData.latitude
+                            nmeaManager.waypointNavigation.originLongitude = nmeaManager.gpsData.longitude
+                            nmeaManager.persistLiveSettings()
+                        }
+                        .font(.caption)
+                    }
+                }
+
+                GroupBox("Destination Waypoint") {
+                    VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                        HStack {
+                            Text("Name:")
+                            TextField("", text: $nmeaManager.waypointNavigation.destinationName)
+                                .frame(width: 60)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        HStack {
+                            Text("Lat:")
+                            TextField("", value: $nmeaManager.waypointNavigation.destinationLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                                .frame(width: 100)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Lon:")
+                            TextField("", value: $nmeaManager.waypointNavigation.destinationLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                                .frame(width: 100)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                }
+
+                HStack {
+                    Text("Arrival Radius:")
+                    TextField("", value: $nmeaManager.waypointNavigation.arrivalRadiusNm, formatter: FormatKit.decimalFormatter(fractionDigits: 2))
+                        .frame(width: 60)
+                        .textFieldStyle(.roundedBorder)
+                    Text("NM")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                ViewKit.ToggleRowWithInfo(
+                    "RMB - Recommended Minimum Navigation",
+                    isOn: $shouldSendRMB,
+                    showInfo: $showRMB,
+                    infoView: { AnyView(RMBHelpView().font(.caption)) }
+                )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .rmb) },
+                        set: { nmeaManager.setInterval($0, for: .rmb) }
+                    ),
+                    isDisabled: !shouldSendRMB || !nmeaManager.waypointNavigation.isActive || !nmeaManager.isSentenceIntervalEditable
+                )
+
+                ViewKit.ToggleRowWithInfo(
+                    "XTE - Cross-Track Error",
+                    isOn: $shouldSendXTE,
+                    showInfo: $showXTE,
+                    infoView: { AnyView(XTEHelpView().font(.caption)) }
+                )
+                ViewKit.SentenceIntervalControl(
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .xte) },
+                        set: { nmeaManager.setInterval($0, for: .xte) }
+                    ),
+                    isDisabled: !shouldSendXTE || !nmeaManager.waypointNavigation.isActive || !nmeaManager.isSentenceIntervalEditable
+                )
+
+                if !nmeaManager.sensorToggles.hasGPS {
+                    Text(UIStrings.Warnings.enableGPS)
+                        .font(.caption2)
+                        .foregroundStyle(AppColors.warning)
+                }
+            }
+            .disabled(!nmeaManager.sensorToggles.hasGPS)
+            .toggleStyle(.switch)
         }
 
     }

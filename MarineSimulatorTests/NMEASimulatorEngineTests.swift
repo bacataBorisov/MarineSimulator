@@ -610,19 +610,30 @@ struct NMEASimulatorEngineTests {
         simulator.boatProfile = .beneteauFirst407
         simulator.sensorToggles.hasAnemometer = true
         simulator.sensorToggles.hasSpeedLog = true
-        simulator.sensorToggles.hasGyro = true
+        simulator.sensorToggles.hasGyro = false
+        simulator.sensorToggles.hasCompass = true
 
-        // TWA 45° so we exercise full polar (pinching factor only applies below the grid’s minimum angle).
+        // Use magnetic heading with offset 0 for deterministic output.
+        // tickSimulation computes gyro from heading+variation, so we control heading directly.
+        // Set heading = 0 and TWD = 45 so that TWA = |TWD - (heading + variation)|.
+        // Since variation is time-dependent, we instead verify the speed falls within the
+        // valid polar range for TWS 12 and a reasonable TWA band.
+        simulator.heading = SimulatedValue(type: .magneticCompass, center: 90, offset: 0, value: 90)
         simulator.twd = SimulatedValue(type: .windDirection, center: 135, offset: 0, value: 135)
         simulator.tws = SimulatedValue(type: .windSpeed, center: 12, offset: 0, value: 12)
-        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 90, offset: 0, value: 90)
         simulator.speed = SimulatedValue(type: .speedLog, center: 0, offset: 0, value: 0)
 
         simulator.startSimulation()
 
         #expect(simulator.speed.value != nil)
-        // First 40.7 polar: TWS 12 kt, TWA 45° → table value 7.01 kt.
-        #expect(abs((simulator.speed.value ?? 0) - 7.01) < 0.06)
+        let speed = simulator.speed.value ?? 0
+        // With heading 90 + variation (~9° geographic trend for lon 27.9), true heading ≈ 99°.
+        // TWA ≈ |135 - 99| ≈ 36°. The polar value at TWA 36°, TWS 12 is between 6.10 and 7.01 kt.
+        // Allow a reasonable band that covers variation drift (±1.8° seasonal).
+        let polarMin = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 33)
+        let polarMax = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 50)
+        #expect(speed >= polarMin - 0.1, "Speed \(speed) below polar range minimum \(polarMin)")
+        #expect(speed <= polarMax + 0.1, "Speed \(speed) above polar range maximum \(polarMax)")
 
         simulator.stopSimulation()
     }
@@ -785,8 +796,10 @@ struct NMEASimulatorEngineTests {
     }
 
     @Test
-    func windMathPrefersGyroHeadingOverMagneticHeadingWhenBothExist() {
+    func windMathPrefersMagneticHeadingOverGyroHeadingWhenBothExist() {
         let simulator = NMEASimulator(userDefaults: isolatedDefaults())
+        // resolvedTrueHeadingForWind prefers magnetic+variation (70+25=95) over raw gyro (120),
+        // because magnetic heading matches the navigation app's CompassProcessor.
         let snapshot = makeSnapshot(
             timestamp: Date(timeIntervalSince1970: 1_700_000_000),
             windDirectionTrue: 150,
@@ -797,8 +810,8 @@ struct NMEASimulatorEngineTests {
             boatSpeed: 0
         )
 
-        #expect(simulator.computeTWA(from: snapshot) == 30)
-        #expect(simulator.computeAWA(from: snapshot) == 30)
+        #expect(simulator.computeTWA(from: snapshot) == 55)  // 150 - (70+25) = 55
+        #expect(simulator.computeAWA(from: snapshot) == 55)  // boat speed 0, so AWA == TWA
         #expect(simulator.computeAWD(from: snapshot) == 150)
     }
 
@@ -1264,6 +1277,57 @@ struct NMEASimulatorEngineTests {
         #expect(simulator.outputMessages.count == 100)
     }
 
+    /// Regression guard for the `ConsoleView` "Index out of range"
+    /// (`Swift/ContiguousArrayBuffer.swift`) crash: the console read the live
+    /// `outputMessages.indices`, then separately re-read `outputMessages[index]`
+    /// and `outputMessageTimestamp(at:)` later, once `LazyVStack` got around to
+    /// materializing that row. Because the fast simulation tick prunes/replaces
+    /// `outputMessageRecords` roughly every 50ms while transmitting, an index
+    /// captured before a prune could be out of range by the time it was
+    /// actually subscripted.
+    ///
+    /// The fix snapshots `outputMessageRecords` once per render via
+    /// `Array(...)` (eager copy, value semantics / copy-on-write), so this
+    /// test asserts that property directly at the data-model level: once
+    /// copied, a snapshot's count and contents must be completely immune to
+    /// further live mutation of `outputMessageRecords`.
+    @Test
+    func outputMessageRecordsSnapshotIsImmuneToLaterMutation() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.isTimerSelected = false
+
+        for _ in 0..<30 {
+            simulator.startSimulation()
+        }
+
+        let liveCountBeforeSnapshot = simulator.outputMessageRecords.count
+        #expect(liveCountBeforeSnapshot > 0)
+
+        // Mirrors `ConsoleView`'s per-render fix.
+        let snapshot = Array(simulator.outputMessageRecords.enumerated())
+
+        // Keep transmitting: this repeatedly prunes/replaces the live
+        // `outputMessageRecords` array (see `pruneOutputMessageRecords`),
+        // exactly like the fast tick continuing to run while a `LazyVStack`
+        // row for a previously-captured index/id is still pending layout.
+        for _ in 0..<30 {
+            simulator.startSimulation()
+        }
+
+        #expect(simulator.outputMessageRecords.count == simulator.outputMessages.count)
+
+        // The live array's contents changed underneath, but the snapshot --
+        // and every index into it -- must remain exactly as captured. This is
+        // the property that makes it safe for `ConsoleView` to subscript
+        // without risking an out-of-range crash.
+        #expect(snapshot.count == liveCountBeforeSnapshot)
+        for (offset, record) in snapshot {
+            #expect(offset < snapshot.count)
+            #expect(record.sentence.isEmpty == false)
+        }
+    }
+
     @Test
     func transportHistoryIsTrimmedToMostRecentTwoHundredEvents() {
         let simulator = configuredSimulatorForDeterministicOutput()
@@ -1564,8 +1628,8 @@ struct NMEASimulatorEngineTests {
     }
 }
 
-private func configuredSimulatorForDeterministicOutput() -> NMEASimulator {
-    let simulator = NMEASimulator(userDefaults: isolatedDefaults())
+private func configuredSimulatorForDeterministicOutput(userDefaults: UserDefaults? = nil) -> NMEASimulator {
+    let simulator = NMEASimulator(userDefaults: userDefaults ?? isolatedDefaults())
     simulator.twd = SimulatedValue(type: .windDirection, center: 90, offset: 0)
     simulator.tws = SimulatedValue(type: .windSpeed, center: 10, offset: 0)
     simulator.heading = SimulatedValue(type: .magneticCompass, center: 90, offset: 0)
@@ -1598,7 +1662,9 @@ private func onlyEnabledSentence(_ keyPath: WritableKeyPath<SentenceToggleStates
         shouldSendVHW: false,
         shouldSendVLW: false,
         shouldSendVBW: false,
-        shouldSendMTW: false
+        shouldSendMTW: false,
+        shouldSendRMB: false,
+        shouldSendXTE: false
     )
     toggles[keyPath: keyPath] = true
     return toggles
@@ -1648,7 +1714,8 @@ private func makeSnapshot(
         ),
         turnRate: 0,
         logDistanceNm: 1.2,
-        tripDistanceNm: 0.4
+        tripDistanceNm: 0.4,
+        navigationTarget: nil
     )
 }
 

@@ -23,6 +23,8 @@ extension NMEASimulator {
         d[.gsa] = 5.0
         d[.gsv] = 5.0
         d[.zda] = 1.0
+        d[.rmb] = 1.0
+        d[.xte] = 1.0
         return d
     }()
 
@@ -32,7 +34,8 @@ extension NMEASimulator {
         .dpt: "SD", .dbt: "SD",
         .hdg: "HC", .hdt: "HE", .rot: "HE",
         .mwv: "II", .mwd: "II", .vpw: "II",
-        .vhw: "II", .vbw: "II", .vlw: "II", .mtw: "II"
+        .vhw: "II", .vbw: "II", .vlw: "II", .mtw: "II",
+        .rmb: "GP", .xte: "GP"
     ]
 
     func applyHardwareProfile(_ profile: HardwareProfile) {
@@ -50,21 +53,24 @@ extension NMEASimulator {
             applyAllSentenceToggles(enabled: true)
             applySentenceIntervals(Self.defaultSentenceIntervals)
             applyTalkerIDs(Self.defaultTalkerIDs)
+            applyProfileSendInterval(matching: Self.defaultSentenceIntervals)
 
         case .furunoFI70:
             applyFullInstrumentSensors(hasGyro: false)
             applyAllSentenceToggles(enabled: true)
             sentenceToggles.shouldSendHDT = false
             sentenceToggles.shouldSendROT = false
-            applySentenceIntervals([
+            let intervals: [NMEASentenceType: TimeInterval] = [
                 .mwv: 1.0, .mwd: 1.0, .vpw: 1.0,
                 .hdg: 1.0,
                 .dpt: 1.0, .dbt: 1.0,
                 .mtw: 1.0, .vhw: 1.0, .vbw: 1.0, .vlw: 5.0,
                 .rmc: 1.0, .gga: 1.0, .vtg: 1.0, .gll: 1.0,
                 .gsa: 5.0, .gsv: 5.0, .zda: 1.0
-            ])
+            ]
+            applySentenceIntervals(intervals)
             applyTalkerIDs(Self.defaultTalkerIDs)
+            applyProfileSendInterval(matching: intervals)
 
         case .garminGMI20:
             applyFullInstrumentSensors(hasGyro: true)
@@ -72,19 +78,22 @@ extension NMEASimulator {
             sentenceToggles.shouldSendGLL = false
             applySentenceIntervals(Self.defaultSentenceIntervals)
             applyGarminTalkerIDs()
+            applyProfileSendInterval(matching: Self.defaultSentenceIntervals)
 
         case .yachtDevicesGateway:
             applyFullInstrumentSensors(hasGyro: true)
             applyAllSentenceToggles(enabled: true)
-            applySentenceIntervals([
+            let intervals: [NMEASentenceType: TimeInterval] = [
                 .mwv: 1.0, .mwd: 1.0, .vpw: 1.0,
                 .hdg: 0.1, .hdt: 0.1, .rot: 0.1,
                 .dpt: 1.0, .dbt: 1.0,
                 .mtw: 1.0, .vhw: 1.0, .vbw: 1.0, .vlw: 5.0,
                 .rmc: 0.2, .gga: 0.2, .vtg: 0.2, .gll: 0.2,
                 .gsa: 5.0, .gsv: 5.0, .zda: 0.2
-            ])
+            ]
+            applySentenceIntervals(intervals)
             applyTalkerIDs(Self.defaultTalkerIDs)
+            applyProfileSendInterval(matching: intervals)
 
         case .minimalGPS:
             sensorToggles = SensorToggleStates(
@@ -115,13 +124,19 @@ extension NMEASimulator {
                 shouldSendVHW: false,
                 shouldSendVLW: false,
                 shouldSendVBW: false,
-                shouldSendMTW: false
+                shouldSendMTW: false,
+                shouldSendRMB: false,
+                shouldSendXTE: false
             )
             applySentenceIntervals([
                 .rmc: 1.0, .gga: 1.0, .vtg: 1.0,
                 .gsa: 5.0, .gsv: 5.0, .zda: 1.0
             ])
             applyGarminTalkerIDs()
+            applyProfileSendInterval(matching: [
+                .rmc: 1.0, .gga: 1.0, .vtg: 1.0,
+                .gsa: 5.0, .gsv: 5.0, .zda: 1.0
+            ])
 
         case .custom:
             break
@@ -129,6 +144,11 @@ extension NMEASimulator {
 
         sentenceRateMode = .realistic
         selectedProfile = profile
+    }
+
+    private func applyProfileSendInterval(matching intervals: [NMEASentenceType: TimeInterval]) {
+        let minimumInterval = intervals.values.min() ?? interval
+        interval = max(0.1, minimumInterval)
     }
 
     private func applyFullInstrumentSensors(hasGyro: Bool) {
@@ -163,7 +183,9 @@ extension NMEASimulator {
             shouldSendVHW: enabled,
             shouldSendVLW: enabled,
             shouldSendVBW: enabled,
-            shouldSendMTW: enabled
+            shouldSendMTW: enabled,
+            shouldSendRMB: enabled,
+            shouldSendXTE: enabled
         )
     }
 

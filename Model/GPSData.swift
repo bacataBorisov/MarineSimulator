@@ -38,3 +38,24 @@ struct GPSData: Codable {
         self.courseOverGround = cog
     }
 }
+
+struct WaypointNavigation: Codable {
+    var isActive: Bool = false
+    var originName: String = "WP0"
+    var originLatitude: Double = 0
+    var originLongitude: Double = 0
+    var destinationName: String = "WP1"
+    var destinationLatitude: Double = 0
+    var destinationLongitude: Double = 0
+    var arrivalRadiusNm: Double = 0.05
+}
+
+struct NavigationTarget {
+    let originName: String
+    let destinationName: String
+    let originLatitude: Double
+    let originLongitude: Double
+    let destinationLatitude: Double
+    let destinationLongitude: Double
+    let arrivalRadiusNm: Double
+}

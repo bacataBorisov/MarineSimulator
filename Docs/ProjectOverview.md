@@ -87,14 +87,14 @@ These items are already present in the project and should be treated as the curr
 
 These are the main issues that currently limit the project from being a trustworthy simulator:
 
-- Sentence-level controls in the UI do not fully match what is actually transmitted.
-- The simulator state is updated while building sentences, which can produce inconsistent data inside a single transmit cycle.
-- UDP output is currently single-destination and not designed for realistic multi-endpoint simulation.
-- GPS, heading, wind, and speed relationships still need cleanup to be internally consistent.
+- Sentence fidelity and external-reader interpretation still need validation end-to-end. Needs re-verification (as of 2026-07-01).
+- GPS, heading, wind, and speed relationships are much more coherent after snapshot-based ticks, but may still diverge from what some receivers expect. Needs re-verification (as of 2026-07-01).
 - Some sentence implementations are incomplete, oversimplified, or placeholder-grade.
-- Parts of the dashboard still contain temporary helpers and fake/non-final controls.
-- Settings and layout state are not yet persisted.
-- There are no real automated tests covering sentence correctness or simulator behavior.
+- Parts of the dashboard may still contain polish debt or non-final controls. Needs re-verification (as of 2026-07-01).
+
+**Resolved since this section was last updated:** one snapshot per transmit cycle; multi-endpoint UDP/TCP output (including broadcast); settings persistence via `UserDefaults`; core engine/weather automated tests (`NMEASimulatorEngineTests`, `OpenMeteoWeatherServiceTests`); decoupled 50ms internal simulation fast tick from the user-facing send interval so per-sentence hardware rates (e.g. 10Hz HDT under Realistic profiles) fire correctly; `isApplyingSimulationTick` guard plus 5s debounced persist to stop per-tick `UserDefaults` writes during transmission; `TCPClient` thread-safety (serialized `connections` access on a dedicated queue, per-connection `isReady`/`pendingSends` buffering, no teardown on transient errors); NMEA console stale-index crash fixed in `ConsoleView` by snapshotting `outputMessageRecords` with stable record IDs (same pattern as `transportHistory`); integration/regression coverage in `EngineIntegrationTests` (UDP/TCP loopback, timer-driven 10Hz emission, persistence suppression, tack/heading coherence) plus `outputMessageRecordsSnapshotIsImmuneToLaterMutation` in `NMEASimulatorEngineTests`.
+
+**Known issues (audit, 2026-07-01):** no open items remain from this audit; fixes are in place and covered by automated tests. Further field validation against external readers is still worthwhile.
 
 ## Prioritized Roadmap
 
@@ -253,6 +253,14 @@ These are the main issues that currently limit the project from being a trustwor
 - Moved the left side toward active control and the right side toward read-only display.
 - Continued experimenting with map integration.
 
+### 1 July 2026
+
+- Decoupled the 50ms simulation fast tick from the user-facing send interval so Realistic hardware profiles reach configured per-sentence Hz.
+- Suppressed per-tick `UserDefaults` persistence during simulation ticks with a debounced 5s flush.
+- Hardened `TCPClient` with queue-serialized connection state, send buffering, and less aggressive teardown on transient errors.
+- Fixed an intermittent NMEA console crash from stale `ForEach` indices under the faster tick timer.
+- Added `EngineIntegrationTests` and expanded engine regression coverage for timing, networking, persistence, and console snapshot safety.
+
 ## Visual Direction
 
 Brand palette notes from the project:
@@ -281,5 +289,5 @@ Without those three, the app looks more complete than it really is, and that is 
 
 Status note:
 
-- This foundation milestone is now complete at the engine level.
-- The next practical milestone is endpoint configuration plus settings persistence.
+- Snapshot-per-tick simulation, multi-endpoint networking, and settings persistence are in place at the engine level.
+- The next practical milestones are external-reader validation and tightening sentence fidelity against real consumers.

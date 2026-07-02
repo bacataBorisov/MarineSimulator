@@ -84,8 +84,8 @@ Good for:
 
 - manual mode remains the default
 - live weather mode uses the current GPS position
-- V1 live weather currently drives true wind direction, true wind speed, and sea-surface temperature
-- provider: Open-Meteo
+- V1 live weather drives true wind direction, true wind speed, sea-surface temperature, and (when the corresponding sensors are enabled) air temperature, humidity, and barometric pressure
+- providers: **MET Norway** for atmospheric data (wind and, when available, air temperature, humidity, pressure); **Open-Meteo Marine** for sea-surface temperature. The default `GlobalFallbackWeatherService` combines MET Norway atmospheric results with Open-Meteo Marine sea temperature.
 - if the fetch fails, the simulator keeps the last good live snapshot or falls back to manual behavior
 
 ### NMEA 0183 Coverage

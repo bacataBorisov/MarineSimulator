@@ -80,6 +80,7 @@ struct SimulatorSettings: Codable {
     var weatherSourceMode: WeatherSourceMode
     var liveWeatherSettings: LiveWeatherSettings
     var latestLiveWeather: LiveWeatherSnapshot?
+    var waypointNavigation: WaypointNavigation
 
     private enum CodingKeys: String, CodingKey {
         case ip
@@ -114,6 +115,7 @@ struct SimulatorSettings: Codable {
         case weatherSourceMode
         case liveWeatherSettings
         case latestLiveWeather
+        case waypointNavigation
     }
 
     init(
@@ -148,7 +150,8 @@ struct SimulatorSettings: Codable {
         boatSpeedMode: BoatSpeedMode,
         weatherSourceMode: WeatherSourceMode,
         liveWeatherSettings: LiveWeatherSettings,
-        latestLiveWeather: LiveWeatherSnapshot?
+        latestLiveWeather: LiveWeatherSnapshot?,
+        waypointNavigation: WaypointNavigation = WaypointNavigation()
     ) {
         self.ip = ip
         self.port = port
@@ -182,6 +185,7 @@ struct SimulatorSettings: Codable {
         self.weatherSourceMode = weatherSourceMode
         self.liveWeatherSettings = liveWeatherSettings
         self.latestLiveWeather = latestLiveWeather
+        self.waypointNavigation = waypointNavigation
     }
 
     init(from decoder: Decoder) throws {
@@ -220,5 +224,6 @@ struct SimulatorSettings: Codable {
         weatherSourceMode = try container.decodeIfPresent(WeatherSourceMode.self, forKey: .weatherSourceMode) ?? .manual
         liveWeatherSettings = try container.decodeIfPresent(LiveWeatherSettings.self, forKey: .liveWeatherSettings) ?? LiveWeatherSettings()
         latestLiveWeather = try container.decodeIfPresent(LiveWeatherSnapshot.self, forKey: .latestLiveWeather)
+        waypointNavigation = try container.decodeIfPresent(WaypointNavigation.self, forKey: .waypointNavigation) ?? WaypointNavigation()
     }
 }

@@ -56,7 +56,8 @@ extension NMEASimulator {
             gpsSignal: fallbackSignal,
             turnRate: latestSnapshot?.turnRate ?? 0,
             logDistanceNm: latestSnapshot?.logDistanceNm ?? 0,
-            tripDistanceNm: latestSnapshot?.tripDistanceNm ?? 0
+            tripDistanceNm: latestSnapshot?.tripDistanceNm ?? 0,
+            navigationTarget: latestSnapshot?.navigationTarget
         )
     }
 
@@ -183,15 +184,19 @@ extension NMEASimulator {
     }
 
     private func resolvedTrueHeadingForWind(in snapshot: SimulationSnapshot) -> Double? {
+        // Prefer magnetic+variation — it always matches normalizedHeading in the
+        // navigation app's CompassProcessor (which derives true heading from HC+HDG).
+        // Raw gyroHeading may not be synced with the magnetic heading slider.
+        if let magneticHeading = snapshot.magneticHeading {
+            return normalizeAngle(magneticHeading + snapshot.magneticVariation)
+        }
+
+        // Fall back to gyro when no magnetic compass is configured.
         if let gyroHeading = snapshot.gyroHeading {
             return normalizeAngle(gyroHeading)
         }
 
-        guard let magneticHeading = snapshot.magneticHeading else {
-            return nil
-        }
-
-        return normalizeAngle(magneticHeading + snapshot.magneticVariation)
+        return nil
     }
 
     /// Matches `geographicBearingDegreesForMap`: bow direction shown on the chart vs. numeric heading sliders (gyro as true; magnetic uncorrected for variation; else COG).

@@ -267,7 +267,7 @@ struct ConfigurationView: View {
                                 Toggle("Enable Timer", isOn: $nmeaManager.isTimerSelected)
                                     .toggleStyle(.switch)
                                     .gridColumnAlignment(.leading)
-                                Text("Send Interval (s)")
+                                Text("Send Interval (s) — base tick rate; per-sentence rates in Realistic mode may be faster.")
                                 Stepper(value: $nmeaManager.interval, in: 0.1...10, step: 0.1) {
                                     Text(String(format: "%.1f", nmeaManager.interval))
                                         .monospacedDigit()

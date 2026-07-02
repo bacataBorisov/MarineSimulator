@@ -40,4 +40,5 @@ struct SimulationSnapshot {
     let turnRate: Double
     let logDistanceNm: Double
     let tripDistanceNm: Double
+    let navigationTarget: NavigationTarget?
 }
