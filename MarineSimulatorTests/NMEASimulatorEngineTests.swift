@@ -1235,6 +1235,77 @@ struct NMEASimulatorEngineTests {
     }
 
     @Test
+    func gpsPositionFollowsGyroSetpointNotMagneticCenter() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.isTimerSelected = false
+        simulator.interval = 1.0
+        simulator.heading = SimulatedValue(type: .magneticCompass, center: 180, offset: 0, value: 180)
+        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 90, offset: 0, value: 90)
+        simulator.speed = SimulatedValue(type: .speedLog, center: 6, offset: 0, value: 6)
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 27.0, speedOverGround: 6, courseOverGround: 180)
+
+        let startLat = simulator.gpsData.latitude
+        let startLon = simulator.gpsData.longitude
+
+        simulator.sendAllSelectedNMEA()
+        Thread.sleep(forTimeInterval: 1.05)
+        simulator.sendAllSelectedNMEA()
+
+        let latDelta = simulator.gpsData.latitude - startLat
+        let lonDelta = simulator.gpsData.longitude - startLon
+
+        #expect(abs(lonDelta) > abs(latDelta) * 5, "Gyro east setpoint should dominate over magnetic south center")
+        #expect(lonDelta > 0, "Gyro east setpoint should increase longitude")
+    }
+
+    @Test
+    func gpsPositionAdvancesAlongConfiguredHeadingWithGyroEnabled() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.isTimerSelected = false
+        simulator.interval = 1.0
+        simulator.heading = SimulatedValue(type: .magneticCompass, center: 0, offset: 0, value: 0)
+        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 0, offset: 0, value: 0)
+        simulator.speed = SimulatedValue(type: .speedLog, center: 6, offset: 0, value: 6)
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 27.0, speedOverGround: 6, courseOverGround: 0)
+
+        let startLat = simulator.gpsData.latitude
+
+        simulator.sendAllSelectedNMEA()
+        Thread.sleep(forTimeInterval: 1.05)
+        simulator.sendAllSelectedNMEA()
+
+        let latDelta = simulator.gpsData.latitude - startLat
+        #expect(latDelta > 0, "North gyro setpoint should increase latitude, got delta \(latDelta)")
+    }
+
+    @Test
+    func gpsPositionAdvancesAlongConfiguredHeading() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.isTimerSelected = false
+        simulator.interval = 1.0
+        simulator.sensorToggles.hasGyro = false
+        simulator.heading = SimulatedValue(type: .magneticCompass, center: 90, offset: 0, value: 90)
+        simulator.speed = SimulatedValue(type: .speedLog, center: 6, offset: 0, value: 6)
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 27.0, speedOverGround: 6, courseOverGround: 90)
+
+        let startLat = simulator.gpsData.latitude
+        let startLon = simulator.gpsData.longitude
+
+        simulator.sendAllSelectedNMEA()
+        Thread.sleep(forTimeInterval: 1.05)
+        simulator.sendAllSelectedNMEA()
+
+        let latDelta = simulator.gpsData.latitude - startLat
+        let lonDelta = simulator.gpsData.longitude - startLon
+
+        #expect(abs(lonDelta) > abs(latDelta) * 5, "East heading should increase longitude more than latitude")
+        #expect(lonDelta > 0, "East heading should increase longitude")
+    }
+
+    @Test
     func firstSimulationBurstDoesNotAdvanceGpsPositionArtificially() {
         let simulator = configuredSimulatorForDeterministicOutput()
         simulator.outputEndpoints[0].isEnabled = false

@@ -760,20 +760,22 @@ class NMEASimulator {
         }
 
         if tackAnimationState == nil {
-            heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
             if sensorToggles.hasGyro {
-                // Sync gyro to magnetic+variation so TWA computations are consistent
-                // with the magnetic heading sent in the HDG sentence.
-                let variation = simulatedMagneticVariation(for: gpsData, at: timestamp)
-                let syncedTrue = normalizeAngle((heading.value ?? heading.centerValue) + variation)
-                gyroHeading.value = syncedTrue
-                gyroHeading.centerValue = syncedTrue.clamped(to: gyroHeading.range)
+                gyroHeading.value = gyroHeading.generateRandomValue(shouldGenerate: true)
+                if sensorToggles.hasCompass {
+                    // Gyro is the steering source when enabled; derive magnetic for HDG/TWA consistency.
+                    let variation = simulatedMagneticVariation(for: gpsData, at: timestamp)
+                    let trueHeading = gyroHeading.value ?? gyroHeading.centerValue
+                    heading.value = normalizeAngle(trueHeading - variation)
+                }
+            } else {
+                heading.value = heading.generateRandomValue(shouldGenerate: sensorToggles.hasCompass)
             }
         }
         depth.value = depth.generateRandomValue(shouldGenerate: sensorToggles.hasEchoSounder)
 
         let magneticVariation = simulatedMagneticVariation(for: gpsData, at: timestamp)
-        let boatTrueHeading = resolvedTrueHeading(magneticHeading: heading.value, gyroHeading: gyroHeading.value, variation: magneticVariation) ?? gpsData.courseOverGround
+        let boatTrueHeading = resolvedSteeringTrueHeading(variation: magneticVariation)
 
         if boatSpeedMode == .estimated {
             speed.value = estimatedBoatSpeed(trueHeading: boatTrueHeading)
@@ -1578,6 +1580,20 @@ class NMEASimulator {
         return normalizeAngle(magneticHeading + variation)
     }
 
+    /// True heading used for dead reckoning: gyro setpoint when a gyro is enabled, otherwise magnetic + variation, else COG.
+    /// Uses live setpoints (`centerValue`) when jittered `value` is not yet populated so map, movement, and sliders stay aligned.
+    private func resolvedSteeringTrueHeading(variation: Double) -> Double {
+        if sensorToggles.hasGyro {
+            return normalizeAngle(gyroHeading.value ?? gyroHeading.centerValue)
+        }
+
+        if sensorToggles.hasCompass {
+            return normalizeAngle((heading.value ?? heading.centerValue) + variation)
+        }
+
+        return normalizeAngle(gpsData.courseOverGround)
+    }
+
     private func simulatedMagneticVariation(for gpsData: GPSData, at timestamp: Date) -> Double {
         let seasonalCycle = sin(timestamp.timeIntervalSinceReferenceDate / 86_400 / 45) * 1.8
         let geographicTrend = gpsData.longitude * 0.16 + sin(toRadians(gpsData.latitude)) * 6.5
@@ -1887,11 +1903,11 @@ class NMEASimulator {
     }
 
     private func mapDashboardBearingBeforeFirstSnapshot() -> Double {
-        if sensorToggles.hasGyro, let g = gyroHeading.value {
-            return normalizeAngle(g)
+        if sensorToggles.hasGyro {
+            return normalizeAngle(gyroHeading.value ?? gyroHeading.centerValue)
         }
-        if sensorToggles.hasCompass, let m = heading.value {
-            return normalizeAngle(m)
+        if sensorToggles.hasCompass {
+            return normalizeAngle(heading.value ?? heading.centerValue)
         }
         return normalizeAngle(gpsData.courseOverGround)
     }
