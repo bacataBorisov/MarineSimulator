@@ -1,16 +1,16 @@
 # Session Cache
 
-Last updated: 2026-04-13
+Last updated: 2026-07-03
 
 ## Current Objective
 
-Ship a coherent simulator update: realistic First 40.7 polar + pinching, calmer live wind, correct wind/heading display vs map, circular heading controls, map boat marker; remove AIS scaffolding.
+Fix dead-reckoning regression: boat GPS position must follow the active steering setpoint (gyro when enabled, else magnetic + variation).
 
 ## Product State
 
-- Live weather: MET Norway + Open-Meteo marine; smoothed wind offsets; 5 min default refresh, 1–60 min UI.
-- Dashboard wind uses sensor TWD/TWS and map-aligned heading for relative angles; NMEA keeps true-heading wind math.
-- Boat speed from Farr VPP grid with sub–min-TWA pinching factor.
+- Dead reckoning uses `resolvedSteeringTrueHeading`: gyro setpoint drives movement when gyro enabled; magnetic derived for HDG.
+- Map bearing uses setpoint fallbacks (`value ?? centerValue`) so slider and marker align before the next sim tick.
+- Regression tests: `gpsPositionAdvancesAlongConfiguredHeading*`, `gpsPositionFollowsGyroSetpointNotMagneticCenter`.
 
 ## Next
 
@@ -19,5 +19,5 @@ Ship a coherent simulator update: realistic First 40.7 polar + pinching, calmer 
 
 ## Notes
 
-- Prefer `docs/agent/` pointers in `AGENTS.md`; task truth in `Docs/*Tasks.md`.
+- Root cause was b372354 syncing gyro from magnetic each tick, overriding gyro slider and default ~180° magnetic center.
 - Run `agentos-scan` / `agentos cache update` / `agentos handoff update` after substantive edits.
