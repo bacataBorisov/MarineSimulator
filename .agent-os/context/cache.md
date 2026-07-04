@@ -1,23 +1,25 @@
 # Session Cache
 
-Last updated: 2026-07-03
+Last updated: 2026-07-04
 
 ## Current Objective
 
-Fix dead-reckoning regression: boat GPS position must follow the active steering setpoint (gyro when enabled, else magnetic + variation).
+Fix UI lag during active NMEA transmission while preserving live slider adjustment and dead-reckoning correctness.
 
 ## Product State
 
-- Dead reckoning uses `resolvedSteeringTrueHeading`: gyro setpoint drives movement when gyro enabled; magnetic derived for HDG.
-- Map bearing uses setpoint fallbacks (`value ?? centerValue`) so slider and marker align before the next sim tick.
-- Regression tests: `gpsPositionAdvancesAlongConfiguredHeading*`, `gpsPositionFollowsGyroSetpointNotMagneticCenter`.
+- Fast transmit loop runs on a dedicated `DispatchSourceTimer` / `simulationQueue` (20 Hz), not the main run loop.
+- `TransmitRuntime` holds authoritative sim state off-main; UI-bound fields batch-apply on main each cycle.
+- Console output is throttled (~100 ms) via `consoleRecordBuffer` + `consoleDisplayGeneration`.
+- Redundant `endpointStatuses` writes skipped when level/message unchanged.
+- Dead-reckoning tests still pass (`gpsPositionFollowsGyroSetpointNotMagneticCenter`, etc.).
 
 ## Next
 
-1. NMEA fidelity, manual depth, overlay selectability (see `Docs/CurrentTasks.md`).
-2. Optional: broader instrument damping controls (beyond live-wind OU) if needed.
+1. Manual UI sanity check: sliders remain responsive during 30–60 s transmit.
+2. NMEA fidelity / overlay work per `Docs/CurrentTasks.md`.
 
 ## Notes
 
-- Root cause was b372354 syncing gyro from magnetic each tick, overriding gyro slider and default ~180° magnetic center.
-- Run `agentos-scan` / `agentos cache update` / `agentos handoff update` after substantive edits.
+- Root cause was main-thread 20 Hz `Timer` + per-sentence `@Observable` churn (console rows, transport status).
+- Avoid `DispatchQueue.main.sync` from the simulation queue (deadlock with `stopSimulation`).

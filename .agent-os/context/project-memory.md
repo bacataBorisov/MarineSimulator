@@ -5,6 +5,7 @@ Durable facts and patterns only (not ephemeral session chatter). Prune when obso
 - MarineSimulator is a macOS SwiftUI app with a `NavigationSplitView` shell and a map-first dashboard as the primary control surface.
 - `NMEASimulator` is the central observable engine/state object; views consume it via SwiftUI environment or `@Bindable`.
 - The engine produces one coherent `SimulationSnapshot` per tick and builds all emitted NMEA sentences from that snapshot.
+- While transmitting, the fast 20 Hz scheduler runs on `simulationQueue` (`DispatchSourceTimer`); `TransmitRuntime` owns tick state off the main thread and batches UI applies back to main. Console rows flush at ~10 Hz via `consoleDisplayGeneration` so SwiftUI is not invalidated on every sentence.
 - Output is endpoint-based and supports both UDP and TCP; the first endpoint is kept in sync with the top-level IP/port fields.
 - Settings and live simulator values persist through `UserDefaults`, including layout state, selected panel, sentence intervals, endpoints, presets, and live GPS/control values.
 - Product direction currently prioritizes external-reader interoperability, manual validation, and protocol fidelity over adding new feature families.
