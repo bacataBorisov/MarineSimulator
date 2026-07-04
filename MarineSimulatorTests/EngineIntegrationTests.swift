@@ -126,9 +126,10 @@ struct EngineIntegrationTests {
         let deadline = Date().addingTimeInterval(2.0)
         while Date() < deadline {
             RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+            Thread.sleep(forTimeInterval: 0.03)
 
-            while checkedMessages < simulator.outputMessages.count {
-                let message = simulator.outputMessages[checkedMessages]
+            while checkedMessages < simulator.allOutputMessageRecords.count {
+                let message = simulator.allOutputMessageRecords[checkedMessages].sentence
                 checkedMessages += 1
 
                 guard message.contains("HDT"), let transmitted = parseTrueHeading(fromHDT: message) else {
@@ -181,7 +182,8 @@ private func waitForAsyncResult<T>(_ box: AsyncResultBox<T>, timeout: TimeInterv
 private func pumpMainRunLoop(for duration: TimeInterval) {
     let deadline = Date().addingTimeInterval(duration)
     while Date() < deadline {
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        Thread.sleep(forTimeInterval: 0.03)
     }
 }
 
@@ -413,9 +415,9 @@ private func countSentences(
 ) -> Int {
     let cutoff = Date().addingTimeInterval(-seconds)
     var count = 0
-    for index in simulator.outputMessages.indices {
-        guard predicate(simulator.outputMessages[index]) else { continue }
-        guard let timestamp = simulator.outputMessageTimestamp(at: index), timestamp >= cutoff else { continue }
+    for record in simulator.allOutputMessageRecords {
+        guard predicate(record.sentence) else { continue }
+        guard record.timestamp >= cutoff else { continue }
         count += 1
     }
     return count

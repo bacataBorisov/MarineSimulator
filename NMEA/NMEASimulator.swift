@@ -12,6 +12,9 @@ class NMEASimulator {
     /// Internal scheduler cadence while transmitting; decoupled from the user-facing Send Interval.
     private static let simulationFastTickInterval: TimeInterval = 0.05
 
+    /// Throttle console / stats `@Observable` churn while transmitting (see `recordOutputMessage`).
+    private static let consoleDisplayFlushInterval: TimeInterval = 0.1
+
     private static let simulationValuePersistDebounceInterval: TimeInterval = 5.0
 
     /// Posted on the main thread after each tack heading update (see `applySimulatedTrueHeading`). Wind/compass use this instead of SwiftUI `onChange` so 60 Hz steps are not coalesced or deferred.
@@ -20,6 +23,50 @@ class NMEASimulator {
     private struct PendingTransmission {
         let sentence: String
         let dueDate: Date
+    }
+
+    /// Mutable simulation state owned by the fast transmit queue while `isTransmitting`.
+    private struct TransmitRuntime {
+        var lastSimulationTickDate: Date?
+        var lastEmissionDates: [NMEASentenceType: Date] = [:]
+        var pendingTransmissions: [PendingTransmission] = []
+        var previousTurnReferenceHeading: Double?
+        var sendRelativeWind = true
+        var totalLogDistanceNm: Double = 0
+        var totalTripDistanceNm: Double = 0
+        var liveWeatherWindSpeedOffsetKt: Double = 0
+        var liveWeatherWindDirectionOffsetDeg: Double = 0
+        var liveWeatherNoiseBaselineFetchDate: Date?
+        var gpsData: GPSData
+        var twd: SimulatedValue
+        var tws: SimulatedValue
+        var speed: SimulatedValue
+        var depth: SimulatedValue
+        var seaTemp: SimulatedValue
+        var airTemp: SimulatedValue
+        var humidity: SimulatedValue
+        var barometer: SimulatedValue
+        var heading: SimulatedValue
+        var gyroHeading: SimulatedValue
+        var latestSnapshot: SimulationSnapshot?
+
+        init(from simulator: NMEASimulator) {
+            gpsData = simulator.gpsData
+            twd = simulator.twd
+            tws = simulator.tws
+            speed = simulator.speed
+            depth = simulator.depth
+            seaTemp = simulator.seaTemp
+            airTemp = simulator.airTemp
+            humidity = simulator.humidity
+            barometer = simulator.barometer
+            heading = simulator.heading
+            gyroHeading = simulator.gyroHeading
+            latestSnapshot = simulator.latestSnapshot
+            liveWeatherWindSpeedOffsetKt = simulator.liveWeatherWindSpeedOffsetKt
+            liveWeatherWindDirectionOffsetDeg = simulator.liveWeatherWindDirectionOffsetDeg
+            liveWeatherNoiseBaselineFetchDate = simulator.liveWeatherNoiseBaselineFetchDate
+        }
     }
 
     private enum PersistenceKeys {
@@ -79,7 +126,8 @@ class NMEASimulator {
 
     private let udpClient = UDPClient()
     private let tcpClient = TCPClient()
-    private var timer: Timer?
+    @ObservationIgnored private let simulationQueue = DispatchQueue(label: "com.marinesimulator.simulation", qos: .userInitiated)
+    @ObservationIgnored private var simulationTimer: DispatchSourceTimer?
 
     var isTimerSelected = true {
         didSet {
@@ -264,6 +312,8 @@ class NMEASimulator {
     /// transmitting) between when `.indices` is captured and when a row is actually laid out.
     private(set) var outputMessageRecords: [OutputMessageRecord] = []
     private(set) var totalSentCount: Int = 0
+    /// Bumped when throttled console rows are flushed to `outputMessageRecords` (see `ConsoleView`).
+    private(set) var consoleDisplayGeneration: UInt64 = 0
 
     // MARK: - Engine State
 
@@ -286,6 +336,10 @@ class NMEASimulator {
     private var pendingTransmissions: [PendingTransmission] = []
     private var simulationPersistWorkItem: DispatchWorkItem?
     @ObservationIgnored private var liveWeatherTask: Task<Bool, Never>?
+    /// Authoritative engine fields while the fast transmit timer runs off the main thread.
+    @ObservationIgnored private var transmitRuntime: TransmitRuntime?
+    @ObservationIgnored private var consoleRecordBuffer: [OutputMessageRecord] = []
+    @ObservationIgnored private var consoleFlushWorkItem: DispatchWorkItem?
 
     /// Mean-reverting offsets around the last live-weather snapshot (OU-style; small, smooth gusts).
     private var liveWeatherWindSpeedOffsetKt: Double = 0
@@ -345,13 +399,21 @@ class NMEASimulator {
     func clearOutputMessages() {
         outputMessages.removeAll()
         outputMessageRecords.removeAll()
+        consoleRecordBuffer.removeAll()
+        consoleDisplayGeneration &+= 1
     }
 
     func outputMessageTimestamp(at index: Int) -> Date? {
-        guard index >= 0, index < outputMessageRecords.count else {
+        let records = allOutputMessageRecords
+        guard index >= 0, index < records.count else {
             return nil
         }
-        return outputMessageRecords[index].timestamp
+        return records[index].timestamp
+    }
+
+    /// Visible console rows plus any not yet flushed from the fast transmit queue.
+    var allOutputMessageRecords: [OutputMessageRecord] {
+        outputMessageRecords + consoleRecordBuffer
     }
 
     func applyPreset(_ preset: SimulationPreset) {
@@ -416,7 +478,13 @@ class NMEASimulator {
     }
 
     func sendAllSelectedNMEA() {
-        runSimulationCycle()
+        if transmitRuntime != nil {
+            simulationQueue.async { [weak self] in
+                self?.runSimulationCycle()
+            }
+        } else {
+            runSimulationCycle()
+        }
     }
 
     func startSimulation() {
@@ -459,31 +527,48 @@ class NMEASimulator {
         }
 
         refreshEndpointConnectionSignatures()
-        timer = Timer.scheduledTimer(withTimeInterval: Self.simulationFastTickInterval, repeats: true) { [weak self] _ in
-            self?.runSimulationCycle()
-        }
-        if let timer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
+        stopSimulationTimer()
 
         isTransmitting = true
         appendHistoryEvent(level: .connected, category: .lifecycle, message: "Simulation started")
-        runSimulationCycle()
+
+        simulationQueue.async { [weak self] in
+            guard let self else { return }
+            self.transmitRuntime = TransmitRuntime(from: self)
+            self.startSimulationTimer()
+            self.runSimulationCycle()
+        }
     }
 
     func stopSimulation() {
-        let wasRunning = isTransmitting || timer != nil
+        let wasRunning = isTransmitting || simulationTimer != nil
         isTransmitting = false
+        stopSimulationTimer()
+        simulationPersistWorkItem?.cancel()
+        simulationPersistWorkItem = nil
+        consoleFlushWorkItem?.cancel()
+        consoleFlushWorkItem = nil
+
+        if wasRunning {
+            var runtimeToApply: TransmitRuntime?
+            simulationQueue.sync { [weak self] in
+                guard let self else { return }
+                runtimeToApply = self.transmitRuntime
+                self.transmitRuntime = nil
+            }
+            if let runtimeToApply {
+                applyRuntimeToMain(runtimeToApply, flushConsoleImmediately: true)
+            }
+        } else {
+            transmitRuntime = nil
+        }
+
         if !wasRunning {
             liveWeatherTask?.cancel()
             liveWeatherTask = nil
         }
-        timer?.invalidate()
-        timer = nil
         resetTransportConnections()
         endpointConnectionSignatures.removeAll()
-        simulationPersistWorkItem?.cancel()
-        simulationPersistWorkItem = nil
         var latestIdleStatus: OutputEndpointStatus?
 
         for endpoint in outputEndpoints {
@@ -642,6 +727,11 @@ class NMEASimulator {
     }
 
     private func runSimulationCycle(at timestamp: Date = .now) {
+        if transmitRuntime != nil {
+            runTransmitSimulationCycle(at: timestamp)
+            return
+        }
+
         resetTransportConnectionsIfEndpointTargetsChangedWhileTransmitting()
         flushPendingTransmissions(at: timestamp)
 
@@ -1038,6 +1128,11 @@ class NMEASimulator {
 
     private func recordTransportStatus(_ status: OutputEndpointStatus) {
         let previousStatus = endpointStatuses[status.endpointID]
+        let statusChanged = previousStatus?.level != status.level || previousStatus?.message != status.message
+        guard statusChanged else {
+            return
+        }
+
         endpointStatuses[status.endpointID] = status
 
         // Update the top-bar indicator:
@@ -1050,16 +1145,13 @@ class NMEASimulator {
             latestTransportStatus = status
         }
 
-        let statusChanged = previousStatus?.level != status.level || previousStatus?.message != status.message
-        if statusChanged {
-            appendHistoryEvent(
-                endpointID: status.endpointID,
-                level: status.level,
-                category: .transport,
-                message: status.message,
-                timestamp: status.updatedAt
-            )
-        }
+        appendHistoryEvent(
+            endpointID: status.endpointID,
+            level: status.level,
+            category: .transport,
+            message: status.message,
+            timestamp: status.updatedAt
+        )
     }
 
     private func transportErrorSummary(_ error: NWError) -> String {
@@ -1383,12 +1475,13 @@ class NMEASimulator {
     }
 
     private func restartTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: Self.simulationFastTickInterval, repeats: true) { [weak self] _ in
-            self?.runSimulationCycle()
-        }
-        if let timer {
-            RunLoop.main.add(timer, forMode: .common)
+        stopSimulationTimer()
+        simulationQueue.async { [weak self] in
+            guard let self else { return }
+            if self.transmitRuntime == nil {
+                self.transmitRuntime = TransmitRuntime(from: self)
+            }
+            self.startSimulationTimer()
         }
     }
 
@@ -1398,17 +1491,25 @@ class NMEASimulator {
         }
 
         if isTimerSelected {
-            if isTransmitting && timer == nil {
+            if isTransmitting && simulationTimer == nil {
                 restartTimer()
                 appendHistoryEvent(level: .connected, category: .lifecycle, message: "Timer re-enabled")
             }
             return
         }
 
-        if timer != nil {
-            timer?.invalidate()
-            timer = nil
+        if simulationTimer != nil || isTransmitting {
+            stopSimulationTimer()
             isTransmitting = false
+            var runtimeToApply: TransmitRuntime?
+            simulationQueue.sync { [weak self] in
+                guard let self else { return }
+                runtimeToApply = self.transmitRuntime
+                self.transmitRuntime = nil
+            }
+            if let runtimeToApply {
+                applyRuntimeToMain(runtimeToApply, flushConsoleImmediately: true)
+            }
             appendHistoryEvent(level: .idle, category: .lifecycle, message: "Timer disabled; continuous transmission stopped")
         }
     }
@@ -1691,6 +1792,12 @@ class NMEASimulator {
 
     private func recordOutputMessage(_ sentence: String, timestamp: Date) {
         let record = OutputMessageRecord(sentence: sentence, timestamp: timestamp)
+        if transmitRuntime != nil {
+            consoleRecordBuffer.append(record)
+            scheduleConsoleDisplayFlush()
+            return
+        }
+
         outputMessageRecords.append(record)
         outputMessages.append(sentence)
         totalSentCount += 1
@@ -1710,7 +1817,9 @@ class NMEASimulator {
 
     func sentPerSecond(at timestamp: Date = .now) -> Int {
         let windowStart = timestamp.addingTimeInterval(-1)
-        return outputMessageRecords.filter { $0.timestamp >= windowStart }.count
+        let visibleCount = outputMessageRecords.filter { $0.timestamp >= windowStart }.count
+        let bufferedCount = consoleRecordBuffer.filter { $0.timestamp >= windowStart }.count
+        return visibleCount + bufferedCount
     }
 
     private func applyFaultInjection(
@@ -1900,6 +2009,724 @@ class NMEASimulator {
         let seaStatePenalty = weatherSourceMode == .liveWeather ? 0.96 : 1.0
         let variationPenalty = max(0.88, 1.0 - (speed.offset / 100))
         return (baseSpeed * seaStatePenalty * variationPenalty).clamped(to: SimulatedValueType.speedLog.defaultRange)
+    }
+
+    // MARK: - Off-main transmit loop
+
+    private struct LiveCycleContext {
+        let sensorToggles: SensorToggleStates
+        let sentenceToggles: SentenceToggleStates
+        let interval: Double
+        let sentenceIntervals: [NMEASentenceType: TimeInterval]
+        let weatherSourceMode: WeatherSourceMode
+        let latestLiveWeather: LiveWeatherSnapshot?
+        let boatSpeedMode: BoatSpeedMode
+        let boatProfile: BoatProfile
+        let waypointNavigation: WaypointNavigation
+        let tackAnimationInProgress: Bool
+        let talkerID: String
+        let perSentenceTalkerID: [NMEASentenceType: String]
+        let faultInjection: FaultInjectionSettings
+        let mwvReferenceMode: MWVReferenceMode
+    }
+
+    private func startSimulationTimer() {
+        simulationTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: simulationQueue)
+        timer.schedule(
+            deadline: .now(),
+            repeating: Self.simulationFastTickInterval,
+            leeway: .milliseconds(5)
+        )
+        timer.setEventHandler { [weak self] in
+            self?.runSimulationCycle()
+        }
+        timer.resume()
+        simulationTimer = timer
+    }
+
+    private func stopSimulationTimer() {
+        simulationTimer?.cancel()
+        simulationTimer = nil
+    }
+
+    private func captureLiveCycleContext() -> LiveCycleContext {
+        LiveCycleContext(
+            sensorToggles: sensorToggles,
+            sentenceToggles: sentenceToggles,
+            interval: interval,
+            sentenceIntervals: sentenceIntervals,
+            weatherSourceMode: weatherSourceMode,
+            latestLiveWeather: latestLiveWeather,
+            boatSpeedMode: boatSpeedMode,
+            boatProfile: boatProfile,
+            waypointNavigation: waypointNavigation,
+            tackAnimationInProgress: tackAnimationState != nil,
+            talkerID: talkerID,
+            perSentenceTalkerID: perSentenceTalkerID,
+            faultInjection: faultInjection,
+            mwvReferenceMode: mwvReferenceMode
+        )
+    }
+
+    private func syncLiveSetpointsIntoRuntime(_ runtime: inout TransmitRuntime) {
+        func mergeSetpoints(from source: SimulatedValue, into target: inout SimulatedValue) {
+            target.centerValue = source.centerValue
+            target.offset = source.offset
+            target.range = source.range
+        }
+
+        mergeSetpoints(from: twd, into: &runtime.twd)
+        mergeSetpoints(from: tws, into: &runtime.tws)
+        mergeSetpoints(from: speed, into: &runtime.speed)
+        mergeSetpoints(from: depth, into: &runtime.depth)
+        mergeSetpoints(from: seaTemp, into: &runtime.seaTemp)
+        mergeSetpoints(from: airTemp, into: &runtime.airTemp)
+        mergeSetpoints(from: humidity, into: &runtime.humidity)
+        mergeSetpoints(from: barometer, into: &runtime.barometer)
+        mergeSetpoints(from: heading, into: &runtime.heading)
+        mergeSetpoints(from: gyroHeading, into: &runtime.gyroHeading)
+        runtime.heading.value = heading.value
+        runtime.gyroHeading.value = gyroHeading.value
+        runtime.gpsData.speedOverGround = gpsData.speedOverGround
+        runtime.gpsData.courseOverGround = gpsData.courseOverGround
+    }
+
+    private func applyRuntimeToMain(_ runtime: TransmitRuntime, flushConsoleImmediately: Bool) {
+        isApplyingSimulationTick = true
+        twd = runtime.twd
+        tws = runtime.tws
+        speed = runtime.speed
+        depth = runtime.depth
+        seaTemp = runtime.seaTemp
+        airTemp = runtime.airTemp
+        humidity = runtime.humidity
+        barometer = runtime.barometer
+        heading = runtime.heading
+        gyroHeading = runtime.gyroHeading
+        gpsData = runtime.gpsData
+        latestSnapshot = runtime.latestSnapshot
+        lastSimulationTickDate = runtime.lastSimulationTickDate
+        lastEmissionDates = runtime.lastEmissionDates
+        pendingTransmissions = runtime.pendingTransmissions
+        previousTurnReferenceHeading = runtime.previousTurnReferenceHeading
+        sendRelativeWind = runtime.sendRelativeWind
+        totalLogDistanceNm = runtime.totalLogDistanceNm
+        totalTripDistanceNm = runtime.totalTripDistanceNm
+        liveWeatherWindSpeedOffsetKt = runtime.liveWeatherWindSpeedOffsetKt
+        liveWeatherWindDirectionOffsetDeg = runtime.liveWeatherWindDirectionOffsetDeg
+        liveWeatherNoiseBaselineFetchDate = runtime.liveWeatherNoiseBaselineFetchDate
+        isApplyingSimulationTick = false
+        scheduleDebouncedSimulationPersist()
+
+        if flushConsoleImmediately {
+            flushConsoleDisplayToMain(immediate: true)
+        }
+    }
+
+    private func scheduleApplyRuntimeToMain(_ runtime: TransmitRuntime) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.transmitRuntime != nil else { return }
+            self.applyRuntimeToMain(runtime, flushConsoleImmediately: false)
+        }
+    }
+
+    private func scheduleConsoleDisplayFlush() {
+        guard consoleFlushWorkItem == nil else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.flushConsoleDisplayToMain(immediate: false)
+        }
+        consoleFlushWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.consoleDisplayFlushInterval,
+            execute: workItem
+        )
+    }
+
+    private func flushConsoleDisplayToMain(immediate: Bool) {
+        consoleFlushWorkItem?.cancel()
+        consoleFlushWorkItem = nil
+
+        guard !consoleRecordBuffer.isEmpty else { return }
+
+        let buffered = consoleRecordBuffer
+        consoleRecordBuffer.removeAll(keepingCapacity: true)
+
+        for record in buffered {
+            outputMessageRecords.append(record)
+            outputMessages.append(record.sentence)
+            totalSentCount += 1
+        }
+
+        if let referenceTimestamp = outputMessageRecords.last?.timestamp {
+            pruneOutputMessageRecords(referenceTimestamp: referenceTimestamp)
+        }
+
+        consoleDisplayGeneration &+= 1
+
+        if !immediate, !consoleRecordBuffer.isEmpty {
+            scheduleConsoleDisplayFlush()
+        }
+    }
+
+    private func runTransmitSimulationCycle(at timestamp: Date) {
+        guard var runtime = transmitRuntime else { return }
+
+        syncLiveSetpointsIntoRuntime(&runtime)
+        let context = captureLiveCycleContext()
+
+        if Thread.isMainThread {
+            resetTransportConnectionsIfEndpointTargetsChangedWhileTransmitting()
+        }
+        flushPendingTransmissions(runtime: &runtime, at: timestamp, context: context)
+
+        let snapshot: SimulationSnapshot
+        if shouldAdvanceSimulation(runtime: runtime, at: timestamp, interval: context.interval) {
+            snapshot = tickSimulation(runtime: &runtime, context: context, at: timestamp)
+        } else if let latestSnapshot = runtime.latestSnapshot {
+            snapshot = latestSnapshot
+        } else {
+            snapshot = tickSimulation(runtime: &runtime, context: context, at: timestamp)
+        }
+
+        let dueSentences = scheduledSentenceTypes(
+            runtime: &runtime,
+            at: timestamp,
+            snapshot: snapshot,
+            context: context
+        )
+        let count = dueSentences.count
+        transmitRuntime = runtime
+
+        if count > 0 {
+            let staggerWindow = min(context.interval * 0.8, Double(count - 1) * 0.05)
+            let gap = count > 1 ? staggerWindow / Double(count - 1) : 0
+
+            for (index, type) in dueSentences.enumerated() {
+                let delay = gap * Double(index)
+                if delay < 0.001 {
+                    sendNMEA(type: type, snapshot: snapshot)
+                } else {
+                    let due = timestamp.addingTimeInterval(delay)
+                    let sentences = applyFaultInjection(
+                        to: buildNMEASentences(
+                            talkerID: talkerID(for: type, context: context),
+                            type: type,
+                            snapshot: snapshot
+                        ),
+                        for: type,
+                        at: snapshot.timestamp,
+                        context: context,
+                        runtime: &runtime
+                    )
+                    for sentence in sentences {
+                        runtime.pendingTransmissions.append(PendingTransmission(sentence: sentence, dueDate: due))
+                    }
+                }
+            }
+
+            if count > 1 {
+                flushPendingTransmissions(
+                    runtime: &runtime,
+                    at: timestamp.addingTimeInterval(staggerWindow + 0.001),
+                    context: context
+                )
+            }
+        }
+
+        transmitRuntime = runtime
+        scheduleApplyRuntimeToMain(runtime)
+    }
+
+    private func shouldAdvanceSimulation(
+        runtime: TransmitRuntime,
+        at timestamp: Date,
+        interval: TimeInterval
+    ) -> Bool {
+        guard let lastSimulationTickDate = runtime.lastSimulationTickDate else {
+            return true
+        }
+        return timestamp.timeIntervalSince(lastSimulationTickDate) >= interval
+    }
+
+    private func talkerID(for sentence: NMEASentenceType, context: LiveCycleContext) -> String {
+        context.perSentenceTalkerID[sentence] ?? context.talkerID
+    }
+
+    private func effectiveInterval(
+        for sentence: NMEASentenceType,
+        context: LiveCycleContext
+    ) -> TimeInterval {
+        if let configured = context.sentenceIntervals[sentence] {
+            return configured
+        }
+        return context.interval
+    }
+
+    private func flushPendingTransmissions(
+        runtime: inout TransmitRuntime,
+        at timestamp: Date,
+        context: LiveCycleContext
+    ) {
+        let due = runtime.pendingTransmissions.filter { $0.dueDate <= timestamp }
+        runtime.pendingTransmissions.removeAll { $0.dueDate <= timestamp }
+
+        for pending in due {
+            for endpoint in enabledOutputEndpoints() {
+                send(pending.sentence, to: endpoint)
+            }
+            recordOutputMessage(pending.sentence, timestamp: timestamp)
+        }
+    }
+
+    private func scheduledSentenceTypes(
+        runtime: inout TransmitRuntime,
+        at timestamp: Date,
+        snapshot: SimulationSnapshot,
+        context: LiveCycleContext
+    ) -> [NMEASentenceType] {
+        activeSentenceTypes(snapshot: snapshot, context: context).filter { type in
+            let minimumInterval = effectiveInterval(for: type, context: context)
+            guard minimumInterval > 0 else {
+                runtime.lastEmissionDates[type] = timestamp
+                return true
+            }
+
+            guard let lastEmission = runtime.lastEmissionDates[type] else {
+                runtime.lastEmissionDates[type] = timestamp
+                return true
+            }
+
+            let isDue = timestamp.timeIntervalSince(lastEmission) >= minimumInterval
+            if isDue {
+                runtime.lastEmissionDates[type] = timestamp
+            }
+            return isDue
+        }
+    }
+
+    private func activeSentenceTypes(
+        snapshot: SimulationSnapshot,
+        context: LiveCycleContext
+    ) -> [NMEASentenceType] {
+        var types: [NMEASentenceType] = []
+
+        if context.sensorToggles.hasAnemometer && context.sentenceToggles.shouldSendMWV {
+            types.append(.mwv)
+        }
+        if canSendFullWindData(context: context) && context.sentenceToggles.shouldSendMWD {
+            types.append(.mwd)
+        }
+        if canSendFullWindData(context: context) && context.sentenceToggles.shouldSendVPW {
+            types.append(.vpw)
+        }
+
+        if context.sensorToggles.hasCompass && context.sentenceToggles.shouldSendHDG {
+            types.append(.hdg)
+        }
+        if context.sensorToggles.hasGyro && context.sentenceToggles.shouldSendHDT {
+            types.append(.hdt)
+        }
+        if context.sensorToggles.hasGyro && context.sentenceToggles.shouldSendROT {
+            types.append(.rot)
+        }
+
+        if context.sensorToggles.hasEchoSounder && context.sentenceToggles.shouldSendDBT {
+            types.append(.dbt)
+        }
+        if context.sensorToggles.hasEchoSounder && abs(depthOffsetMeters) <= 99 && context.sentenceToggles.shouldSendDPT {
+            types.append(.dpt)
+        }
+        if context.sensorToggles.hasWaterTempSensor && context.sentenceToggles.shouldSendMTW {
+            types.append(.mtw)
+        }
+        if context.sensorToggles.hasSpeedLog && (context.sensorToggles.hasCompass || context.sensorToggles.hasGyro) && context.sentenceToggles.shouldSendVHW {
+            types.append(.vhw)
+        }
+        if (context.sensorToggles.hasSpeedLog || context.sensorToggles.hasGPS) && context.sentenceToggles.shouldSendVBW {
+            types.append(.vbw)
+        }
+        if context.sensorToggles.hasSpeedLog && context.sentenceToggles.shouldSendVLW {
+            types.append(.vlw)
+        }
+
+        if context.sensorToggles.hasGPS {
+            if context.sentenceToggles.shouldSendRMC { types.append(.rmc) }
+            if context.sentenceToggles.shouldSendGGA { types.append(.gga) }
+            if context.sentenceToggles.shouldSendVTG { types.append(.vtg) }
+            if context.sentenceToggles.shouldSendGLL { types.append(.gll) }
+            if context.sentenceToggles.shouldSendGSA { types.append(.gsa) }
+            if context.sentenceToggles.shouldSendGSV { types.append(.gsv) }
+            if context.sentenceToggles.shouldSendZDA { types.append(.zda) }
+
+            if context.waypointNavigation.isActive {
+                if context.sentenceToggles.shouldSendRMB { types.append(.rmb) }
+                if context.sentenceToggles.shouldSendXTE { types.append(.xte) }
+            }
+        }
+
+        return types
+    }
+
+    private func canSendFullWindData(context: LiveCycleContext) -> Bool {
+        let hasAnemometer = context.sensorToggles.hasAnemometer
+        let hasBoatSpeed = context.sensorToggles.hasSpeedLog || context.sensorToggles.hasGPS
+        let hasTrueHeading = context.sensorToggles.hasGyro || context.sensorToggles.hasCompass
+        return hasAnemometer && hasBoatSpeed && hasTrueHeading
+    }
+
+    private func tickSimulation(
+        runtime: inout TransmitRuntime,
+        context: LiveCycleContext,
+        at timestamp: Date
+    ) -> SimulationSnapshot {
+        let deltaTime: TimeInterval = {
+            if let lastSimulationTickDate = runtime.lastSimulationTickDate {
+                return max(0, timestamp.timeIntervalSince(lastSimulationTickDate))
+            }
+            return 0
+        }()
+
+        triggerLiveWeatherRefreshIfNeeded(at: timestamp)
+
+        if context.weatherSourceMode == .liveWeather {
+            if let liveWeather = context.latestLiveWeather {
+                syncLiveWeatherWindNoiseBaselineIfNeeded(
+                    runtime: &runtime,
+                    fetchedAt: liveWeather.fetchedAt
+                )
+                evolveLiveWeatherWindNoise(runtime: &runtime, deltaTime: deltaTime)
+
+                if context.sensorToggles.hasAnemometer, let baseDir = liveWeather.trueWindDirection {
+                    runtime.twd.value = normalizeAngle(baseDir + runtime.liveWeatherWindDirectionOffsetDeg)
+                } else {
+                    runtime.twd.value = nil
+                }
+                if context.sensorToggles.hasAnemometer, let baseKt = liveWeather.trueWindSpeedKnots {
+                    runtime.tws.value = (baseKt + runtime.liveWeatherWindSpeedOffsetKt)
+                        .clamped(to: SimulatedValueType.windSpeed.defaultRange)
+                } else {
+                    runtime.tws.value = nil
+                }
+                runtime.seaTemp.value = context.sensorToggles.hasWaterTempSensor
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.seaSurfaceTemperatureCelsius,
+                        jitter: 0.3,
+                        range: SimulatedValueType.seaTemp.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+                runtime.airTemp.value = context.sensorToggles.hasAirTempSensor
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.airTemperatureCelsius,
+                        jitter: 0.4,
+                        range: SimulatedValueType.airTemp.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+                runtime.humidity.value = context.sensorToggles.hasHumidtySensor
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.relativeHumidityPercent,
+                        jitter: 1.8,
+                        range: SimulatedValueType.humidity.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+                runtime.barometer.value = context.sensorToggles.hasBarometer
+                    ? generateLiveWeatherValue(
+                        base: liveWeather.airPressureHectopascals,
+                        jitter: 0.8,
+                        range: SimulatedValueType.barometer.defaultRange,
+                        wraps: false
+                    )
+                    : nil
+            } else {
+                runtime.twd.value = nil
+                runtime.tws.value = nil
+                runtime.seaTemp.value = nil
+                runtime.airTemp.value = nil
+                runtime.humidity.value = nil
+                runtime.barometer.value = nil
+            }
+        } else {
+            runtime.twd.value = runtime.twd.generateRandomValue(shouldGenerate: context.sensorToggles.hasAnemometer)
+            runtime.tws.value = runtime.tws.generateRandomValue(shouldGenerate: context.sensorToggles.hasAnemometer)
+            runtime.seaTemp.value = runtime.seaTemp.generateRandomValue(shouldGenerate: context.sensorToggles.hasWaterTempSensor)
+            runtime.airTemp.value = runtime.airTemp.generateRandomValue(shouldGenerate: context.sensorToggles.hasAirTempSensor)
+            runtime.humidity.value = runtime.humidity.generateRandomValue(shouldGenerate: context.sensorToggles.hasHumidtySensor)
+            runtime.barometer.value = runtime.barometer.generateRandomValue(shouldGenerate: context.sensorToggles.hasBarometer)
+        }
+
+        if !context.tackAnimationInProgress {
+            if context.sensorToggles.hasGyro {
+                runtime.gyroHeading.value = runtime.gyroHeading.generateRandomValue(shouldGenerate: true)
+                if context.sensorToggles.hasCompass {
+                    let variation = simulatedMagneticVariation(for: runtime.gpsData, at: timestamp)
+                    let trueHeading = runtime.gyroHeading.value ?? runtime.gyroHeading.centerValue
+                    runtime.heading.value = normalizeAngle(trueHeading - variation)
+                }
+            } else {
+                runtime.heading.value = runtime.heading.generateRandomValue(shouldGenerate: context.sensorToggles.hasCompass)
+            }
+        }
+        runtime.depth.value = runtime.depth.generateRandomValue(shouldGenerate: context.sensorToggles.hasEchoSounder)
+
+        let magneticVariation = simulatedMagneticVariation(for: runtime.gpsData, at: timestamp)
+        let boatTrueHeading = resolvedSteeringTrueHeading(
+            runtime: runtime,
+            context: context,
+            variation: magneticVariation
+        )
+
+        if context.boatSpeedMode == .estimated {
+            runtime.speed.value = estimatedBoatSpeed(
+                trueHeading: boatTrueHeading,
+                runtime: runtime,
+                context: context
+            )
+        } else {
+            runtime.speed.value = runtime.speed.generateRandomValue(shouldGenerate: context.sensorToggles.hasSpeedLog)
+        }
+
+        let waterSpeed = runtime.speed.value ?? runtime.gpsData.speedOverGround
+        let movement = simulatedMovement(
+            waterSpeed: waterSpeed,
+            trueHeading: boatTrueHeading,
+            at: timestamp,
+            gpsData: runtime.gpsData
+        )
+
+        if context.sensorToggles.hasGPS && deltaTime > 0 {
+            runtime.gpsData.updatePosition(
+                deltaTime: deltaTime,
+                sog: movement.speedOverGround,
+                cog: movement.courseOverGround
+            )
+        }
+
+        if context.sensorToggles.hasSpeedLog {
+            runtime.totalLogDistanceNm += max(0, waterSpeed) * deltaTime / 3600
+            runtime.totalTripDistanceNm += max(0, waterSpeed) * deltaTime / 3600
+        }
+
+        let turnRate = computedTurnRate(
+            currentHeading: boatTrueHeading,
+            deltaTime: deltaTime,
+            previousReference: &runtime.previousTurnReferenceHeading
+        )
+        let compassDeviation = simulatedCompassDeviation(heading: runtime.heading.value)
+        let gpsSignal = simulatedGPSSignal(for: runtime.gpsData, at: timestamp)
+
+        let navTarget: NavigationTarget? = context.waypointNavigation.isActive ? NavigationTarget(
+            originName: context.waypointNavigation.originName,
+            destinationName: context.waypointNavigation.destinationName,
+            originLatitude: context.waypointNavigation.originLatitude,
+            originLongitude: context.waypointNavigation.originLongitude,
+            destinationLatitude: context.waypointNavigation.destinationLatitude,
+            destinationLongitude: context.waypointNavigation.destinationLongitude,
+            arrivalRadiusNm: context.waypointNavigation.arrivalRadiusNm
+        ) : nil
+
+        let snapshot = SimulationSnapshot(
+            timestamp: timestamp,
+            windDirectionTrue: runtime.twd.value,
+            windSpeedTrue: runtime.tws.value,
+            magneticHeading: runtime.heading.value,
+            gyroHeading: runtime.gyroHeading.value,
+            magneticVariation: magneticVariation,
+            compassDeviation: compassDeviation,
+            boatSpeed: runtime.speed.value,
+            depth: runtime.depth.value,
+            seaTemperature: runtime.seaTemp.value,
+            airTemperature: runtime.airTemp.value,
+            relativeHumidity: runtime.humidity.value,
+            airPressure: runtime.barometer.value,
+            gpsData: runtime.gpsData,
+            gpsSignal: gpsSignal,
+            turnRate: turnRate,
+            logDistanceNm: runtime.totalLogDistanceNm,
+            tripDistanceNm: runtime.totalTripDistanceNm,
+            navigationTarget: navTarget
+        )
+
+        runtime.latestSnapshot = snapshot
+        runtime.lastSimulationTickDate = timestamp
+        return snapshot
+    }
+
+    private func syncLiveWeatherWindNoiseBaselineIfNeeded(
+        runtime: inout TransmitRuntime,
+        fetchedAt: Date
+    ) {
+        if runtime.liveWeatherNoiseBaselineFetchDate != fetchedAt {
+            runtime.liveWeatherNoiseBaselineFetchDate = fetchedAt
+            runtime.liveWeatherWindSpeedOffsetKt = 0
+            runtime.liveWeatherWindDirectionOffsetDeg = 0
+        }
+    }
+
+    private func evolveLiveWeatherWindNoise(runtime: inout TransmitRuntime, deltaTime: TimeInterval) {
+        let dt = min(max(deltaTime, 0), 4)
+        guard dt > 0 else { return }
+
+        let zSpeed = unitGaussianRandom()
+        let zDir = unitGaussianRandom()
+
+        let thetaSpeed = 0.07
+        let sigmaSpeedKt = 0.017
+        runtime.liveWeatherWindSpeedOffsetKt += -thetaSpeed * runtime.liveWeatherWindSpeedOffsetKt * dt + sigmaSpeedKt * sqrt(dt) * zSpeed
+        runtime.liveWeatherWindSpeedOffsetKt = runtime.liveWeatherWindSpeedOffsetKt.clamped(to: -1.1...1.1)
+
+        let thetaDir = 0.06
+        let sigmaDirDeg = 0.22
+        runtime.liveWeatherWindDirectionOffsetDeg += -thetaDir * runtime.liveWeatherWindDirectionOffsetDeg * dt + sigmaDirDeg * sqrt(dt) * zDir
+        runtime.liveWeatherWindDirectionOffsetDeg = runtime.liveWeatherWindDirectionOffsetDeg.clamped(to: -10...10)
+    }
+
+    private func resolvedSteeringTrueHeading(
+        runtime: TransmitRuntime,
+        context: LiveCycleContext,
+        variation: Double
+    ) -> Double {
+        if context.sensorToggles.hasGyro {
+            return normalizeAngle(runtime.gyroHeading.value ?? runtime.gyroHeading.centerValue)
+        }
+
+        if context.sensorToggles.hasCompass {
+            return normalizeAngle((runtime.heading.value ?? runtime.heading.centerValue) + variation)
+        }
+
+        return normalizeAngle(runtime.gpsData.courseOverGround)
+    }
+
+    private func computedTurnRate(
+        currentHeading: Double,
+        deltaTime: TimeInterval,
+        previousReference: inout Double?
+    ) -> Double {
+        defer {
+            previousReference = currentHeading
+        }
+
+        guard deltaTime > 0, let previousTurnReferenceHeading = previousReference else {
+            return 0
+        }
+
+        let delta = calculateShortestRotation(from: previousTurnReferenceHeading, to: currentHeading)
+        return delta / deltaTime * 60
+    }
+
+    private func estimatedBoatSpeed(
+        trueHeading: Double,
+        runtime: TransmitRuntime,
+        context: LiveCycleContext
+    ) -> Double? {
+        guard context.sensorToggles.hasSpeedLog, let trueWindSpeed = runtime.tws.value else {
+            return nil
+        }
+
+        let trueWindDirection = runtime.twd.value ?? runtime.gpsData.courseOverGround
+        let trueWindAngle = abs(calculateShortestRotation(from: trueHeading, to: trueWindDirection))
+        let baseSpeed = context.boatProfile.estimatedBoatSpeed(
+            trueWindSpeedKnots: trueWindSpeed,
+            trueWindAngleDegrees: trueWindAngle
+        )
+
+        let seaStatePenalty = context.weatherSourceMode == .liveWeather ? 0.96 : 1.0
+        let variationPenalty = max(0.88, 1.0 - (runtime.speed.offset / 100))
+        return (baseSpeed * seaStatePenalty * variationPenalty).clamped(to: SimulatedValueType.speedLog.defaultRange)
+    }
+
+    private func applyFaultInjection(
+        to sentences: [String],
+        for type: NMEASentenceType,
+        at timestamp: Date,
+        context: LiveCycleContext,
+        runtime: inout TransmitRuntime
+    ) -> [String] {
+        guard context.faultInjection.isEnabled else {
+            return sentences
+        }
+
+        var transmitted: [String] = []
+
+        for sentence in sentences {
+            if shouldInjectFault(rate: context.faultInjection.dropRate) {
+                appendHistoryEventOnMain(
+                    level: .warning,
+                    category: .fault,
+                    message: "Dropped \(type.rawValue.uppercased()) sentence"
+                )
+                continue
+            }
+
+            var mutated = sentence
+
+            if shouldInjectFault(rate: context.faultInjection.invalidDataRate),
+               let invalidSentence = invalidatedSentence(from: mutated, type: type) {
+                mutated = invalidSentence
+                appendHistoryEventOnMain(
+                    level: .warning,
+                    category: .fault,
+                    message: "Injected invalid data into \(type.rawValue.uppercased()) sentence"
+                )
+            }
+
+            if shouldInjectFault(rate: context.faultInjection.checksumCorruptionRate),
+               let corrupted = corruptedChecksumSentence(from: mutated) {
+                mutated = corrupted
+                appendHistoryEventOnMain(
+                    level: .warning,
+                    category: .fault,
+                    message: "Corrupted checksum for \(type.rawValue.uppercased()) sentence"
+                )
+            }
+
+            if shouldInjectFault(rate: context.faultInjection.delayRate) {
+                let delayCycles = max(1, Int.random(in: 1...max(1, context.faultInjection.maximumDelayCycles)))
+                let dueDate = timestamp.addingTimeInterval(context.interval * Double(delayCycles))
+                runtime.pendingTransmissions.append(PendingTransmission(sentence: mutated, dueDate: dueDate))
+                appendHistoryEventOnMain(
+                    level: .warning,
+                    category: .fault,
+                    message: "Delayed \(type.rawValue.uppercased()) sentence by \(delayCycles) cycle(s)"
+                )
+                continue
+            }
+
+            transmitted.append(mutated)
+        }
+
+        return transmitted
+    }
+
+    private func appendHistoryEventOnMain(
+        endpointID: UUID? = nil,
+        level: TransportStatusLevel,
+        category: TransportHistoryEvent.Category,
+        message: String,
+        timestamp: Date = .now
+    ) {
+        if Thread.isMainThread {
+            appendHistoryEvent(
+                endpointID: endpointID,
+                level: level,
+                category: category,
+                message: message,
+                timestamp: timestamp
+            )
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.appendHistoryEvent(
+                    endpointID: endpointID,
+                    level: level,
+                    category: category,
+                    message: message,
+                    timestamp: timestamp
+                )
+            }
+        }
     }
 
     private func mapDashboardBearingBeforeFirstSnapshot() -> Double {
