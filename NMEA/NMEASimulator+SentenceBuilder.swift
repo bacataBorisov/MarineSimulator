@@ -1,5 +1,29 @@
 import Foundation
 
+enum NMEASentenceType: String, CaseIterable {
+    case mwv
+    case mwd
+    case vpw
+    case hdg
+    case hdt
+    case rot
+    case rmc
+    case gga
+    case vtg
+    case gll
+    case gsa
+    case gsv
+    case zda
+    case dbt
+    case dpt
+    case vhw
+    case vbw
+    case vlw
+    case mtw
+    case rmb
+    case xte
+}
+
 extension NMEASimulator {
 
     private static let utcTimeFormatter: DateFormatter = {
@@ -17,30 +41,6 @@ extension NMEASimulator {
         formatter.dateFormat = "ddMMyy"
         return formatter
     }()
-
-    enum NMEASentenceType: String, CaseIterable {
-        case mwv
-        case mwd
-        case vpw
-        case hdg
-        case hdt
-        case rot
-        case rmc
-        case gga
-        case vtg
-        case gll
-        case gsa
-        case gsv
-        case zda
-        case dbt
-        case dpt
-        case vhw
-        case vbw
-        case vlw
-        case mtw
-        case rmb
-        case xte
-    }
 
     func buildNMEASentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         let payloads: [String]
@@ -65,10 +65,63 @@ extension NMEASimulator {
             .map(addChecksum(to:))
     }
 
+    /// Off-main variant: uses a captured `sendRelativeWind` toggle instead of `self.sendRelativeWind`
+    /// to avoid a data race when called from the simulation queue.
+    func buildNMEASentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, sendRelativeWind: inout Bool) -> [String] {
+        let payloads: [String]
+
+        switch type {
+        case .mwv, .mwd, .vpw:
+            payloads = buildWindSentences(talkerID: talkerID, type: type, snapshot: snapshot, sendRelativeWind: &sendRelativeWind)
+        case .hdg:
+            payloads = buildHDGSentences(talkerID: talkerID, snapshot: snapshot)
+        case .hdt, .rot:
+            payloads = buildGyroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+        case .rmc, .gga, .vtg, .gll, .gsa, .gsv, .zda:
+            payloads = buildGPSSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+        case .dbt, .dpt, .vhw, .vbw, .vlw, .mtw:
+            payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+        case .rmb, .xte:
+            payloads = buildNavigationSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+        }
+
+        return payloads
+            .filter { !$0.isEmpty }
+            .map(addChecksum(to:))
+    }
+
     private func buildWindSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         switch type {
         case .mwv:
             let reference = nextMWVReference(in: snapshot)
+            if reference == "R" {
+                guard let awa = computeAWA(from: snapshot), let aws = computeAWS(from: snapshot) else { return [] }
+                return ["$\(talkerID)MWV,\(NMEANumericFormatting.format(awa, fractionDigits: 0)),R,\(NMEANumericFormatting.format(aws, fractionDigits: 1)),N,A"]
+            }
+
+            guard let twa = computeTWA(from: snapshot), let tws = computeTWS(from: snapshot) else { return [] }
+            return ["$\(talkerID)MWV,\(NMEANumericFormatting.format(twa, fractionDigits: 0)),T,\(NMEANumericFormatting.format(tws, fractionDigits: 1)),N,A"]
+
+        case .mwd:
+            guard let twd = computeTWD(from: snapshot), let tws = computeTWS(from: snapshot) else { return [] }
+            let magneticDirection = normalizeAngle(twd - snapshot.magneticVariation)
+            let twsMS = tws * 0.514444
+            return ["$\(talkerID)MWD,\(NMEANumericFormatting.format(twd, fractionDigits: 1)),T,\(NMEANumericFormatting.format(magneticDirection, fractionDigits: 1)),M,\(NMEANumericFormatting.format(tws, fractionDigits: 1)),N,\(NMEANumericFormatting.format(twsMS, fractionDigits: 1)),M"]
+
+        case .vpw:
+            guard let vpwKnots = computeVPWKnots(from: snapshot), let vpwMS = computeVPWMS(from: snapshot) else { return [] }
+            return ["$\(talkerID)VPW,\(NMEANumericFormatting.format(vpwKnots, fractionDigits: 1)),N,\(NMEANumericFormatting.format(vpwMS, fractionDigits: 1)),M"]
+
+        default:
+            return []
+        }
+    }
+
+    /// Off-main variant: uses a captured `sendRelativeWind` toggle to avoid a data race.
+    private func buildWindSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, sendRelativeWind: inout Bool) -> [String] {
+        switch type {
+        case .mwv:
+            let reference = nextMWVReference(in: snapshot, sendRelativeWind: &sendRelativeWind)
             if reference == "R" {
                 guard let awa = computeAWA(from: snapshot), let aws = computeAWS(from: snapshot) else { return [] }
                 return ["$\(talkerID)MWV,\(NMEANumericFormatting.format(awa, fractionDigits: 0)),R,\(NMEANumericFormatting.format(aws, fractionDigits: 1)),N,A"]

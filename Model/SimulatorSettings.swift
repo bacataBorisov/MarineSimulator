@@ -205,7 +205,7 @@ struct SimulatorSettings: Codable {
         tws = try container.decode(SimulatedValue.self, forKey: .tws)
         speed = try container.decode(SimulatedValue.self, forKey: .speed)
         depth = try container.decode(SimulatedValue.self, forKey: .depth)
-        depthOffsetMeters = try container.decode(Double.self, forKey: .depthOffsetMeters)
+        depthOffsetMeters = try container.decodeIfPresent(Double.self, forKey: .depthOffsetMeters) ?? 0.0
         seaTemp = try container.decode(SimulatedValue.self, forKey: .seaTemp)
         airTemp = try container.decodeIfPresent(SimulatedValue.self, forKey: .airTemp) ?? SimulatedValue(type: .airTemp)
         humidity = try container.decodeIfPresent(SimulatedValue.self, forKey: .humidity) ?? SimulatedValue(type: .humidity)

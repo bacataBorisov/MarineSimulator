@@ -133,7 +133,9 @@ struct WindCompass: View {
         storedTrueWindAngle = twa
         storedApparentWindAngle = awa
 
-        let headingValue = nmea.heading.value ?? nmea.gyroHeading.value ?? 0
+        // Match resolvedHeadingForInstrumentWindAngles / geographicBearingDegreesForMap:
+        // gyro (true heading) first, then magnetic, then COG.
+        let headingValue = nmea.gyroHeading.value ?? nmea.heading.value ?? nmea.gpsData.courseOverGround
         applyCompassRotation(to: headingValue)
 
         lastAppliedInstrumentKey = instrumentDependencyKey()

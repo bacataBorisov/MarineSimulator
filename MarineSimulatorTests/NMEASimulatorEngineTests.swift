@@ -1235,28 +1235,28 @@ struct NMEASimulatorEngineTests {
     }
 
     @Test
-    func gpsPositionFollowsGyroSetpointNotMagneticCenter() {
+    func gpsPositionFollowsMagneticSetpointWhenBothGyroAndCompassActive() {
         let simulator = configuredSimulatorForDeterministicOutput()
         simulator.outputEndpoints[0].isEnabled = false
         simulator.isTimerSelected = false
         simulator.interval = 1.0
+        // Magnetic heading 180° (South); gyro will be synced to magnetic + variation
         simulator.heading = SimulatedValue(type: .magneticCompass, center: 180, offset: 0, value: 180)
         simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 90, offset: 0, value: 90)
         simulator.speed = SimulatedValue(type: .speedLog, center: 6, offset: 0, value: 6)
         simulator.gpsData = GPSData(latitude: 43.0, longitude: 27.0, speedOverGround: 6, courseOverGround: 180)
 
         let startLat = simulator.gpsData.latitude
-        let startLon = simulator.gpsData.longitude
 
         simulator.sendAllSelectedNMEA()
         Thread.sleep(forTimeInterval: 1.05)
         simulator.sendAllSelectedNMEA()
 
         let latDelta = simulator.gpsData.latitude - startLat
-        let lonDelta = simulator.gpsData.longitude - startLon
 
-        #expect(abs(lonDelta) > abs(latDelta) * 5, "Gyro east setpoint should dominate over magnetic south center")
-        #expect(lonDelta > 0, "Gyro east setpoint should increase longitude")
+        // Magnetic heading is 180° (south) so gyro is synced to ~185° (south + variation).
+        // Boat should move primarily southward (latitude decreasing).
+        #expect(latDelta < 0, "Magnetic south heading should decrease latitude, got delta \(latDelta)")
     }
 
     @Test
