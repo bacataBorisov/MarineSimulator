@@ -9,7 +9,7 @@
 import Foundation
 import CoreLocation
 
-struct GPSData: Codable {
+struct GPSData: Codable, Equatable {
     var latitude: Double
     var longitude: Double
     var speedOverGround: Double // Speed Over Ground in knots

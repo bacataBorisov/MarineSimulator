@@ -9,7 +9,7 @@ struct GPSMapSelectorView: View {
     var body: some View {
         VStack(spacing: 12) {
             MapWithRightClick(coordinate: $selectedCoordinate)
-                .frame(height: 300)
+                .frame(height: 440)
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(.gray.opacity(0.3)))
         }

@@ -5,9 +5,7 @@
 //  Created by Vasil Borisov on 15.06.25.
 //
 
-
 import SwiftUI
-import Combine
 
 struct ConsoleView: View {
     enum Mode: String, CaseIterable, Identifiable {
@@ -19,108 +17,59 @@ struct ConsoleView: View {
 
     @Environment(NMEASimulator.self) private var nmeaManager
     let mode: Mode
-    @State private var statsRefreshDate = Date()
-
-    private let statsTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+    /// When false, skip live timers / generation observation (panel collapsed).
+    var isActive: Bool = true
 
     var body: some View {
-        let _ = nmeaManager.consoleDisplayGeneration
+        let _ = isActive ? nmeaManager.consoleDisplayGeneration : 0
 
         VStack(spacing: 0) {
-            if mode == .nmea {
-                statsBar
-            }
-
             ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if mode == .nmea {
-                        // Snapshot once per render: `Array(...)` eagerly copies the current
-                        // records (value semantics / COW), so later mutations of
-                        // `nmeaManager.outputMessageRecords` (the fast simulation tick prunes
-                        // it every ~50ms) can never invalidate indices `LazyVStack` resolves
-                        // later when a row actually scrolls into view. Text and timestamp both
-                        // come from the same `record`, so they can't desync either.
-                        ForEach(Array(nmeaManager.outputMessageRecords.enumerated()), id: \.element.id) { index, record in
-                            consoleRow(
-                                timestamp: record.timestamp,
-                                text: record.sentence,
-                                color: index.isMultiple(of: 2) ? AppColors.consoleLinePrimary : AppColors.consoleLineSecondary
-                            )
-                            .id(record.id)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if mode == .nmea {
+                            ForEach(Array(nmeaManager.outputMessageRecords.enumerated()), id: \.element.id) { index, record in
+                                consoleRow(
+                                    timestamp: record.timestamp,
+                                    text: record.sentence,
+                                    color: index.isMultiple(of: 2) ? AppColors.consoleLinePrimary : AppColors.consoleLineSecondary
+                                )
+                                .id(record.id)
+                            }
+                        } else {
+                            ForEach(Array(nmeaManager.transportHistory.enumerated()), id: \.element.id) { index, event in
+                                transportRow(
+                                    event: event,
+                                    color: index.isMultiple(of: 2) ? AppColors.consoleLinePrimary : AppColors.consoleLineSecondary
+                                )
+                                .id(event.id)
+                            }
                         }
-                    } else {
-                        ForEach(Array(nmeaManager.transportHistory.enumerated()), id: \.element.id) { index, event in
-                            transportRow(
-                                event: event,
-                                color: index.isMultiple(of: 2) ? AppColors.consoleLinePrimary : AppColors.consoleLineSecondary
-                            )
-                            .id(event.id)
-                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .scrollContentBackground(.hidden)
+                .background {
+                    LinearGradient(
+                        colors: [
+                            AppColors.consoleBackgroundStart,
+                            AppColors.consoleBackgroundMid,
+                            AppColors.consoleBackgroundEnd
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .onChange(of: scrollTargetID) {
+                    guard isActive, let scrollTargetID else { return }
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(scrollTargetID, anchor: .bottom)
                     }
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(
-                LinearGradient(
-                    colors: [
-                        AppColors.consoleBackgroundStart,
-                        AppColors.consoleBackgroundMid,
-                        AppColors.consoleBackgroundEnd
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .onChange(of: scrollTargetID) {
-                guard let scrollTargetID else { return }
-                DispatchQueue.main.async {
-                    proxy.scrollTo(scrollTargetID, anchor: .bottom)
-                }
-            }
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onReceive(statsTimer) { date in
-            statsRefreshDate = date
-        }
-    }
-
-    @ViewBuilder
-    private var statsBar: some View {
-        let _ = statsRefreshDate
-
-        HStack(spacing: 16) {
-            statItem(title: "Sent/sec", value: "\(nmeaManager.sentPerSecond())")
-            statItem(title: "Total sent", value: "\(nmeaManager.totalSentCount)")
-            statItem(title: "Interval", value: formattedSimulatorInterval)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(AppColors.consoleChrome.opacity(0.55))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.white.opacity(0.08))
-                .frame(height: 1)
-        }
-    }
-
-    private func statItem(title: String, value: String) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.primary)
-        }
-    }
-
-    private var formattedSimulatorInterval: String {
-        if nmeaManager.interval >= 1.0 {
-            return String(format: "%.1f s", nmeaManager.interval)
-        }
-        return String(format: "%.0f ms", nmeaManager.interval * 1000)
     }
 
     @ViewBuilder
@@ -129,54 +78,34 @@ struct ConsoleView: View {
             Text(timestamp.map { Self.consoleTimestampFormatter.string(from: $0) } ?? "--:--:--")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 58, alignment: .leading)
+                .frame(width: 72, alignment: .leading)
 
-            Text(text)
-                .font(.system(size: 12, design: .monospaced))
+            Text(text.trimmingCharacters(in: .newlines))
+                .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(color)
+                .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.white.opacity(0.06))
-                .frame(height: 1)
-        }
+        .padding(.vertical, 3)
     }
-
-    private static let consoleTimestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter
-    }()
 
     @ViewBuilder
     private func transportRow(event: TransportHistoryEvent, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Label(event.category.rawValue.capitalized, systemImage: event.level.systemImage)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(event.level.color)
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(Self.consoleTimestampFormatter.string(from: event.timestamp))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .leading)
 
-                Text(event.timestamp, style: .time)
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(event.message)
-                .font(.system(size: 12, design: .monospaced))
+            Label(event.message, systemImage: event.level.systemImage)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(color)
+                .labelStyle(.titleAndIcon)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.white.opacity(0.06))
-                .frame(height: 1)
-        }
+        .padding(.vertical, 3)
     }
 
     private var scrollTargetID: AnyHashable? {
@@ -187,37 +116,10 @@ struct ConsoleView: View {
             return nmeaManager.transportHistory.last?.id
         }
     }
-}
 
-#Preview {
-    ConsoleView(mode: .nmea)
-        .environment(NMEASimulator())
-}
-
-private extension TransportStatusLevel {
-    var color: Color {
-        switch self {
-        case .idle:
-            return .secondary
-        case .connected:
-            return .green
-        case .warning:
-            return .orange
-        case .error:
-            return .red
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .idle:
-            return "questionmark.circle"
-        case .connected:
-            return "checkmark.circle"
-        case .warning:
-            return "exclamationmark.triangle"
-        case .error:
-            return "xmark.octagon"
-        }
-    }
+    private static let consoleTimestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
 }

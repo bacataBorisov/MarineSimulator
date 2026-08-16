@@ -65,14 +65,13 @@ extension NMEASimulator {
             .map(addChecksum(to:))
     }
 
-    /// Off-main variant: uses a captured `sendRelativeWind` toggle instead of `self.sendRelativeWind`
-    /// to avoid a data race when called from the simulation queue.
-    func buildNMEASentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, sendRelativeWind: inout Bool) -> [String] {
+    /// Off-main variant: uses captured config values to avoid data races from the simulation queue.
+    func buildNMEASentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, sendRelativeWind: inout Bool, config: SimulationConfig) -> [String] {
         let payloads: [String]
 
         switch type {
         case .mwv, .mwd, .vpw:
-            payloads = buildWindSentences(talkerID: talkerID, type: type, snapshot: snapshot, sendRelativeWind: &sendRelativeWind)
+            payloads = buildWindSentences(talkerID: talkerID, type: type, snapshot: snapshot, sendRelativeWind: &sendRelativeWind, mwvReferenceMode: config.mwvReferenceMode)
         case .hdg:
             payloads = buildHDGSentences(talkerID: talkerID, snapshot: snapshot)
         case .hdt, .rot:
@@ -80,7 +79,7 @@ extension NMEASimulator {
         case .rmc, .gga, .vtg, .gll, .gsa, .gsv, .zda:
             payloads = buildGPSSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .dbt, .dpt, .vhw, .vbw, .vlw, .mtw:
-            payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+            payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot, config: config)
         case .rmb, .xte:
             payloads = buildNavigationSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         }
@@ -117,11 +116,11 @@ extension NMEASimulator {
         }
     }
 
-    /// Off-main variant: uses a captured `sendRelativeWind` toggle to avoid a data race.
-    private func buildWindSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, sendRelativeWind: inout Bool) -> [String] {
+    /// Off-main variant: uses captured values to avoid data races from the simulation queue.
+    private func buildWindSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, sendRelativeWind: inout Bool, mwvReferenceMode: MWVReferenceMode) -> [String] {
         switch type {
         case .mwv:
-            let reference = nextMWVReference(in: snapshot, sendRelativeWind: &sendRelativeWind)
+            let reference = nextMWVReference(in: snapshot, sendRelativeWind: &sendRelativeWind, mwvReferenceMode: mwvReferenceMode)
             if reference == "R" {
                 guard let awa = computeAWA(from: snapshot), let aws = computeAWS(from: snapshot) else { return [] }
                 return ["$\(talkerID)MWV,\(NMEANumericFormatting.format(awa, fractionDigits: 0)),R,\(NMEANumericFormatting.format(aws, fractionDigits: 1)),N,A"]
@@ -176,6 +175,15 @@ extension NMEASimulator {
     }
 
     private func buildHydroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
+        buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot, depthOffset: depthOffsetMeters, sensorToggles: sensorToggles)
+    }
+
+    /// Off-main variant: uses captured config values to avoid data races from the simulation queue.
+    private func buildHydroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, config: SimulationConfig) -> [String] {
+        buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot, depthOffset: config.depthOffsetMeters, sensorToggles: config.sensorToggles)
+    }
+
+    private func buildHydroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot, depthOffset: Double, sensorToggles: SensorToggleStates) -> [String] {
         switch type {
         case .dbt:
             guard let depthMeters = snapshot.depth else { return [] }
@@ -185,7 +193,7 @@ extension NMEASimulator {
 
         case .dpt:
             guard let depthMeters = snapshot.depth else { return [] }
-            return ["$\(talkerID)DPT,\(NMEANumericFormatting.format(depthMeters, fractionDigits: 1)),\(NMEANumericFormatting.format(depthOffsetMeters, fractionDigits: 1))"]
+            return ["$\(talkerID)DPT,\(NMEANumericFormatting.format(depthMeters, fractionDigits: 1)),\(NMEANumericFormatting.format(depthOffset, fractionDigits: 1))"]
 
         case .mtw:
             guard let seaTemperature = snapshot.seaTemperature else { return [] }
@@ -336,10 +344,11 @@ extension NMEASimulator {
         case .rmb:
             let destLatStr = FormatKit.formatLatitude(nav.destinationLatitude)
             let destLonStr = FormatKit.formatLongitude(nav.destinationLongitude)
-            return ["$\(talkerID)RMB,A,\(NMEANumericFormatting.format(xteNm, fractionDigits: 1)),\(xteDirection),\(nav.originName),\(nav.destinationName),\(destLatStr),\(destLonStr),\(NMEANumericFormatting.format(rangeNm, fractionDigits: 1)),\(NMEANumericFormatting.format(bearingToDest, fractionDigits: 1)),\(NMEANumericFormatting.format(vmc, fractionDigits: 1)),\(arrived ? "A" : "V")"]
+            // XTE uses 2 decimals (~19 m resolution) — matches typical chartplotter RMB/XTE.
+            return ["$\(talkerID)RMB,A,\(NMEANumericFormatting.format(xteNm, fractionDigits: 2)),\(xteDirection),\(nav.originName),\(nav.destinationName),\(destLatStr),\(destLonStr),\(NMEANumericFormatting.format(rangeNm, fractionDigits: 1)),\(NMEANumericFormatting.format(bearingToDest, fractionDigits: 1)),\(NMEANumericFormatting.format(vmc, fractionDigits: 1)),\(arrived ? "A" : "V")"]
 
         case .xte:
-            return ["$\(talkerID)XTE,A,A,\(NMEANumericFormatting.format(xteNm, fractionDigits: 1)),\(xteDirection),N"]
+            return ["$\(talkerID)XTE,A,A,\(NMEANumericFormatting.format(xteNm, fractionDigits: 2)),\(xteDirection),N"]
 
         default:
             return []

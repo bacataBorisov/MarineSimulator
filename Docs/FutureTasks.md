@@ -25,6 +25,27 @@ This is the task pool for work that is planned but not currently active.
 - [ ] Add compact collapsed mode for the right-side readout.
 - [ ] Add the pseudo boat to compass and wind instruments (map boat marker exists; compass/wind dials still use arrows only).
 - [ ] Improve light mode so it is less harsh.
+- [x] **HIG UI pass (Configuration + Dashboard):** Implemented Aug 2026 — Connection/Simulation split, Dashboard/console polish, keyboard shortcuts, settings export. See [`HIG-UI-Audit.md`](HIG-UI-Audit.md) Phases 1–4.
+
+## Signal K (needed for Extasy v1.1 connection testing)
+
+Extasy will add zero-config discovery (Bonjour + remembered boats) in **v1.1**. MarineSimulator today emits **NMEA 0183 over UDP/TCP only** — no Signal K JSON/WebSocket, no mDNS advertisement. Extasy cannot fully test “Choose Data Source → Signal K” until the sim can mimic a SK server.
+
+**Goal:** One vessel simulation core → multiple **output protocols** (FutureTasks engine item). Add SK without changing existing NMEA paths.
+
+### Proposed phases (simulator repo — design only)
+
+| Phase | Deliverable | Extasy test unlocked |
+|-------|-------------|----------------------|
+| SK-A | **Bonjour advertiser** — `_signalk-http._tcp` + `_signalk-ws._tcp` pointing at localhost; minimal HTTP `GET /signalk` JSON | Discovery UI lists a source |
+| SK-B | **WebSocket stream** — delta messages from same `SimulationSnapshot` / instrument state as NMEA (wind, GPS, depth, heading) | Extasy v2.0 WS client (future) |
+| SK-C | **NMEA-out mode** — SK admin-style TCP/UDP sentence stream on 10110 (optional) | Extasy v1.1 “Connect via NMEA” from discovered SK |
+| SK-D | **Configuration UI** — output protocol picker: NMEA 0183 (current) \| Signal K \| both; vessel name in TXT record | Manual + discovery parity |
+
+**Constraints:** Do not alter sentence timing math or `SimulationEngine` physics when adding SK — map SK paths from existing published state (same as NMEA sentence builder source). Reuse `TransportManager` pattern or parallel `SignalKTransport` actor.
+
+**Cross-ref:** Extasy `.agent/guides/connection-discovery.md` in the ExtasyCompleteNavigation repo.
+
 
 ## Far future (no active plan)
 

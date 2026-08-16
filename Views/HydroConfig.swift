@@ -19,27 +19,29 @@ struct HydroConfig: View {
     @State var showVLW: Bool = false
     
     var body: some View {
-        GeometryReader { _ in
-            HStack(alignment: .top, spacing: UIConstants.spacing * 2) {
-                VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                    HydroSentencesSection(
-                        nmeaManager: nmeaManager, shouldSendDBT: $nmeaManager.sentenceToggles.shouldSendDBT,
-                        shouldSendDPT: $nmeaManager.sentenceToggles.shouldSendDPT,
-                        shouldSendMTW: $nmeaManager.sentenceToggles.shouldSendMTW,
-                        shouldSendVHW: $nmeaManager.sentenceToggles.shouldSendVHW,
-                        shouldSendVBW: $nmeaManager.sentenceToggles.shouldSendVBW,
-                        shouldSendVLW: $nmeaManager.sentenceToggles.shouldSendVLW,
-                        
-                        showDBT: $showDBT,
-                        showDPT: $showDPT,
-                        showMTW: $showMTW,
-                        showVHW: $showVHW,
-                        showVBW: $showVBW,
-                        showVLW: $showVLW
-                    )
-                }
-                .padding()
+        SentencePanelLayout {
+            HydroSentencesSection(
+                nmeaManager: nmeaManager, shouldSendDBT: $nmeaManager.sentenceToggles.shouldSendDBT,
+                shouldSendDPT: $nmeaManager.sentenceToggles.shouldSendDPT,
+                shouldSendMTW: $nmeaManager.sentenceToggles.shouldSendMTW,
+                shouldSendVHW: $nmeaManager.sentenceToggles.shouldSendVHW,
+                shouldSendVBW: $nmeaManager.sentenceToggles.shouldSendVBW,
+                shouldSendVLW: $nmeaManager.sentenceToggles.shouldSendVLW,
+                showDBT: $showDBT,
+                showDPT: $showDPT,
+                showMTW: $showMTW,
+                showVHW: $showVHW,
+                showVBW: $showVBW,
+                showVLW: $showVLW
+            )
+        } preview: {
+            VStack(spacing: UIConstants.spacing * 2) {
+                ViewKit.displayLabel("Depth", value: nmeaManager.depth.value, precision: 1)
+                ViewKit.displayLabel("STW", value: nmeaManager.speed.value, precision: 1)
+                ViewKit.displayLabel("Sea °C", value: nmeaManager.seaTemp.value, precision: 1)
             }
+            .padding()
+            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
         }
     }
 }
@@ -81,45 +83,40 @@ private struct HydroSentencesSection: View {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 
                 // DBT – Depth Below Transducer
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "DBT - Depth Below Transducer",
                     isOn: $shouldSendDBT,
-                    showInfo: $showDBT,
-                    infoView: { AnyView(DBTHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isDBTEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .dbt) },
                         set: { nmeaManager.setInterval($0, for: .dbt) }
                     ),
-                    isDisabled: !shouldSendDBT || !HydroUIConditions.isDBTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HydroUIConditions.isDBTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showDBT,
+                    infoView: { AnyView(DBTHelpView().font(.caption)) }
                 )
+                .disabled(!HydroUIConditions.isDBTEnabled(nmeaManager))
                 
                 
                 // DPT – Depth of Water
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "DPT - Depth of Water",
                     isOn: $shouldSendDPT,
-                    showInfo: $showDPT,
-                    infoView: { AnyView(DPTHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isDPTEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .dpt) },
                         set: { nmeaManager.setInterval($0, for: .dpt) }
                     ),
-                    isDisabled: !shouldSendDPT || !HydroUIConditions.isDPTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HydroUIConditions.isDPTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showDPT,
+                    infoView: { AnyView(DPTHelpView().font(.caption)) }
                 )
+                .disabled(!HydroUIConditions.isDPTEnabled(nmeaManager))
                 
                 if HydroUIConditions.showEchoSounderWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableEchoSounder)
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
                 if HydroUIConditions.showOffsetInput(nmeaManager) {
                     // show offset input and help
@@ -163,59 +160,55 @@ private struct HydroSentencesSection: View {
                 }
             }
             .toggleStyle(.switch)
+            .controlSize(.regular)
         }
         GroupBox(label: Text("Sea Water Temperature")) {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "MTW - Water Temperature",
                     isOn: $shouldSendMTW,
-                    showInfo: $showMTW,
-                    infoView: { AnyView(MTWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isMTWEnabled(nmeaManager))
-                .toggleStyle(.switch)
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .mtw) },
                         set: { nmeaManager.setInterval($0, for: .mtw) }
                     ),
-                    isDisabled: !shouldSendMTW || !HydroUIConditions.isMTWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HydroUIConditions.isMTWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showMTW,
+                    infoView: { AnyView(MTWHelpView().font(.caption)) }
                 )
+                .disabled(!HydroUIConditions.isMTWEnabled(nmeaManager))
                 
                 if HydroUIConditions.showMTWWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableWaterTempSensor)
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
             }
         }
         GroupBox(label: Text("Speed")) {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 // MARK: - VHW – Water Speed and Heading
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "VHW - Water Speed and Heading",
                     isOn: $shouldSendVHW,
-                    showInfo: $showVHW,
-                    infoView: { AnyView(VHWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isVHWEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .vhw) },
                         set: { nmeaManager.setInterval($0, for: .vhw) }
                     ),
-                    isDisabled: !shouldSendVHW || !HydroUIConditions.isVHWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HydroUIConditions.isVHWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showVHW,
+                    infoView: { AnyView(VHWHelpView().font(.caption)) }
                 )
+                .disabled(!HydroUIConditions.isVHWEnabled(nmeaManager))
                 
                 if HydroUIConditions.showVHWMissingBothNote(nmeaManager) {
                     Text("Activate Speed Log, Magnetic Compass, or Gyro to enable the sentence.")
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 } else {
                     if HydroUIConditions.showVHWSpeedLogNote(nmeaManager) {
                         Text(UIStrings.InfoMessage.speedLogInfoNote)
@@ -232,27 +225,25 @@ private struct HydroSentencesSection: View {
                 }
                 
                 // MARK: - VBW – Dual Ground/Water Speed
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "VBW - Dual Ground/Water Speed",
                     isOn: $shouldSendVBW,
-                    showInfo: $showVBW,
-                    infoView: { AnyView(VBWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isVBWEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .vbw) },
                         set: { nmeaManager.setInterval($0, for: .vbw) }
                     ),
-                    isDisabled: !shouldSendVBW || !HydroUIConditions.isVBWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HydroUIConditions.isVBWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showVBW,
+                    infoView: { AnyView(VBWHelpView().font(.caption)) }
                 )
+                .disabled(!HydroUIConditions.isVBWEnabled(nmeaManager))
                 
                 if HydroUIConditions.showVBWMissingBothNote(nmeaManager) {
                     Text("Activate Speed Log or GPS to enable the sentence.")
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 } else {
                     if HydroUIConditions.showVBWSpeedLogNote(nmeaManager) {
                         Text(UIStrings.InfoMessage.speedLogInfoNote)
@@ -269,30 +260,29 @@ private struct HydroSentencesSection: View {
                 }
                 
                 // MARK: - VLW – Distance Traveled Through Water
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "VLW - Distance Traveled Through Water",
                     isOn: $shouldSendVLW,
-                    showInfo: $showVLW,
-                    infoView: { AnyView(VLWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isVLWEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .vlw) },
                         set: { nmeaManager.setInterval($0, for: .vlw) }
                     ),
-                    isDisabled: !shouldSendVLW || !HydroUIConditions.isVLWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HydroUIConditions.isVLWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showVLW,
+                    infoView: { AnyView(VLWHelpView().font(.caption)) }
                 )
+                .disabled(!HydroUIConditions.isVLWEnabled(nmeaManager))
                 
                 if HydroUIConditions.showVLWSpeedLogNote(nmeaManager) {
                     Text(UIStrings.Warnings.enableSpeedLog)
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
             }
             .toggleStyle(.switch)
+            .controlSize(.regular)
         }
     }
 }

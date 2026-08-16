@@ -105,6 +105,8 @@ enum SimulationEngine {
                 let syncedTrue = normalizeAngle((state.heading.value ?? state.heading.centerValue) + variation)
                 state.gyroHeading.value = syncedTrue
                 state.gyroHeading.centerValue = syncedTrue.clamped(to: state.gyroHeading.range)
+            } else {
+                state.gyroHeading.value = nil
             }
         }
         state.depth.value = state.depth.generateRandomValue(shouldGenerate: config.sensorToggles.hasEchoSounder)

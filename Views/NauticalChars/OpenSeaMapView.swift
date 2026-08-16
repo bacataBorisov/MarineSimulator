@@ -46,7 +46,9 @@ struct OpenSeaMapView: NSViewRepresentable {
         let region = MKCoordinateRegion(center: coordinate,
                                         latitudinalMeters: zoom,
                                         longitudinalMeters: zoom)
-        mapView.setRegion(region, animated: true)
+        DispatchQueue.main.async {
+            mapView.setRegion(region, animated: true)
+        }
     }
 
     func makeCoordinator() -> Coordinator {

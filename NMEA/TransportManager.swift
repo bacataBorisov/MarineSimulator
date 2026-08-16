@@ -125,7 +125,7 @@ final class TransportManager {
     // MARK: - Private
 
     private func endpointConnectionSignature(for endpoint: OutputEndpoint) -> String {
-        "\(endpoint.transport.rawValue)|\(endpoint.effectiveHost)|\(endpoint.port)"
+        "\(endpoint.transport.rawValue)|\(endpoint.effectiveHost)|\(endpoint.port)|\(endpoint.isEnabled)"
     }
 
     private func handleTransportResult(_ result: Result<Void, NWError>, for endpoint: OutputEndpoint) {

@@ -1,25 +1,27 @@
 # Session Cache
 
-Last updated: 2026-07-04
+Last updated: 2026-08-15
 
 ## Current Objective
 
-Fix UI lag during active NMEA transmission while preserving live slider adjustment and dead-reckoning correctness.
+Connection: carded output sections; primary output renameable and toggleable (no longer forced on).
 
 ## Product State
 
-- Fast transmit loop runs on a dedicated `DispatchSourceTimer` / `simulationQueue` (20 Hz), not the main run loop.
-- `TransmitRuntime` holds authoritative sim state off-main; UI-bound fields batch-apply on main each cycle.
-- Console output is throttled (~100 ms) via `consoleRecordBuffer` + `consoleDisplayGeneration`.
-- Redundant `endpointStatuses` writes skipped when level/message unchanged.
-- Dead-reckoning tests still pass (`gpsPositionFollowsGyroSetpointNotMagneticCenter`, etc.).
+- Dashboard map Start/Stop pill removed (toolbar only).
+- Console unmounts content while collapsed (no flash); stats bar labeled Rate/Total/Tick with help.
+- Connection uses spaced card layout (not cramped Form LabeledContent).
+- SensorToggleGrid uses adaptive LazyVGrid (no ViewThatFits clip).
+- App `.tint(.accentColor)`; switches use `.controlSize(.large)`.
+- GPS selector map recenters on boat coordinate.
 
 ## Next
 
-1. Manual UI sanity check: sliders remain responsive during 30–60 s transmit.
-2. NMEA fidelity / overlay work per `Docs/CurrentTasks.md`.
+1. Manual pass: Connection / Simulation / GPS / console collapse.
+2. Optional: delete leftover `ConfigurationView` if unused after Connection/Simulation split.
+3. Optional: remove duplicate green/cyan status tints that fight system accent.
 
 ## Notes
 
-- Root cause was main-thread 20 Hz `Timer` + per-sentence `@Observable` churn (console rows, transport status).
-- Avoid `DispatchQueue.main.sync` from the simulation queue (deadlock with `stopSimulation`).
+- Progressive lag fix still in tree (coalesced UI apply + 400-row console).
+- AccentColor asset is empty → resolves to system accent.

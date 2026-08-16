@@ -80,33 +80,100 @@ final class PersistenceManager {
             return nil
         }
 
-        // Validate critical nested fields are dictionaries, not scalars
-        // (guards against schema migration corruption).
-        let requiredDictKeys = ["sentenceToggles", "sensorToggles", "twd", "tws",
-                                "speed", "depth", "heading", "gyroHeading", "gpsData",
-                                "faultInjection", "sentenceIntervals", "perSentenceTalkerID",
-                                "liveWeatherSettings", "waypointNavigation"]
-        for key in requiredDictKeys {
-            if let val = json[key], !(val is [String: Any]) {
-                print("Persisted settings field '\(key)' has unexpected type — resetting to defaults.")
-                userDefaults.removeObject(forKey: Keys.simulatorSettings)
-                return nil
-            }
+        // Deep-validate the entire JSON tree. Any value that is a String/Number
+        // where a Dictionary is expected will cause JSONDecoder to send
+        // objectForKey: to an NSTaggedPointerString — an ObjC exception that
+        // Swift cannot catch. Walk every nested dict/array recursively.
+        if !Self.validateJSONStructure(json) {
+            print("Persisted settings has corrupt nested structure — resetting to defaults.")
+            userDefaults.removeObject(forKey: Keys.simulatorSettings)
+            return nil
         }
 
-        // outputEndpoints must be an array of dictionaries, not a scalar.
-        if let val = json["outputEndpoints"], !(val is [[String: Any]]) {
-            print("Persisted settings field 'outputEndpoints' has unexpected type — resetting to defaults.")
+        // Re-serialize from the validated JSON object to produce clean Data.
+        // This avoids any stale/corrupt Foundation bridge objects that may have
+        // been deserialized from the original plist bytes.
+        guard let cleanData = try? JSONSerialization.data(withJSONObject: json) else {
+            print("Persisted settings failed re-serialization — resetting to defaults.")
             userDefaults.removeObject(forKey: Keys.simulatorSettings)
             return nil
         }
 
         do {
-            return try JSONDecoder().decode(SimulatorSettings.self, from: data)
+            return try JSONDecoder().decode(SimulatorSettings.self, from: cleanData)
         } catch {
             print("Failed to restore simulator settings: \(error)")
             userDefaults.removeObject(forKey: Keys.simulatorSettings)
             return nil
+        }
+    }
+
+    // MARK: - Deep JSON Validation
+
+    /// Recursively validates that the JSON structure is internally consistent:
+    /// every dictionary value and array element is a valid JSON type, and no
+    /// scalar appears where a container (dict/array) is expected by Codable.
+    private static func validateJSONStructure(_ json: [String: Any]) -> Bool {
+        // Keys that MUST be dictionaries when present (at any nesting level).
+        // Only includes keys whose Codable type encodes as a JSON object.
+        // Note: `boatProfile` is a String-backed enum (encodes as string).
+        // Note: `range` (ClosedRange<Double>) encodes as an array [lb, ub].
+        let requiredDictKeys: Set<String> = [
+            "sentenceToggles", "sensorToggles", "twd", "tws",
+            "speed", "depth", "heading", "gyroHeading", "gpsData",
+            "faultInjection", "sentenceIntervals", "perSentenceTalkerID",
+            "liveWeatherSettings", "latestLiveWeather", "waypointNavigation"
+        ]
+
+        for (key, value) in json {
+            // outputEndpoints is an array of dicts.
+            if key == "outputEndpoints" {
+                guard let arr = value as? [Any] else { return false }
+                for element in arr {
+                    guard let dict = element as? [String: Any] else { return false }
+                    if !validateJSONNode(dict, requiredDictKeys: requiredDictKeys) { return false }
+                }
+                continue
+            }
+
+            // Keys known to be dicts must actually be dicts.
+            if requiredDictKeys.contains(key) {
+                guard let dict = value as? [String: Any] else { return false }
+                if !validateJSONNode(dict, requiredDictKeys: requiredDictKeys) { return false }
+                continue
+            }
+
+            // Any other value — recurse if it's a container.
+            if !validateAnyValue(value, requiredDictKeys: requiredDictKeys) { return false }
+        }
+        return true
+    }
+
+    /// Validates a dictionary node recursively.
+    private static func validateJSONNode(_ dict: [String: Any], requiredDictKeys: Set<String>) -> Bool {
+        for (key, value) in dict {
+            if requiredDictKeys.contains(key) {
+                guard let nested = value as? [String: Any] else { return false }
+                if !validateJSONNode(nested, requiredDictKeys: requiredDictKeys) { return false }
+            } else if !validateAnyValue(value, requiredDictKeys: requiredDictKeys) {
+                return false
+            }
+        }
+        return true
+    }
+
+    /// Validates that a JSON value is a legal JSON leaf or recursively valid container.
+    private static func validateAnyValue(_ value: Any, requiredDictKeys: Set<String>) -> Bool {
+        switch value {
+        case is String, is NSNumber, is NSNull:
+            return true
+        case let dict as [String: Any]:
+            return validateJSONNode(dict, requiredDictKeys: requiredDictKeys)
+        case let arr as [Any]:
+            return arr.allSatisfy { validateAnyValue($0, requiredDictKeys: requiredDictKeys) }
+        default:
+            // Unknown type in JSON tree — reject.
+            return false
         }
     }
 }

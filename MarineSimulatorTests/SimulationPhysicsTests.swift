@@ -64,8 +64,11 @@ struct NavigationMathTests {
         #expect(rightSentences.count == 1)
         let rightRaw = stripChecksum(rightSentences[0])
         let rightFields = rightRaw.components(separatedBy: ",")
-        // $GPXTE,A,A,<xte>,<dir>,N
+        // $GPXTE,A,A,<xte>,<dir>,N — XTE is 2 decimals (~19 m), chartplotter-like
         #expect(rightFields[4] == "R", "Boat right of course should produce 'R'")
+        #expect(rightFields[3].contains("."), "XTE should be decimal")
+        let xteFrac = rightFields[3].split(separator: ".").last ?? ""
+        #expect(xteFrac.count == 2, "XTE should use 2 fraction digits, got \(rightFields[3])")
 
         // Boat LEFT of the course line: 43.198N, 27.891E
         let snapshotLeft = makeNavSnapshot(

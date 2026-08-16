@@ -336,6 +336,34 @@ private extension ManualTopic.Section {
 private extension ManualTopic {
     static let defaultTopics: [ManualTopic] = [
         ManualTopic(
+            title: "Keyboard Shortcuts",
+            icon: "command",
+            summary: "Global commands for starting simulation, copying the console, and moving settings between machines.",
+            sections: [
+                .init(
+                    title: "Simulation",
+                    paragraphs: [
+                        "Use the menu bar or keyboard shortcuts when the main window is focused."
+                    ],
+                    bullets: [
+                        "⌘R — Start or stop transmission (same as the toolbar Start/Stop control)",
+                        "⌘⇧C — Copy NMEA console text to the clipboard"
+                    ]
+                ),
+                .init(
+                    title: "Settings",
+                    paragraphs: [
+                        "Export and import the full simulator configuration as JSON from the File menu."
+                    ],
+                    bullets: [
+                        "File → Export Settings…",
+                        "File → Import Settings…"
+                    ]
+                )
+            ],
+            keywords: ["keyboard", "shortcut", "command", "copy", "export", "import", "start", "stop"]
+        ),
+        ManualTopic(
             title: "Getting Started",
             icon: "play.circle",
             summary: "The shortest path from opening the app to transmitting believable NMEA traffic.",
@@ -343,8 +371,8 @@ private extension ManualTopic {
                 .init(
                     title: "Basic Workflow",
                     paragraphs: [
-                        "Start in Configuration. Set the primary IP, port, talker ID, and whether the timer should run automatically.",
-                        "Enable the sensors that exist on the boat you want to imitate. Then go to the sentence screens and enable only the NMEA outputs you want to transmit.",
+                        "Start in Connection. Set the primary host, port, talker ID, and whether the timer should run automatically.",
+                        "Open Simulation to enable the sensors that exist on the boat you want to imitate, choose presets or live weather, then go to the sentence screens and enable only the NMEA outputs you want to transmit.",
                         "Use the Dashboard and console together: the dashboard gives you a live feel for the vessel state, while the console confirms the actual NMEA output."
                     ],
                     bullets: [
@@ -374,7 +402,7 @@ private extension ManualTopic {
                     title: "How It Works",
                     paragraphs: [
                         "Each enabled output endpoint receives the same generated sentences. This lets one simulation feed several listeners at once.",
-                        "The primary output stays synchronized with the top IP and port fields. Additional outputs can use different hosts, ports, and transports."
+                        "Any output can be renamed and turned off. The first output cannot be deleted. Additional outputs can use different hosts, ports, and transports."
                     ],
                     bullets: [
                         "Local simulator on 127.0.0.1",
@@ -601,7 +629,7 @@ private extension ManualTopic {
                 .init(
                     title: "Where To Look",
                     paragraphs: [
-                        "The toolbar shows the latest transport state. The console can switch to a transport-history mode. Configuration also shows recent endpoint events."
+                        "The toolbar shows the latest transport state. The console can switch to a transport-history mode. Connection also shows recent endpoint events."
                     ],
                     bullets: []
                 ),
@@ -645,7 +673,7 @@ private extension ManualTopic {
                 .init(
                     title: "One Endpoint Works, Another Does Not",
                     paragraphs: [
-                        "That is exactly why multi-endpoint status exists. Check the transport history and compare the endpoint rows in Configuration."
+                        "That is exactly why multi-endpoint status exists. Check the transport history and compare the endpoint rows in Connection."
                     ],
                     bullets: []
                 )

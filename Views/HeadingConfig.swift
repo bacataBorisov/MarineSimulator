@@ -16,21 +16,23 @@ struct HeadingConfig: View {
     @State var showROT: Bool = false
     
     var body: some View {
-        GeometryReader { _ in
-            HStack(alignment: .top, spacing: UIConstants.spacing * 2) {
-                VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                    HeadingSentencesSection(
-                        shouldSendHDG: $nmeaManager.sentenceToggles.shouldSendHDG,
-                        shouldSendHDT: $nmeaManager.sentenceToggles.shouldSendHDT,
-                        shouldSendROT: $nmeaManager.sentenceToggles.shouldSendROT,
-                        showHDG: $showHDG,
-                        showHDT: $showHDT,
-                        showROT: $showROT,
-                        nmeaManager: nmeaManager
-                    )
-                }
-                .padding()
+        SentencePanelLayout {
+            HeadingSentencesSection(
+                shouldSendHDG: $nmeaManager.sentenceToggles.shouldSendHDG,
+                shouldSendHDT: $nmeaManager.sentenceToggles.shouldSendHDT,
+                shouldSendROT: $nmeaManager.sentenceToggles.shouldSendROT,
+                showHDG: $showHDG,
+                showHDT: $showHDT,
+                showROT: $showROT,
+                nmeaManager: nmeaManager
+            )
+        } preview: {
+            VStack(spacing: UIConstants.spacing * 2) {
+                ViewKit.displayLabel("Magnetic", value: nmeaManager.heading.value, precision: 1)
+                ViewKit.displayLabel("True (Gyro)", value: nmeaManager.gyroHeading.value, precision: 1)
             }
+            .padding()
+            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
         }
     }
 }
@@ -58,75 +60,70 @@ private struct HeadingSentencesSection: View {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 
                 // HDG – Magnetic Heading
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "HDG - Heading, Deviation, Variation",
                     isOn: $shouldSendHDG,
-                    showInfo: $showHDG,
-                    infoView: { AnyView(HDGHelpView().font(.caption)) }
-                )
-                .disabled(!HeadingUIConditions.isHDGEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .hdg) },
                         set: { nmeaManager.setInterval($0, for: .hdg) }
                     ),
-                    isDisabled: !shouldSendHDG || !HeadingUIConditions.isHDGEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HeadingUIConditions.isHDGEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showHDG,
+                    infoView: { AnyView(HDGHelpView().font(.caption)) }
                 )
+                .disabled(!HeadingUIConditions.isHDGEnabled(nmeaManager))
                 
                 if HeadingUIConditions.showHDGWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableMagneticCompass)
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
             }
             .toggleStyle(.switch)
+            .controlSize(.regular)
         }
         GroupBox(label: Text("Gyro Compass")) {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 // HDT – True Heading
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "HDT - Heading, True",
                     isOn: $shouldSendHDT,
-                    showInfo: $showHDT,
-                    infoView: { AnyView(HDTHelpView().font(.caption)) }
-                )
-                .disabled(!HeadingUIConditions.isHDTEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .hdt) },
                         set: { nmeaManager.setInterval($0, for: .hdt) }
                     ),
-                    isDisabled: !shouldSendHDT || !HeadingUIConditions.isHDTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HeadingUIConditions.isHDTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showHDT,
+                    infoView: { AnyView(HDTHelpView().font(.caption)) }
                 )
+                .disabled(!HeadingUIConditions.isHDTEnabled(nmeaManager))
                 
                 // ROT – Rate of Turn
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "ROT - Rate of Turn",
                     isOn: $shouldSendROT,
-                    showInfo: $showROT,
-                    infoView: { AnyView(ROTHelpView().font(.caption)) }
-                )
-                .disabled(!HeadingUIConditions.isROTEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .rot) },
                         set: { nmeaManager.setInterval($0, for: .rot) }
                     ),
-                    isDisabled: !shouldSendROT || !HeadingUIConditions.isROTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !HeadingUIConditions.isROTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showROT,
+                    infoView: { AnyView(ROTHelpView().font(.caption)) }
                 )
+                .disabled(!HeadingUIConditions.isROTEnabled(nmeaManager))
                 
                 if HeadingUIConditions.showGyroWarning(nmeaManager) {
                     Text(UIStrings.Warnings.enableGyroCompass)
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
             }
             .toggleStyle(.switch)
+            .controlSize(.regular)
         }
     }
 }

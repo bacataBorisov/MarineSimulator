@@ -19,3 +19,7 @@ Always run the simulator in `Realistic` rate mode when profiling ExtasyCompleteN
 - Serial port byte-timing jitter (~1–5 ms between characters) is not simulated
 - NMEA talker clock drift (each instrument has its own oscillator) is not simulated
 - Sentence interleaving from a hardware multiplexer is approximated, not exact
+
+## Cross-track error (RMB / XTE) precision
+
+RMB and XTE emit XTE with **2 decimal places** (NM), ~19 m resolution — typical of chartplotters / race instruments. One decimal (~185 m steps) looked too coarse for realistic demo profiling against Extasy.

@@ -27,9 +27,10 @@ struct WindCompass: View {
     private func instrumentDependencyKey() -> String {
         let m = nmea.heading.value.map { String(format: "%.4f", $0) } ?? "nil"
         let g = nmea.gyroHeading.value.map { String(format: "%.4f", $0) } ?? "nil"
+        let c = String(format: "%.4f", nmea.gpsData.courseOverGround)
         let t = nmea.calculatedTWA.map { String(format: "%.4f", $0) } ?? "x"
         let a = nmea.calculatedAWA.map { String(format: "%.4f", $0) } ?? "x"
-        return "\(m)|\(g)|\(t)|\(a)"
+        return "\(m)|\(g)|\(c)|\(t)|\(a)"
     }
 
     /// Snap during tack (no stacked `withAnimation`); smooth ease when idle.
@@ -133,9 +134,17 @@ struct WindCompass: View {
         storedTrueWindAngle = twa
         storedApparentWindAngle = awa
 
-        // Match resolvedHeadingForInstrumentWindAngles / geographicBearingDegreesForMap:
-        // gyro (true heading) first, then magnetic, then COG.
-        let headingValue = nmea.gyroHeading.value ?? nmea.heading.value ?? nmea.gpsData.courseOverGround
+        // Match mapDashboardBearingBeforeFirstSnapshot: respect sensor toggles
+        // so a stale gyroHeading.value doesn't drive the compass when gyro is off.
+        let headingValue: Double = {
+            if nmea.sensorToggles.hasGyro, let gyro = nmea.gyroHeading.value {
+                return gyro
+            }
+            if nmea.sensorToggles.hasCompass, let mag = nmea.heading.value {
+                return mag
+            }
+            return nmea.gpsData.courseOverGround
+        }()
         applyCompassRotation(to: headingValue)
 
         lastAppliedInstrumentKey = instrumentDependencyKey()

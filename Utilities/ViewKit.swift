@@ -2,8 +2,6 @@
 //  ViewKit.swift
 //  NMEASimulator
 //
-//  Created by Vasil Borisov on 16.06.25.
-//
 
 import SwiftUI
 
@@ -47,6 +45,8 @@ struct ViewKit {
 
             Toggle("", isOn: isOn)
                 .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.regular)
 
             if let showInfo, let infoView {
                 Button {
@@ -56,9 +56,7 @@ struct ViewKit {
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: showInfo) {
-                    infoView()
-                        .frame(width: 300, height: 300)
-                        .padding()
+                    SentenceHelpPopover(content: infoView())
                 }
             }
         }
@@ -70,19 +68,98 @@ struct ViewKit {
         interval: Binding<Double>,
         isDisabled: Bool = false
     ) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            if !title.isEmpty {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Stepper(value: interval, in: 0...10, step: 0.1) {
                 Text(interval.wrappedValue == 0 ? "Every tick" : "\(interval.wrappedValue, specifier: "%.1f") s")
                     .font(.caption)
                     .monospacedDigit()
+                    .frame(minWidth: 44, alignment: .trailing)
             }
             .disabled(isDisabled)
         }
-        .padding(.leading, 4)
+    }
+
+    /// Single-line sentence control: name · interval · toggle · info.
+    @ViewBuilder
+    static func SentenceRow(
+        _ title: String,
+        isOn: Binding<Bool>,
+        interval: Binding<Double>,
+        intervalDisabled: Bool = false,
+        showInfo: Binding<Bool>? = nil,
+        infoView: (() -> AnyView)? = nil
+    ) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 8) {
+                SentenceIntervalControl("", interval: interval, isDisabled: intervalDisabled || !isOn.wrappedValue)
+
+                Toggle("", isOn: isOn)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.regular)
+
+                if let showInfo, let infoView {
+                    Button {
+                        showInfo.wrappedValue = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: showInfo) {
+                        SentenceHelpPopover(content: infoView())
+                    }
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+}
+
+struct PersistentDisclosureGroup<Content: View>: View {
+    let title: String
+    @AppStorage private var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+
+    init(_ title: String, key: String, defaultExpanded: Bool = true, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self._isExpanded = AppStorage(wrappedValue: defaultExpanded, key)
+        self.content = content
+    }
+
+    var body: some View {
+        DisclosureGroup(title, isExpanded: $isExpanded) {
+            content()
+        }
+    }
+}
+
+struct SentenceHelpPopover: View {
+    @Environment(\.sidebarNavigation) private var sidebarNavigation
+    let content: AnyView
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            content
+            Divider()
+            Button("Open in Manual") {
+                sidebarNavigation?.select(.manual)
+            }
+            .buttonStyle(.link)
+        }
+        .padding()
+        .frame(minWidth: 260, maxWidth: 360)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

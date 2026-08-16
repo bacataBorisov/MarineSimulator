@@ -1,19 +1,38 @@
 import SwiftUI
 import AppKit
+import Combine
 
-@available(macOS 15.0, *)
 struct ConsolePanelView: View {
+    static let toolbarHeight: CGFloat = 36
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable var nmeaManager: NMEASimulator
     @Binding var consoleHeight: CGFloat
-
     let geometryHeight: CGFloat
 
     private let spacing: CGFloat = 8
-    private let headerHeight: CGFloat = 28
     private let collapsedContentHeight: CGFloat = 0
     private let expandedMinimumHeight: CGFloat = 140
+    private let parkThreshold: CGFloat = 8
+
     @AppStorage("console_panel.mode") private var consoleModeRawValue: String = ConsoleView.Mode.nmea.rawValue
-    @State private var lastExpandedHeight: CGFloat = 220
+    @AppStorage("console_panel.last_expanded_height") private var lastExpandedHeight: Double = 220
+    @State private var liveHeight: CGFloat?
+    @State private var dragOrigin: CGFloat?
+    @State private var dragMaxHeight: CGFloat?
+    @State private var statsRefreshDate = Date()
+
+    private let statsTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+
+    private var isCollapsed: Bool { displayedHeight <= collapsedContentHeight }
+
+    private var displayedHeight: CGFloat {
+        liveHeight ?? consoleHeight
+    }
+
+    private var resolvedMode: ConsoleView.Mode {
+        ConsoleView.Mode(rawValue: consoleModeRawValue) ?? .nmea
+    }
 
     private var consoleMode: Binding<ConsoleView.Mode> {
         Binding(
@@ -22,115 +41,266 @@ struct ConsolePanelView: View {
         )
     }
 
+    private var maxLogHeight: CGFloat {
+        max(
+            expandedMinimumHeight,
+            geometryHeight - UIConstants.tabBarHeight - Self.toolbarHeight - 80
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Capsule()
-                    .fill(.white.opacity(0.18))
-                    .frame(width: 38, height: 5)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        toggleCollapsedState()
-                    }
-                    .help(consoleHeight <= collapsedContentHeight ? "Expand Console" : "Collapse Console")
+            toolbar
 
-                HStack(spacing: 10) {
-                    Picker("Console Mode", selection: consoleMode) {
-                        ForEach(ConsoleView.Mode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .frame(width: 180)
-
-                    Spacer(minLength: 0)
-
-                    Button {
-                        if consoleMode.wrappedValue == .nmea {
-                            nmeaManager.clearOutputMessages()
-                        } else {
-                            nmeaManager.clearTransportHistory()
-                        }
-                    } label: {
-                        Image(systemName: "trash")
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .frame(height: headerHeight)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, spacing)
-            .background(
-                LinearGradient(
-                    colors: [
-                        AppColors.consoleChrome,
-                        AppColors.consoleBackgroundStart.opacity(0.96),
-                        AppColors.consoleBackgroundMid.opacity(0.92)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .contentShape(Rectangle())
-            .onHover { isHovering in
-                if isHovering {
-                    NSCursor.rowResize(directions: [.up, .down]).push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        let startingHeight = max(consoleHeight, collapsedContentHeight)
-                        let newHeight = startingHeight - value.translation.height
-                        let maxHeight = geometryHeight - UIConstants.tabBarHeight - headerHeight
-                        consoleHeight = min(max(newHeight, collapsedContentHeight), maxHeight)
-
-                        if consoleHeight > collapsedContentHeight {
-                            lastExpandedHeight = max(consoleHeight, expandedMinimumHeight)
-                        }
-                    }
-                    .onEnded { _ in
-                        snapConsoleHeight()
-                    }
-            )
-
-            ConsoleView(mode: consoleMode.wrappedValue)
-                .frame(height: consoleHeight)
+            ConsoleView(mode: resolvedMode, isActive: displayedHeight > 1)
+                .frame(height: displayedHeight)
                 .frame(maxWidth: .infinity)
                 .clipped()
+                .allowsHitTesting(displayedHeight > 1)
         }
-        .onAppear {
-            if consoleHeight > collapsedContentHeight {
-                lastExpandedHeight = consoleHeight
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
+        .transaction { transaction in
+            if liveHeight != nil {
+                transaction.animation = nil
             }
         }
+        .onAppear {
+            if consoleHeight > parkThreshold {
+                lastExpandedHeight = Double(max(consoleHeight, expandedMinimumHeight))
+            }
+        }
+        .onReceive(statsTimer) { date in
+            statsRefreshDate = date
+        }
+    }
+
+    private var toolbar: some View {
+        ZStack {
+            Rectangle()
+                .fill(.regularMaterial)
+            AppColors.consoleChrome.opacity(0.45)
+
+            // Window-space drag: SwiftUI DragGesture is in the moving bar's
+            // coordinates and fights the parent split every frame.
+            ConsoleResizeHandle(
+                onBegan: beginResize,
+                onDragged: updateResize,
+                onEnded: endResize
+            )
+
+            HStack(spacing: 10) {
+                Button {
+                    toggleCollapsedState()
+                } label: {
+                    Image(systemName: isCollapsed ? "rectangle.bottomhalf.inset.filled" : "rectangle.bottomhalf.filled")
+                        .font(.system(size: 14, weight: .medium))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help(isCollapsed ? "Show Console" : "Hide Console")
+
+                Picker("Console Mode", selection: consoleMode) {
+                    ForEach(ConsoleView.Mode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 188)
+                .controlSize(.small)
+
+                if resolvedMode == .nmea {
+                    let _ = statsRefreshDate
+                    toolbarMetric("Rate", "\(nmeaManager.sentPerSecond())/s")
+                        .help("Sentences transmitted in the last second")
+                    toolbarMetric("Total", "\(nmeaManager.totalSentCount)")
+                        .help("Total sentences sent this session")
+                    toolbarMetric("Tick", formattedSimulatorInterval)
+                        .help("Base send-interval from Connection → Transmission")
+                }
+
+                Spacer(minLength: 0)
+                    .allowsHitTesting(false)
+
+                Button {
+                    let text: String
+                    if resolvedMode == .nmea {
+                        text = nmeaManager.nmeaConsoleExportText()
+                    } else {
+                        text = nmeaManager.transportHistoryExportText()
+                    }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 14, weight: .medium))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help(resolvedMode == .nmea ? "Copy NMEA console" : "Copy transport history")
+                .disabled(
+                    resolvedMode == .nmea
+                    ? nmeaManager.allOutputMessageRecords.isEmpty
+                    : nmeaManager.transportHistory.isEmpty
+                )
+
+                Button {
+                    if resolvedMode == .nmea {
+                        nmeaManager.clearOutputMessages()
+                    } else {
+                        nmeaManager.clearTransportHistory()
+                    }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .medium))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help("Clear console")
+            }
+            .padding(.horizontal, spacing)
+        }
+        .frame(height: Self.toolbarHeight)
+        .frame(maxWidth: .infinity)
+        .overlay(alignment: .top) {
+            ConsoleResizeHandle(
+                onBegan: beginResize,
+                onDragged: updateResize,
+                onEnded: endResize
+            )
+            .frame(height: 10)
+        }
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor))
+                .frame(height: 1)
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 1)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func beginResize() {
+        dragOrigin = displayedHeight
+        dragMaxHeight = maxLogHeight
+    }
+
+    private func updateResize(windowDeltaY: CGFloat) {
+        let origin = dragOrigin ?? displayedHeight
+        let next = min(max(origin + windowDeltaY, collapsedContentHeight), dragMaxHeight ?? maxLogHeight)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            liveHeight = next
+        }
+    }
+
+    private func endResize() {
+        let finalHeight = liveHeight ?? consoleHeight
+        let parked = finalHeight < parkThreshold ? collapsedContentHeight : finalHeight
+        if parked > parkThreshold {
+            lastExpandedHeight = Double(parked)
+        }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            consoleHeight = parked
+            liveHeight = nil
+            dragOrigin = nil
+            dragMaxHeight = nil
+        }
+    }
+
+    private func toolbarMetric(_ title: String, _ value: String) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.monospacedDigit().weight(.semibold))
+        }
+    }
+
+    private var formattedSimulatorInterval: String {
+        if nmeaManager.interval >= 1.0 {
+            return String(format: "%.1f s", nmeaManager.interval)
+        }
+        return String(format: "%.0f ms", nmeaManager.interval * 1000)
     }
 
     private func toggleCollapsedState() {
-        withAnimation(.snappy(duration: 0.24, extraBounce: 0.02)) {
-            if consoleHeight <= collapsedContentHeight {
-                consoleHeight = max(lastExpandedHeight, expandedMinimumHeight)
+        let apply = {
+            if isCollapsed {
+                consoleHeight = max(CGFloat(lastExpandedHeight), expandedMinimumHeight)
             } else {
-                lastExpandedHeight = max(consoleHeight, expandedMinimumHeight)
+                lastExpandedHeight = Double(max(displayedHeight, expandedMinimumHeight))
                 consoleHeight = collapsedContentHeight
+            }
+        }
+        if reduceMotion {
+            apply()
+        } else {
+            withAnimation(.snappy(duration: 0.32, extraBounce: 0)) {
+                apply()
             }
         }
     }
+}
 
-    private func snapConsoleHeight() {
-        let collapseThreshold: CGFloat = 72
+/// Window-space resize handle. SwiftUI `DragGesture` uses the moving bar's
+/// local coordinates, which fights the parent split and jitters.
+private struct ConsoleResizeHandle: NSViewRepresentable {
+    var onBegan: () -> Void
+    var onDragged: (CGFloat) -> Void
+    var onEnded: () -> Void
 
-        withAnimation(.snappy(duration: 0.24, extraBounce: 0.02)) {
-            if consoleHeight < collapseThreshold {
-                consoleHeight = collapsedContentHeight
-            } else {
-                consoleHeight = max(consoleHeight, expandedMinimumHeight)
-                lastExpandedHeight = consoleHeight
-            }
-        }
+    func makeNSView(context: Context) -> ConsoleResizeHandleView {
+        let view = ConsoleResizeHandleView()
+        view.onBegan = onBegan
+        view.onDragged = onDragged
+        view.onEnded = onEnded
+        return view
+    }
+
+    func updateNSView(_ view: ConsoleResizeHandleView, context: Context) {
+        view.onBegan = onBegan
+        view.onDragged = onDragged
+        view.onEnded = onEnded
+    }
+}
+
+private final class ConsoleResizeHandleView: NSView {
+    var onBegan: (() -> Void)?
+    var onDragged: ((CGFloat) -> Void)?
+    var onEnded: (() -> Void)?
+    private var startY: CGFloat?
+
+    override var mouseDownCanMoveWindow: Bool { false }
+    override var isOpaque: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .resizeUpDown)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        startY = event.locationInWindow.y
+        onBegan?()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let startY else { return }
+        onDragged?(event.locationInWindow.y - startY)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        onEnded?()
+        startY = nil
     }
 }

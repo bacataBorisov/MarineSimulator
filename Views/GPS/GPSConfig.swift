@@ -31,33 +31,30 @@ struct GPSConfig: View {
 
     
     var body: some View {
-        GeometryReader { _ in
-            HStack(alignment: .top, spacing: UIConstants.spacing * 2) {
-                VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                    GPSSentencesSection(
-                        nmeaManager: nmeaManager,
-                        shouldSendRMC: $nmeaManager.sentenceToggles.shouldSendRMC,
-                        shouldSendGGA: $nmeaManager.sentenceToggles.shouldSendGGA,
-                        shouldSendVTG: $nmeaManager.sentenceToggles.shouldSendVTG,
-                        shouldSendGLL: $nmeaManager.sentenceToggles.shouldSendGLL,
-                        shouldSendGSA: $nmeaManager.sentenceToggles.shouldSendGSA,
-                        shouldSendGSV: $nmeaManager.sentenceToggles.shouldSendGSV,
-                        shouldSendZDA: $nmeaManager.sentenceToggles.shouldSendZDA,
-                        shouldSendRMB: $nmeaManager.sentenceToggles.shouldSendRMB,
-                        shouldSendXTE: $nmeaManager.sentenceToggles.shouldSendXTE,
-                        showRMC: $showRMC,
-                        showGGA: $showGGA,
-                        showVTG: $showVTG,
-                        showGLL: $showGLL,
-                        showGSA: $showGSA,
-                        showGSV: $showGSV,
-                        showZDA: $showZDA,
-                        showRMB: $showRMB,
-                        showXTE: $showXTE
-                    )
-                }
-                .padding()
-            }
+        SentencePanelLayout {
+            GPSSentencesSection(
+                nmeaManager: nmeaManager,
+                shouldSendRMC: $nmeaManager.sentenceToggles.shouldSendRMC,
+                shouldSendGGA: $nmeaManager.sentenceToggles.shouldSendGGA,
+                shouldSendVTG: $nmeaManager.sentenceToggles.shouldSendVTG,
+                shouldSendGLL: $nmeaManager.sentenceToggles.shouldSendGLL,
+                shouldSendGSA: $nmeaManager.sentenceToggles.shouldSendGSA,
+                shouldSendGSV: $nmeaManager.sentenceToggles.shouldSendGSV,
+                shouldSendZDA: $nmeaManager.sentenceToggles.shouldSendZDA,
+                shouldSendRMB: $nmeaManager.sentenceToggles.shouldSendRMB,
+                shouldSendXTE: $nmeaManager.sentenceToggles.shouldSendXTE,
+                showRMC: $showRMC,
+                showGGA: $showGGA,
+                showVTG: $showVTG,
+                showGLL: $showGLL,
+                showGSA: $showGSA,
+                showGSV: $showGSV,
+                showZDA: $showZDA,
+                showRMB: $showRMB,
+                showXTE: $showXTE
+            )
+        } preview: {
+            GPSCoordinatePreview(nmeaManager: nmeaManager)
         }
     }
 }
@@ -90,7 +87,167 @@ private struct GPSSentencesSection: View {
     @Binding var showZDA: Bool
     @Binding var showRMB: Bool
     @Binding var showXTE: Bool
-    
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: UIConstants.spacing) {
+            PersistentDisclosureGroup("Position", key: "gps.section.position") {
+                sentenceRow("RMC - Recommended Minimum Navigation Info", isOn: $shouldSendRMC, sentence: .rmc, showInfo: $showRMC) {
+                    AnyView(RMCHelpView().font(.caption))
+                }
+                sentenceRow("GGA - Fix Data", isOn: $shouldSendGGA, sentence: .gga, showInfo: $showGGA) {
+                    AnyView(GGAHelpView().font(.caption))
+                }
+                sentenceRow("GLL - Geographic Position", isOn: $shouldSendGLL, sentence: .gll, showInfo: $showGLL) {
+                    AnyView(GLLHelpView().font(.caption))
+                }
+            }
+
+            PersistentDisclosureGroup("Velocity", key: "gps.section.velocity") {
+                sentenceRow("VTG - Course and Speed Over Ground", isOn: $shouldSendVTG, sentence: .vtg, showInfo: $showVTG) {
+                    AnyView(VTGHelpView().font(.caption))
+                }
+            }
+
+            PersistentDisclosureGroup("GNSS", key: "gps.section.gnss") {
+                sentenceRow("GSA - DOP and Active Satellites", isOn: $shouldSendGSA, sentence: .gsa, showInfo: $showGSA) {
+                    AnyView(GSAHelpView().font(.caption))
+                }
+                sentenceRow("GSV - Satellites in View", isOn: $shouldSendGSV, sentence: .gsv, showInfo: $showGSV) {
+                    AnyView(GSVHelpView().font(.caption))
+                }
+                sentenceRow("ZDA - Time and Date", isOn: $shouldSendZDA, sentence: .zda, showInfo: $showZDA) {
+                    AnyView(ZDAHelpView().font(.caption))
+                }
+            }
+
+            PersistentDisclosureGroup("Waypoint Navigation", key: "gps.section.waypoint") {
+                waypointNavigationBlock
+                sentenceRow(
+                    "RMB - Recommended Minimum Navigation",
+                    isOn: $shouldSendRMB,
+                    sentence: .rmb,
+                    intervalDisabled: !nmeaManager.waypointNavigation.isActive,
+                    showInfo: $showRMB
+                ) {
+                    AnyView(RMBHelpView().font(.caption))
+                }
+                sentenceRow(
+                    "XTE - Cross-Track Error",
+                    isOn: $shouldSendXTE,
+                    sentence: .xte,
+                    intervalDisabled: !nmeaManager.waypointNavigation.isActive,
+                    showInfo: $showXTE
+                ) {
+                    AnyView(XTEHelpView().font(.caption))
+                }
+            }
+
+            if !GPSSentencesSection.isGPSEnabled(nmeaManager) {
+                Text(UIStrings.Warnings.enableGPS)
+                    .font(.caption2)
+                    .foregroundStyle(AppColors.warning)
+                OpenSimulationSensorsButton()
+            }
+        }
+        .disabled(!nmeaManager.sensorToggles.hasGPS)
+        .toggleStyle(.switch)
+        .controlSize(.regular)
+    }
+
+    @ViewBuilder
+    private func sentenceRow(
+        _ title: String,
+        isOn: Binding<Bool>,
+        sentence: NMEASentenceType,
+        intervalDisabled: Bool = false,
+        showInfo: Binding<Bool>,
+        infoView: @escaping () -> AnyView
+    ) -> some View {
+        ViewKit.SentenceRow(
+            title,
+            isOn: isOn,
+            interval: Binding(
+                get: { nmeaManager.sentenceInterval(for: sentence) },
+                set: { nmeaManager.setInterval($0, for: sentence) }
+            ),
+            intervalDisabled: intervalDisabled || !nmeaManager.isSentenceIntervalEditable,
+            showInfo: showInfo,
+            infoView: infoView
+        )
+    }
+
+    @ViewBuilder private var waypointNavigationBlock: some View {
+        Toggle("Active Waypoint", isOn: $nmeaManager.waypointNavigation.isActive)
+
+        GroupBox("Origin Waypoint") {
+            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                HStack {
+                    Text("Name:")
+                    TextField("", text: $nmeaManager.waypointNavigation.originName)
+                        .frame(width: 60)
+                        .textFieldStyle(.roundedBorder)
+                }
+                HStack {
+                    Text("Lat:")
+                    TextField("", value: $nmeaManager.waypointNavigation.originLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                        .frame(width: 100)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Lon:")
+                    TextField("", value: $nmeaManager.waypointNavigation.originLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                        .frame(width: 100)
+                        .textFieldStyle(.roundedBorder)
+                }
+                Button("Set to Current Position") {
+                    nmeaManager.waypointNavigation.originLatitude = nmeaManager.gpsData.latitude
+                    nmeaManager.waypointNavigation.originLongitude = nmeaManager.gpsData.longitude
+                    nmeaManager.persistLiveSettings()
+                }
+                .font(.caption)
+            }
+        }
+
+        GroupBox("Destination Waypoint") {
+            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                HStack {
+                    Text("Name:")
+                    TextField("", text: $nmeaManager.waypointNavigation.destinationName)
+                        .frame(width: 60)
+                        .textFieldStyle(.roundedBorder)
+                }
+                HStack {
+                    Text("Lat:")
+                    TextField("", value: $nmeaManager.waypointNavigation.destinationLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                        .frame(width: 100)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Lon:")
+                    TextField("", value: $nmeaManager.waypointNavigation.destinationLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
+                        .frame(width: 100)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+        }
+
+        HStack {
+            Text("Arrival Radius:")
+            TextField("", value: $nmeaManager.waypointNavigation.arrivalRadiusNm, formatter: FormatKit.decimalFormatter(fractionDigits: 2))
+                .frame(width: 60)
+                .textFieldStyle(.roundedBorder)
+            Text("NM")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        Divider()
+    }
+
+    static func isGPSEnabled(_ nmea: NMEASimulator) -> Bool {
+        nmea.sensorToggles.hasGPS
+    }
+}
+
+private struct GPSCoordinatePreview: View {
+    @Bindable var nmeaManager: NMEASimulator
+
     private var latitudeBinding: Binding<Double> {
         Binding(
             get: { nmeaManager.gpsData.latitude },
@@ -110,7 +267,7 @@ private struct GPSSentencesSection: View {
             }
         )
     }
-    
+
     private var selectedCoordinateBinding: Binding<CLLocationCoordinate2D?> {
         Binding<CLLocationCoordinate2D?>(
             get: {
@@ -126,120 +283,8 @@ private struct GPSSentencesSection: View {
             }
         )
     }
-    
+
     var body: some View {
-        GroupBox(label: Label("GPS Sentences", systemImage: "location")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                
-                ViewKit.ToggleRowWithInfo(
-                    "RMC - Recommended Minimum Navigation Info",
-                    isOn: $shouldSendRMC,
-                    showInfo: $showRMC,
-                    infoView: { AnyView(RMCHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .rmc) },
-                        set: { nmeaManager.setInterval($0, for: .rmc) }
-                    ),
-                    isDisabled: !shouldSendRMC || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                ViewKit.ToggleRowWithInfo(
-                    "GGA - Fix Data",
-                    isOn: $shouldSendGGA,
-                    showInfo: $showGGA,
-                    infoView: { AnyView(GGAHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .gga) },
-                        set: { nmeaManager.setInterval($0, for: .gga) }
-                    ),
-                    isDisabled: !shouldSendGGA || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                ViewKit.ToggleRowWithInfo(
-                    "VTG - Course and Speed Over Ground",
-                    isOn: $shouldSendVTG,
-                    showInfo: $showVTG,
-                    infoView: { AnyView(VTGHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .vtg) },
-                        set: { nmeaManager.setInterval($0, for: .vtg) }
-                    ),
-                    isDisabled: !shouldSendVTG || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                ViewKit.ToggleRowWithInfo(
-                    "GLL - Geographic Position",
-                    isOn: $shouldSendGLL,
-                    showInfo: $showGLL,
-                    infoView: { AnyView(GLLHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .gll) },
-                        set: { nmeaManager.setInterval($0, for: .gll) }
-                    ),
-                    isDisabled: !shouldSendGLL || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                ViewKit.ToggleRowWithInfo(
-                    "GSA - DOP and Active Satellites",
-                    isOn: $shouldSendGSA,
-                    showInfo: $showGSA,
-                    infoView: { AnyView(GSAHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .gsa) },
-                        set: { nmeaManager.setInterval($0, for: .gsa) }
-                    ),
-                    isDisabled: !shouldSendGSA || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                ViewKit.ToggleRowWithInfo(
-                    "GSV - Satellites in View",
-                    isOn: $shouldSendGSV,
-                    showInfo: $showGSV,
-                    infoView: { AnyView(GSVHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .gsv) },
-                        set: { nmeaManager.setInterval($0, for: .gsv) }
-                    ),
-                    isDisabled: !shouldSendGSV || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                ViewKit.ToggleRowWithInfo(
-                    "ZDA - Time and Date",
-                    isOn: $shouldSendZDA,
-                    showInfo: $showZDA,
-                    infoView: { AnyView(ZDAHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .zda) },
-                        set: { nmeaManager.setInterval($0, for: .zda) }
-                    ),
-                    isDisabled: !shouldSendZDA || !nmeaManager.sensorToggles.hasGPS || !nmeaManager.isSentenceIntervalEditable
-                )
-                
-                if(!GPSSentencesSection.isGPSEnabled(nmeaManager)){
-                    Text(UIStrings.Warnings.enableGPS)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                }
-                
-            }
-            .disabled(!nmeaManager.sensorToggles.hasGPS)
-            .toggleStyle(.switch)
-        }
         GroupBox(label: Label("Set Starting Coordinates", systemImage: "mappin.and.ellipse")) {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 HStack {
@@ -259,118 +304,13 @@ private struct GPSSentencesSection: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 if !nmeaManager.sensorToggles.hasGPS {
-                    Text("Enable GPS in Configuration to edit position and map starting coordinates.")
+                    Text("Enable GPS in Simulation → Sensors to edit position and map starting coordinates.")
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
+                    OpenSimulationSensorsButton()
                 }
             }
             .disabled(!nmeaManager.sensorToggles.hasGPS)
         }
-
-        GroupBox(label: Label("Waypoint Navigation (RMB / XTE)", systemImage: "mappin.and.ellipse.circle")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                Toggle("Active Waypoint", isOn: $nmeaManager.waypointNavigation.isActive)
-
-                GroupBox("Origin Waypoint") {
-                    VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                        HStack {
-                            Text("Name:")
-                            TextField("", text: $nmeaManager.waypointNavigation.originName)
-                                .frame(width: 60)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        HStack {
-                            Text("Lat:")
-                            TextField("", value: $nmeaManager.waypointNavigation.originLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                                .frame(width: 100)
-                                .textFieldStyle(.roundedBorder)
-                            Text("Lon:")
-                            TextField("", value: $nmeaManager.waypointNavigation.originLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                                .frame(width: 100)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        Button("Set to Current Position") {
-                            nmeaManager.waypointNavigation.originLatitude = nmeaManager.gpsData.latitude
-                            nmeaManager.waypointNavigation.originLongitude = nmeaManager.gpsData.longitude
-                            nmeaManager.persistLiveSettings()
-                        }
-                        .font(.caption)
-                    }
-                }
-
-                GroupBox("Destination Waypoint") {
-                    VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                        HStack {
-                            Text("Name:")
-                            TextField("", text: $nmeaManager.waypointNavigation.destinationName)
-                                .frame(width: 60)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        HStack {
-                            Text("Lat:")
-                            TextField("", value: $nmeaManager.waypointNavigation.destinationLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                                .frame(width: 100)
-                                .textFieldStyle(.roundedBorder)
-                            Text("Lon:")
-                            TextField("", value: $nmeaManager.waypointNavigation.destinationLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                                .frame(width: 100)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                    }
-                }
-
-                HStack {
-                    Text("Arrival Radius:")
-                    TextField("", value: $nmeaManager.waypointNavigation.arrivalRadiusNm, formatter: FormatKit.decimalFormatter(fractionDigits: 2))
-                        .frame(width: 60)
-                        .textFieldStyle(.roundedBorder)
-                    Text("NM")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider()
-
-                ViewKit.ToggleRowWithInfo(
-                    "RMB - Recommended Minimum Navigation",
-                    isOn: $shouldSendRMB,
-                    showInfo: $showRMB,
-                    infoView: { AnyView(RMBHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .rmb) },
-                        set: { nmeaManager.setInterval($0, for: .rmb) }
-                    ),
-                    isDisabled: !shouldSendRMB || !nmeaManager.waypointNavigation.isActive || !nmeaManager.isSentenceIntervalEditable
-                )
-
-                ViewKit.ToggleRowWithInfo(
-                    "XTE - Cross-Track Error",
-                    isOn: $shouldSendXTE,
-                    showInfo: $showXTE,
-                    infoView: { AnyView(XTEHelpView().font(.caption)) }
-                )
-                ViewKit.SentenceIntervalControl(
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .xte) },
-                        set: { nmeaManager.setInterval($0, for: .xte) }
-                    ),
-                    isDisabled: !shouldSendXTE || !nmeaManager.waypointNavigation.isActive || !nmeaManager.isSentenceIntervalEditable
-                )
-
-                if !nmeaManager.sensorToggles.hasGPS {
-                    Text(UIStrings.Warnings.enableGPS)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                }
-            }
-            .disabled(!nmeaManager.sensorToggles.hasGPS)
-            .toggleStyle(.switch)
-        }
-
-    }
-    static func isGPSEnabled(_ nmea: NMEASimulator) -> Bool {
-        nmea.sensorToggles.hasGPS
     }
 }

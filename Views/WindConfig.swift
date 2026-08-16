@@ -12,21 +12,24 @@ struct WindConfig: View {
     @State var showVPW: Bool = false
     
     var body: some View {
-        GeometryReader { _ in
-            HStack (alignment: .top, spacing: UIConstants.spacing * 2) {
-                VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                    WindSentencesSection(
-                        shouldSendMWV: $nmeaManager.sentenceToggles.shouldSendMWV,
-                        shouldSendMWD: $nmeaManager.sentenceToggles.shouldSendMWD,
-                        shouldSendVPW: $nmeaManager.sentenceToggles.shouldSendVPW,
-                        showMWV: $showMWV,
-                        showMWD: $showMWD,
-                        showVPW: $showVPW,
-                        nmeaManager: nmeaManager
-                    )
-                }
-                .padding()
+        SentencePanelLayout {
+            WindSentencesSection(
+                shouldSendMWV: $nmeaManager.sentenceToggles.shouldSendMWV,
+                shouldSendMWD: $nmeaManager.sentenceToggles.shouldSendMWD,
+                shouldSendVPW: $nmeaManager.sentenceToggles.shouldSendVPW,
+                showMWV: $showMWV,
+                showMWD: $showMWD,
+                showVPW: $showVPW,
+                nmeaManager: nmeaManager
+            )
+        } preview: {
+            VStack(spacing: UIConstants.spacing * 2) {
+                ViewKit.displayLabel("TWD", value: nmeaManager.twd.value, precision: 0)
+                ViewKit.displayLabel("TWS", value: nmeaManager.tws.value, precision: 1)
+                ViewKit.displayLabel("HDG", value: nmeaManager.heading.value, precision: 0)
             }
+            .padding()
+            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
         }
     }
 }
@@ -64,45 +67,40 @@ private struct WindSentencesSection: View {
                     .foregroundStyle(.secondary)
                 
                 // MWV – Wind Speed & Angle
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "MWV - Wind Speed & Angle",
                     isOn: $shouldSendMWV,
-                    showInfo: $showMWV,
-                    infoView: { AnyView(MWVHelpView().font(.caption)) }
-                )
-                .disabled(!WindUIConditions.isMWVEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .mwv) },
                         set: { nmeaManager.setInterval($0, for: .mwv) }
                     ),
-                    isDisabled: !shouldSendMWV || !WindUIConditions.isMWVEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !WindUIConditions.isMWVEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showMWV,
+                    infoView: { AnyView(MWVHelpView().font(.caption)) }
                 )
+                .disabled(!WindUIConditions.isMWVEnabled(nmeaManager))
                 
                 if !WindUIConditions.isMWVEnabled(nmeaManager) {
                     Text(UIStrings.Warnings.enableAnemometer)
                         .font(.caption2)
                         .foregroundStyle(AppColors.warning)
                         .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
                 
                 // MWD – Wind Direction & Speed
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "MWD - Wind Direction & Speed",
                     isOn: $shouldSendMWD,
-                    showInfo: $showMWD,
-                    infoView: { AnyView(MWDHelpView().font(.caption)) }
-                )
-                .disabled(!WindUIConditions.isMWDEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .mwd) },
                         set: { nmeaManager.setInterval($0, for: .mwd) }
                     ),
-                    isDisabled: !shouldSendMWD || !WindUIConditions.isMWDEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !WindUIConditions.isMWDEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showMWD,
+                    infoView: { AnyView(MWDHelpView().font(.caption)) }
                 )
+                .disabled(!WindUIConditions.isMWDEnabled(nmeaManager))
 
                 if WindUIConditions.showMWDDependencyWarning(nmeaManager) {
                     Text("Enable Compass / Gyro and Speed Log or GPS to activate MWD.")
@@ -112,21 +110,18 @@ private struct WindSentencesSection: View {
                 }
 
                 // VPW – Speed Parallel to Wind
-                ViewKit.ToggleRowWithInfo(
+                ViewKit.SentenceRow(
                     "VPW - Speed Parallel to Wind",
                     isOn: $shouldSendVPW,
-                    showInfo: $showVPW,
-                    infoView: { AnyView(VPWHelpView().font(.caption)) }
-                )
-                .disabled(!WindUIConditions.isVPWEnabled(nmeaManager))
-
-                ViewKit.SentenceIntervalControl(
                     interval: Binding(
                         get: { nmeaManager.sentenceInterval(for: .vpw) },
                         set: { nmeaManager.setInterval($0, for: .vpw) }
                     ),
-                    isDisabled: !shouldSendVPW || !WindUIConditions.isVPWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable
+                    intervalDisabled: !WindUIConditions.isVPWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showVPW,
+                    infoView: { AnyView(VPWHelpView().font(.caption)) }
                 )
+                .disabled(!WindUIConditions.isVPWEnabled(nmeaManager))
 
                 if WindUIConditions.showVPWDependencyWarning(nmeaManager) {
                     Text("Enable Compass / Gyro and Speed Log or GPS to activate VPW.")
@@ -136,6 +131,7 @@ private struct WindSentencesSection: View {
                 }
             }
             .toggleStyle(.switch)
+            .controlSize(.regular)
         }
     }
 }

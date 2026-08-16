@@ -9,6 +9,12 @@ private enum MapFloatingChrome {
     static let slotWidth: CGFloat = 38
 }
 
+private extension CLLocationCoordinate2D {
+    func isEffectivelyEqual(to other: CLLocationCoordinate2D) -> Bool {
+        abs(latitude - other.latitude) < 1e-8 && abs(longitude - other.longitude) < 1e-8
+    }
+}
+
 struct BoatMapView: NSViewRepresentable {
     @Environment(NMEASimulator.self) private var nmeaManager
 
@@ -73,19 +79,27 @@ struct BoatMapView: NSViewRepresentable {
             if !container.mapView.annotations.contains(where: { $0 === boatAnnotation }) {
                 boatAnnotation.coordinate = coordinate
                 container.mapView.addAnnotation(boatAnnotation)
-            } else {
+            } else if !boatAnnotation.coordinate.isEffectivelyEqual(to: coordinate) {
                 boatAnnotation.coordinate = coordinate
             }
 
+            let bearingChanged = abs(lastBearingDegrees - bearingDegrees) > 0.05
             tackAnimationActive = tackInProgress
             lastBearingDegrees = bearingDegrees
-            applyBoatRotation(on: container.mapView)
+            if bearingChanged {
+                DispatchQueue.main.async { [weak self] in
+                    self?.applyBoatRotation(on: container.mapView)
+                }
+            }
 
             container.updateControlInsets(top: topChromeInset, trailing: trailingOverlayInset)
 
             if !hasPlacedInitialCamera {
-                centerMap(on: coordinate, in: container.mapView, animated: false)
-                hasPlacedInitialCamera = true
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.centerMap(on: coordinate, in: container.mapView, animated: false)
+                    self.hasPlacedInitialCamera = true
+                }
             }
         }
 
@@ -164,7 +178,10 @@ struct BoatMapView: NSViewRepresentable {
         }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
-            applyBoatRotation(on: mapView)
+            // Defer hosting-view updates out of MapKit's layout pass.
+            DispatchQueue.main.async { [weak self] in
+                self?.applyBoatRotation(on: mapView)
+            }
         }
 
         private func applyBoatRotation(on mapView: MKMapView) {

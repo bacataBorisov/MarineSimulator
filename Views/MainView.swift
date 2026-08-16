@@ -2,29 +2,32 @@ import SwiftUI
 import AppKit
 
 enum SidebarItem: Hashable {
-    case gps, config
+    case gps, connection, simulation
     case wind, hydro, compass, boat
     case dashboard, manual
 }
 
 struct MainView: View {
-    
-    @Environment(NMEASimulator.self) private var nmeaManager
-    
+    @Bindable var nmeaManager: NMEASimulator
+    @State private var sidebarNavigation = SidebarNavigation()
+
     @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
-    @AppStorage("main_view.console_height") private var storedConsoleHeight: Double = 28
 
     private var selection: Binding<SidebarItem?> {
         Binding(
             get: { SidebarItem(rawValue: selectedPanelRawValue) ?? .dashboard },
-            set: { selectedPanelRawValue = $0?.rawValue ?? SidebarItem.dashboard.rawValue }
+            set: { newValue in
+                let item = newValue ?? .dashboard
+                selectedPanelRawValue = item.rawValue
+                sidebarNavigation.selectedItem = item
+            }
         )
     }
 
     private var consoleHeight: Binding<CGFloat> {
         Binding(
-            get: { CGFloat(storedConsoleHeight) },
-            set: { storedConsoleHeight = Double($0) }
+            get: { ConsoleHeightStorage.logHeight },
+            set: { ConsoleHeightStorage.logHeight = $0 }
         )
     }
 
@@ -33,12 +36,15 @@ struct MainView: View {
             List(selection: selection) {
                 Section("Dashboard") {
                     NavigationLink(value: SidebarItem.dashboard) {
-                        Label("Dashboard", systemImage: "gauge.open.with.lines.needle.33percent.and.arrow.trianglehead.from.0percent.to.50percent")
+                        Label("Dashboard", systemImage: "gauge.open.with.lines.needle.33percent")
                     }
                 }
                 Section("Setup") {
-                    NavigationLink(value: SidebarItem.config) {
-                        Label("Configuration", systemImage: "gear")
+                    NavigationLink(value: SidebarItem.connection) {
+                        Label("Connection", systemImage: "network")
+                    }
+                    NavigationLink(value: SidebarItem.simulation) {
+                        Label("Simulation", systemImage: "slider.horizontal.3")
                     }
                     NavigationLink(value: SidebarItem.boat) {
                         Label("Boat", systemImage: "sailboat")
@@ -62,20 +68,21 @@ struct MainView: View {
                     }
                 }
             }
-            .navigationTitle("NMEA Simulator")
+            .navigationTitle("MarineSimulator")
             .navigationSplitViewStyle(.prominentDetail)
         } detail: {
             GeometryReader { geometry in
-                VStack(spacing: 0) {
-                    // Top panel (dynamic height)
+                ZStack(alignment: .bottom) {
                     Group {
                         switch selection.wrappedValue {
                         case .dashboard:
                             DashboardView()
                         case .gps:
                             GPSConfig(nmeaManager: nmeaManager)
-                        case .config:
-                            ConfigurationView(nmeaManager: nmeaManager)
+                        case .connection:
+                            ConnectionView(nmeaManager: nmeaManager)
+                        case .simulation:
+                            SimulationView(nmeaManager: nmeaManager)
                         case .manual:
                             ManualView()
                         case .wind:
@@ -87,13 +94,12 @@ struct MainView: View {
                         case .boat:
                             BoatSetupDetailView(nmeaManager: nmeaManager)
                         case .none:
-                            Text("Select a panel").foregroundColor(.secondary)
+                            Text("Select a panel").foregroundStyle(.secondary)
                         }
                     }
-                    .frame(height: max(0, geometry.size.height - consoleHeight.wrappedValue))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Console Panel
-                    if #available(macOS 15.0, *), selection.wrappedValue != .dashboard {
+                    if selection.wrappedValue != .dashboard {
                         ConsolePanelView(
                             nmeaManager: nmeaManager,
                             consoleHeight: consoleHeight,
@@ -102,6 +108,19 @@ struct MainView: View {
                     }
                 }
             }
+        }
+        .environment(nmeaManager)
+        .environment(\.sidebarNavigation, sidebarNavigation)
+        .onAppear {
+            NSLog("[MarineSim] MainView.onAppear panel=%@", selectedPanelRawValue)
+            ConsoleHeightStorage.migrateIfNeeded()
+            if selectedPanelRawValue == "config" {
+                selectedPanelRawValue = SidebarItem.connection.rawValue
+            }
+            sidebarNavigation.selectedItem = SidebarItem(rawValue: selectedPanelRawValue) ?? .dashboard
+        }
+        .onChange(of: sidebarNavigation.selectedItem) { _, item in
+            selectedPanelRawValue = item.rawValue
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -112,6 +131,7 @@ struct MainView: View {
                         } label: {
                             Label("Stop", systemImage: "stop.fill")
                         }
+                        .keyboardShortcut("r", modifiers: .command)
                         .transition(.opacity)
                     } else {
                         Button {
@@ -119,6 +139,7 @@ struct MainView: View {
                         } label: {
                             Label(nmeaManager.isTimerSelected ? "Start" : "Send Once", systemImage: nmeaManager.isTimerSelected ? "play.fill" : "paperplane.fill")
                         }
+                        .keyboardShortcut("r", modifiers: .command)
                         .transition(.opacity)
                     }
                 }
@@ -126,75 +147,32 @@ struct MainView: View {
             }
 
             ToolbarItem(placement: .status) {
-                HStack(spacing: 12) {
-                    Label(nmeaManager.isTransmitting ? "Transmitting" : "Idle",
-                          systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
-                        .foregroundStyle(nmeaManager.isTransmitting ? .green : .gray)
+                Button {
+                    sidebarNavigation.select(.connection)
+                    selectedPanelRawValue = SidebarItem.connection.rawValue
+                } label: {
+                    HStack(spacing: 12) {
+                        Label(nmeaManager.isTransmitting ? "Transmitting" : "Idle",
+                              systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
+                            .foregroundStyle(nmeaManager.isTransmitting ? .green : .secondary)
 
-                    if let transportStatus = nmeaManager.latestTransportStatus {
-                        Label(transportStatus.message, systemImage: transportStatus.level.systemImage)
+                        if let transportStatus = nmeaManager.latestTransportStatus {
+                            Label(transportStatus.message, systemImage: transportStatus.level.systemImage)
+                                .font(.caption)
+                                .foregroundStyle(transportStatus.level.color)
+                                .labelStyle(.titleAndIcon)
+                                .lineLimit(1)
+                        }
+
+                        Text(PrimaryOutputSummary.label(for: nmeaManager))
                             .font(.caption)
-                            .foregroundStyle(transportStatus.level.color)
-                            .labelStyle(.titleAndIcon)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-
-                    Label("\(nmeaManager.ip)", systemImage: "network")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-
-                    Label("\(FormatKit.plainNumberFormatter.string(from: NSNumber(value: nmeaManager.port)) ?? "\(nmeaManager.port)")", systemImage: "number")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal)
             }
-        }
-    }
-
-    private func ensureMinimumWindowWidth(_ minWidth: CGFloat) {
-        guard let window = NSApplication.shared.windows.first else { return }
-        var frame = window.frame
-        if frame.width < minWidth {
-            frame.size.width = minWidth
-            window.setFrame(frame, display: true, animate: true)
-        }
-    }
-
-    private func resizeMainWindow(_ width: CGFloat) {
-        guard let window = NSApplication.shared.windows.first else { return }
-        var frame = window.frame
-        frame.size.width = width
-        window.setFrame(frame, display: true, animate: true)
-    }
-}
-
-private extension TransportStatusLevel {
-    var color: Color {
-        switch self {
-        case .idle:
-            return .secondary
-        case .connected:
-            return .green
-        case .warning:
-            return .orange
-        case .error:
-            return .red
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .idle:
-            return "questionmark.circle"
-        case .connected:
-            return "checkmark.circle"
-        case .warning:
-            return "exclamationmark.triangle"
-        case .error:
-            return "xmark.octagon"
         }
     }
 }
@@ -202,51 +180,35 @@ private extension TransportStatusLevel {
 extension SidebarItem: RawRepresentable {
     init?(rawValue: String) {
         switch rawValue {
-        case "gps":
-            self = .gps
-        case "config":
-            self = .config
-        case "wind":
-            self = .wind
-        case "hydro":
-            self = .hydro
-        case "compass":
-            self = .compass
-        case "boat":
-            self = .boat
-        case "dashboard":
-            self = .dashboard
-        case "manual":
-            self = .manual
-        default:
-            return nil
+        case "gps": self = .gps
+        case "config", "connection": self = .connection
+        case "simulation": self = .simulation
+        case "wind": self = .wind
+        case "hydro": self = .hydro
+        case "compass": self = .compass
+        case "boat": self = .boat
+        case "dashboard": self = .dashboard
+        case "manual": self = .manual
+        default: return nil
         }
     }
 
     var rawValue: String {
         switch self {
-        case .gps:
-            return "gps"
-        case .config:
-            return "config"
-        case .wind:
-            return "wind"
-        case .hydro:
-            return "hydro"
-        case .compass:
-            return "compass"
-        case .boat:
-            return "boat"
-        case .dashboard:
-            return "dashboard"
-        case .manual:
-            return "manual"
+        case .gps: return "gps"
+        case .connection: return "connection"
+        case .simulation: return "simulation"
+        case .wind: return "wind"
+        case .hydro: return "hydro"
+        case .compass: return "compass"
+        case .boat: return "boat"
+        case .dashboard: return "dashboard"
+        case .manual: return "manual"
         }
     }
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    MainView()
-        .environment(NMEASimulator())
+    MainView(nmeaManager: NMEASimulator())
         .frame(width: 900, height: 550)
 }
