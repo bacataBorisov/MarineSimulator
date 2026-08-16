@@ -8,6 +8,9 @@ struct MarineSimulator: App {
 
     init() {
         NSLog("[MarineSim] App.init")
+        #if DEBUG
+        HangProbe.start()
+        #endif
     }
 
     var body: some Scene {

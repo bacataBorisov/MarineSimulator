@@ -11,8 +11,10 @@ class NMEASimulator {
     /// Internal scheduler cadence while transmitting; decoupled from the user-facing Send Interval.
     private static let simulationFastTickInterval: TimeInterval = 0.05
 
+    /// UI publish cadence. Engine stays at `simulationFastTickInterval`; views paint at this rate.
+    private static let displayPublishInterval: TimeInterval = 0.1
     /// Throttle console / stats `@Observable` churn while transmitting (see `recordOutputMessage`).
-    private static let consoleDisplayFlushInterval: TimeInterval = 0.25
+    private static let consoleDisplayFlushInterval: TimeInterval = 0.1
     /// Bounded console history. Larger windows (e.g. 5 min / 2k rows) made SwiftUI rebuild
     /// thousands of LazyVStack rows every flush and progressively starved slider input.
     private static let consoleRetentionInterval: TimeInterval = 60
@@ -302,7 +304,7 @@ class NMEASimulator {
     /// Latest runtime waiting to be mirrored onto `@Observable` fields on the main thread.
     /// Coalesced so a busy main queue never accumulates one apply per 50 ms tick.
     @ObservationIgnored private var pendingRuntimeApply: SimulationState?
-    @ObservationIgnored private var runtimeApplyScheduled = false
+    @ObservationIgnored private var displayPublishWorkItem: DispatchWorkItem?
     @ObservationIgnored private let runtimeApplyLock = NSLock()
 
     /// Mean-reverting offsets around the last live-weather snapshot (OU-style; small, smooth gusts).
@@ -540,16 +542,13 @@ class NMEASimulator {
     func stopSimulation() {
         let wasRunning = isTransmitting || simulationTimer != nil
         isTransmitting = false
+        cancelDisplayPublish()
         stopSimulationTimer()
         persistenceManager.cancelPendingPersist()
         consoleLock.lock()
         consoleFlushWorkItem?.cancel()
         consoleFlushWorkItem = nil
         consoleLock.unlock()
-        runtimeApplyLock.lock()
-        pendingRuntimeApply = nil
-        runtimeApplyScheduled = false
-        runtimeApplyLock.unlock()
 
         if wasRunning {
             var runtimeToApply: SimulationState?
@@ -1212,6 +1211,7 @@ class NMEASimulator {
 
         if simulationTimer != nil || isTransmitting {
             stopSimulationTimer()
+            cancelDisplayPublish()
             isTransmitting = false
             var runtimeToApply: SimulationState?
             simulationQueue.sync { [weak self] in
@@ -1427,7 +1427,6 @@ class NMEASimulator {
             consoleLock.lock()
             consoleRecordBuffer.append(record)
             consoleLock.unlock()
-            scheduleConsoleDisplayFlush()
             return
         }
 
@@ -1538,7 +1537,9 @@ class NMEASimulator {
             leeway: .milliseconds(5)
         )
         timer.setEventHandler { [weak self] in
-            self?.runSimulationCycle()
+            autoreleasepool {
+                self?.runSimulationCycle()
+            }
         }
         timer.resume()
         simulationTimer = timer
@@ -1605,6 +1606,9 @@ class NMEASimulator {
     }
 
     private func applyRuntimeToMain(_ runtime: SimulationState, flushConsoleImmediately: Bool) {
+        #if DEBUG
+        HangProbe.tick(.apply)
+        #endif
         isApplyingSimulationTick = true
         // Only write changed fields — unconditional 20 Hz assignment of every SimulatedValue
         // floods Observation and makes live sliders fight the UI update storm.
@@ -1619,8 +1623,12 @@ class NMEASimulator {
         if heading != runtime.heading { heading = runtime.heading }
         if gyroHeading != runtime.gyroHeading { gyroHeading = runtime.gyroHeading }
         if gpsData != runtime.gpsData { gpsData = runtime.gpsData }
-        latestSnapshot = runtime.latestSnapshot
-        lastSimulationTickDate = runtime.lastSimulationTickDate
+        if latestSnapshot?.timestamp != runtime.latestSnapshot?.timestamp {
+            latestSnapshot = runtime.latestSnapshot
+        }
+        if lastSimulationTickDate != runtime.lastSimulationTickDate {
+            lastSimulationTickDate = runtime.lastSimulationTickDate
+        }
         lastEmissionDates = runtime.lastEmissionDates
         pendingTransmissions = runtime.pendingTransmissions
         previousTurnReferenceHeading = runtime.previousTurnReferenceHeading
@@ -1632,34 +1640,60 @@ class NMEASimulator {
         liveWeatherNoiseBaselineFetchDate = runtime.liveWeatherNoiseBaselineFetchDate
         isApplyingSimulationTick = false
         syncInputMirror()
-        scheduleDebouncedSimulationPersist()
+        if !isTransmitting {
+            scheduleDebouncedSimulationPersist()
+        }
 
         if flushConsoleImmediately {
             flushConsoleDisplayToMain(immediate: true)
         }
     }
 
+    /// Latest-wins UI frame after the current run-loop turn. A `Timer` on `.common`
+    /// fires during MapKit/SwiftUI layout and can freeze the main thread.
+    private func publishDisplayFrame() {
+        #if DEBUG
+        HangProbe.tick(.display)
+        #endif
+        runtimeApplyLock.lock()
+        displayPublishWorkItem = nil
+        runtimeApplyLock.unlock()
+
+        flushPendingRuntimeApply()
+        flushConsoleDisplayToMain(immediate: false)
+    }
+
     private func scheduleApplyRuntimeToMain(_ runtime: SimulationState) {
         runtimeApplyLock.lock()
         pendingRuntimeApply = runtime
-        let needsSchedule = !runtimeApplyScheduled
+        let needsSchedule = displayPublishWorkItem == nil
         if needsSchedule {
-            runtimeApplyScheduled = true
+            let work = DispatchWorkItem { [weak self] in
+                self?.publishDisplayFrame()
+            }
+            displayPublishWorkItem = work
+            runtimeApplyLock.unlock()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + Self.displayPublishInterval,
+                execute: work
+            )
+        } else {
+            runtimeApplyLock.unlock()
         }
+    }
+
+    private func cancelDisplayPublish() {
+        runtimeApplyLock.lock()
+        displayPublishWorkItem?.cancel()
+        displayPublishWorkItem = nil
+        pendingRuntimeApply = nil
         runtimeApplyLock.unlock()
-
-        guard needsSchedule else { return }
-
-        DispatchQueue.main.async { [weak self] in
-            self?.flushPendingRuntimeApply()
-        }
     }
 
     private func flushPendingRuntimeApply() {
         runtimeApplyLock.lock()
         let runtime = pendingRuntimeApply
         pendingRuntimeApply = nil
-        runtimeApplyScheduled = false
         runtimeApplyLock.unlock()
 
         guard let runtime, transmitRuntime != nil else { return }

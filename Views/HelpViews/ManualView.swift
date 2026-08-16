@@ -48,7 +48,7 @@ struct ManualView: View {
                         .textFieldStyle(.roundedBorder)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                .padding(PageChrome.padding)
                 .background(sidebarHeaderBackground)
 
                 List(selection: selectionBinding) {
@@ -136,7 +136,7 @@ struct ManualView: View {
                             )
                         }
                     }
-                    .padding(24)
+                    .padding(PageChrome.padding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .background(detailBackground)

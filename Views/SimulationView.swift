@@ -6,7 +6,7 @@ struct SimulationView: View {
     @State private var rateModeNotice: String?
 
     var body: some View {
-        ScrollView {
+        PageContainer {
             Form {
                 Section("Hardware Profile") {
                     Text("Match real instrument clusters for realistic NMEA timing, talker IDs, and sentence sets.")
@@ -206,7 +206,6 @@ struct SimulationView: View {
                 }
             }
             .formStyle(.grouped)
-            .padding()
         }
     }
 }

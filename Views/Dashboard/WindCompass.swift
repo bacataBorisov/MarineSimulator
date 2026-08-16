@@ -21,8 +21,8 @@ struct WindCompass: View {
     /// Last NMEA-derived key we applied; avoids idle timer work and avoids `onChange(of: String)`.
     @State private var lastAppliedInstrumentKey: String = ""
 
-    /// ~24 Hz poll when not tacking; tack uses `tackInstrumentStepNotification` only.
-    private static let idleInstrumentPoll = Timer.publish(every: 1.0 / 24.0, on: .main, in: .common).autoconnect()
+    /// Match the 10 Hz display clock. `.common` fires during MapKit tracking and can wedge the main thread.
+    private static let idleInstrumentPoll = Timer.publish(every: 0.1, on: .main, in: .default).autoconnect()
 
     private func instrumentDependencyKey() -> String {
         let m = nmea.heading.value.map { String(format: "%.4f", $0) } ?? "nil"
@@ -110,6 +110,8 @@ struct WindCompass: View {
         }
         .onDisappear {
             lastKnownHeading = displayedHeading
+            storedTrueWindAngle = displayedTrueWindAngle
+            storedApparentWindAngle = displayedApparentWindAngle
         }
         .onReceive(NotificationCenter.default.publisher(for: NMEASimulator.tackInstrumentStepNotification)) { output in
             guard let sender = output.object as? NMEASimulator, sender === nmea else { return }
@@ -131,8 +133,6 @@ struct WindCompass: View {
             : (anemometerShouldAnimate ? .easeInOut(duration: 1) : nil)
         applyWindDelta($displayedTrueWindAngle, to: twa, animation: windAnim)
         applyWindDelta($displayedApparentWindAngle, to: awa, animation: windAnim)
-        storedTrueWindAngle = twa
-        storedApparentWindAngle = awa
 
         // Match mapDashboardBearingBeforeFirstSnapshot: respect sensor toggles
         // so a stale gyroHeading.value doesn't drive the compass when gyro is off.

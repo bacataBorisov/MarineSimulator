@@ -7,23 +7,22 @@ struct SentencePanelLayout<Content: View, Preview: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
-            if proxy.size.width >= 720 {
-                HStack(alignment: .top, spacing: UIConstants.spacing * 2) {
+            if proxy.size.width >= PageChrome.splitBreakpoint {
+                HStack(alignment: .top, spacing: PageChrome.stackSpacing) {
                     ScrollView {
                         content()
-                            .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxWidth: .infinity)
 
                     preview()
-                        .padding()
-                        .frame(width: min(320, proxy.size.width * 0.38))
+                        .frame(width: min(PageChrome.previewColumnWidth, proxy.size.width * 0.38))
                 }
+                .padding(PageChrome.padding)
             } else {
                 ScrollView {
                     content()
-                        .padding()
+                        .padding(PageChrome.padding)
                 }
             }
         }

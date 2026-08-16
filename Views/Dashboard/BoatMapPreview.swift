@@ -1,7 +1,6 @@
 import SwiftUI
 import MapKit
 import AppKit
-import Observation
 
 /// Map overlay controls: match `MKCompassButton` / `MKZoomControl` footprint (circle diameter and slot width).
 private enum MapFloatingChrome {
@@ -57,6 +56,7 @@ struct BoatMapView: NSViewRepresentable {
         private let seamarkOverlay = MKTileOverlay(urlTemplate: "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png")
         private var hasPlacedInitialCamera = false
         private var lastBearingDegrees: Double = 0
+        private var lastAppliedCameraHeading: CGFloat = .nan
         private var tackAnimationActive = false
 
         func attach(to container: BoatMapContainerView) {
@@ -74,11 +74,22 @@ struct BoatMapView: NSViewRepresentable {
             topChromeInset: CGFloat,
             trailingOverlayInset: CGFloat
         ) {
+            #if DEBUG
+            HangProbe.tick(.mapUpdate)
+            #endif
+            let mapView = container.mapView
+            guard mapView.bounds.width > 1, mapView.bounds.height > 1 else {
+                #if DEBUG
+                HangProbe.tick(.mapZero)
+                #endif
+                return
+            }
+
             let coordinate = CLLocationCoordinate2D(latitude: gpsData.latitude, longitude: gpsData.longitude)
 
-            if !container.mapView.annotations.contains(where: { $0 === boatAnnotation }) {
+            if !mapView.annotations.contains(where: { $0 === boatAnnotation }) {
                 boatAnnotation.coordinate = coordinate
-                container.mapView.addAnnotation(boatAnnotation)
+                mapView.addAnnotation(boatAnnotation)
             } else if !boatAnnotation.coordinate.isEffectivelyEqual(to: coordinate) {
                 boatAnnotation.coordinate = coordinate
             }
@@ -87,19 +98,14 @@ struct BoatMapView: NSViewRepresentable {
             tackAnimationActive = tackInProgress
             lastBearingDegrees = bearingDegrees
             if bearingChanged {
-                DispatchQueue.main.async { [weak self] in
-                    self?.applyBoatRotation(on: container.mapView)
-                }
+                applyBoatRotation(on: mapView)
             }
 
             container.updateControlInsets(top: topChromeInset, trailing: trailingOverlayInset)
 
             if !hasPlacedInitialCamera {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
-                    self.centerMap(on: coordinate, in: container.mapView, animated: false)
-                    self.hasPlacedInitialCamera = true
-                }
+                hasPlacedInitialCamera = true
+                centerMap(on: coordinate, in: mapView, animated: false)
             }
         }
 
@@ -178,10 +184,13 @@ struct BoatMapView: NSViewRepresentable {
         }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
-            // Defer hosting-view updates out of MapKit's layout pass.
-            DispatchQueue.main.async { [weak self] in
-                self?.applyBoatRotation(on: mapView)
-            }
+            #if DEBUG
+            HangProbe.tick(.mapRegion)
+            #endif
+            let heading = mapView.camera.heading
+            guard !lastAppliedCameraHeading.isFinite || abs(lastAppliedCameraHeading - heading) > 0.05 else { return }
+            lastAppliedCameraHeading = heading
+            applyBoatRotation(on: mapView)
         }
 
         private func applyBoatRotation(on mapView: MKMapView) {
@@ -323,35 +332,20 @@ private final class CenteredControlSlot: NSView {
     }
 }
 
-@Observable
-private final class BoatMapMarkerRotationState {
-    var screenDegrees: CGFloat = 0
-}
-
-/// `location.north.line.fill`: north/heading line treatment (SF Symbol). Rotation driven by SwiftUI so tacks use `withAnimation`.
-private struct BoatMapMarkerSymbolView: View {
-    @Bindable var state: BoatMapMarkerRotationState
-
-    private static let boatTint = Color(red: 0.72, green: 0.52, blue: 0.06)
-    private let markerSize: CGFloat = 40
-
-    var body: some View {
-        Image(systemName: "location.north.line.fill")
-            .font(.system(size: 26, weight: .semibold))
-            .foregroundStyle(Self.boatTint)
-            .rotationEffect(.degrees(state.screenDegrees))
-            .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 0.5)
-            .frame(width: markerSize, height: markerSize)
-    }
-}
-
-/// Boat position on the map; hosted SwiftUI for symbol + animation.
+/// AppKit-only marker. Rotation is baked into a retina image around its center.
+/// Do not assign `MKAnnotationView.image` — MapKit scales that and squashes the symbol.
 private final class BoatAnnotationView: MKAnnotationView {
+    private static let markerSize: CGFloat = 40
+    private static let symbolFit: CGFloat = 28
+    private static let baseSymbol: NSImage = {
+        let config = NSImage.SymbolConfiguration(pointSize: symbolFit, weight: .semibold)
+            .applying(.init(paletteColors: [NSColor(red: 0.72, green: 0.52, blue: 0.06, alpha: 1)]))
+        return NSImage(systemSymbolName: "location.north.line.fill", accessibilityDescription: "Boat")?
+            .withSymbolConfiguration(config) ?? NSImage(size: NSSize(width: symbolFit, height: symbolFit))
+    }()
 
-    private let rotationState = BoatMapMarkerRotationState()
-    private var hostingView: NSHostingView<BoatMapMarkerSymbolView>!
-
-    private let markerSize: CGFloat = 40
+    private let imageView = NSImageView()
+    private var lastScreenDegrees: CGFloat = .nan
 
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -365,39 +359,70 @@ private final class BoatAnnotationView: MKAnnotationView {
 
     /// `vesselDegrees`: clockwise from geographic north. `mapCameraHeadingDegrees`: `MKMapCamera.heading` when the map is rotated.
     func updateHeading(vesselDegrees: Double, mapCameraHeadingDegrees: CGFloat, animated: Bool) {
+        _ = animated
         guard vesselDegrees.isFinite, mapCameraHeadingDegrees.isFinite else { return }
         let screenDegrees = CGFloat(vesselDegrees) - mapCameraHeadingDegrees
         guard screenDegrees.isFinite else { return }
-
-        if animated {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                rotationState.screenDegrees = screenDegrees
-            }
-        } else {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                rotationState.screenDegrees = screenDegrees
-            }
-        }
+        if lastScreenDegrees.isFinite, abs(screenDegrees - lastScreenDegrees) < 0.05 { return }
+        lastScreenDegrees = screenDegrees
+        imageView.image = Self.makeImage(rotatedBy: screenDegrees)
     }
 
     private func setup() {
-        frame = NSRect(x: 0, y: 0, width: markerSize, height: markerSize)
+        let box = NSRect(x: 0, y: 0, width: Self.markerSize, height: Self.markerSize)
+        frame = box
+        bounds = box
         canShowCallout = false
         centerOffset = .zero
+        collisionMode = .none
+        displayPriority = .required
 
-        let host = NSHostingView(rootView: BoatMapMarkerSymbolView(state: rotationState))
-        hostingView = host
-        host.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(host)
+        imageView.imageScaling = .scaleNone
+        imageView.frame = box
+        imageView.autoresizingMask = [.width, .height]
+        addSubview(imageView)
+        imageView.image = Self.makeImage(rotatedBy: 0)
+    }
 
-        NSLayoutConstraint.activate([
-            host.leadingAnchor.constraint(equalTo: leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: trailingAnchor),
-            host.topAnchor.constraint(equalTo: topAnchor),
-            host.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
+    private static func makeImage(rotatedBy degrees: CGFloat) -> NSImage {
+        let points = markerSize
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        let pixels = max(1, Int((points * scale).rounded()))
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixels,
+            pixelsHigh: pixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        rep.size = NSSize(width: points, height: points)
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        guard let ctx = NSGraphicsContext.current?.cgContext else {
+            return NSImage(size: NSSize(width: points, height: points))
+        }
+        ctx.clear(CGRect(x: 0, y: 0, width: points, height: points))
+
+        let intrinsic = baseSymbol.size
+        let fit = min(symbolFit / max(intrinsic.width, 1), symbolFit / max(intrinsic.height, 1))
+        let drawW = intrinsic.width * fit
+        let drawH = intrinsic.height * fit
+
+        ctx.translateBy(x: points / 2, y: points / 2)
+        ctx.rotate(by: -degrees * .pi / 180)
+        baseSymbol.draw(in: CGRect(x: -drawW / 2, y: -drawH / 2, width: drawW, height: drawH))
+
+        let image = NSImage(size: NSSize(width: points, height: points))
+        image.addRepresentation(rep)
+        return image
     }
 }
 

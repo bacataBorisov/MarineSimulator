@@ -38,6 +38,15 @@ public struct UIConstants {
     
 }
 
+/// Shared inset for sidebar pages (Connection is the reference).
+enum PageChrome {
+    static let padding: CGFloat = 24
+    static let maxWidth: CGFloat = 920
+    static let stackSpacing: CGFloat = 20
+    static let splitBreakpoint: CGFloat = 720
+    static let previewColumnWidth: CGFloat = 320
+}
+
 public enum UIStrings {
 
     enum Warnings {
@@ -80,5 +89,84 @@ enum AppColors {
     static let consoleLineSecondary = Color(red: 0.76, green: 0.96, blue: 0.90)
     static let consoleChrome = Color(red: 0.10, green: 0.08, blue: 0.14)
 }
+
+#if DEBUG
+/// Filter Xcode console for `[MarineSim][hang]`.
+/// A 1 Hz `beat` line dumps counters; `STALL` means the main run loop stopped.
+enum HangProbe {
+    enum Event: String {
+        case display
+        case apply
+        case consoleSync
+        case consoleReset
+        case mapUpdate
+        case mapZero
+        case mapRegion
+    }
+
+    private static let lock = NSLock()
+    private static var counts: [String: Int] = [:]
+    private static var lastMainBeat: CFAbsoluteTime = 0
+    private static var startedAt: CFAbsoluteTime = 0
+    private static var watchdog: DispatchSourceTimer?
+    private static var started = false
+
+    static func start() {
+        lock.lock()
+        guard !started else {
+            lock.unlock()
+            return
+        }
+        started = true
+        startedAt = CFAbsoluteTimeGetCurrent()
+        lastMainBeat = startedAt
+        lock.unlock()
+
+        NSLog("[MarineSim][hang] start — filter this prefix")
+        armMainPing()
+
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        timer.schedule(deadline: .now() + 1.5, repeating: 1.0)
+        timer.setEventHandler {
+            let now = CFAbsoluteTimeGetCurrent()
+            lock.lock()
+            let age = now - lastMainBeat
+            lock.unlock()
+            if age > 1.5 {
+                NSLog("[MarineSim][hang] STALL main-silent=%.1fs t=%.0fs", age, now - startedAt)
+            }
+        }
+        timer.resume()
+        watchdog = timer
+    }
+
+    static func tick(_ event: Event) {
+        lock.lock()
+        counts[event.rawValue, default: 0] += 1
+        lock.unlock()
+    }
+
+    static func note(_ event: Event, _ detail: String) {
+        tick(event)
+        NSLog("[MarineSim][hang] %@ %@", event.rawValue, detail)
+    }
+
+    private static func armMainPing() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            let now = CFAbsoluteTimeGetCurrent()
+            lock.lock()
+            lastMainBeat = now
+            let snapshot = counts
+            counts.removeAll(keepingCapacity: true)
+            let elapsed = now - startedAt
+            lock.unlock()
+
+            let parts = snapshot.keys.sorted().map { "\($0)=\(snapshot[$0] ?? 0)" }
+            NSLog("[MarineSim][hang] beat t=%.0fs %@", elapsed, parts.joined(separator: " "))
+            armMainPing()
+        }
+    }
+}
+#endif
 
 

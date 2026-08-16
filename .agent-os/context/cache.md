@@ -1,27 +1,23 @@
 # Session Cache
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## Current Objective
 
-Connection: carded output sections; primary output renameable and toggleable (no longer forced on).
+Hang-monitoring baseline after MapKit marker + 10 Hz display-clock fix. Keep watching for `STALL`.
 
-## Product State
+## Constraints
 
-- Dashboard map Start/Stop pill removed (toolbar only).
-- Console unmounts content while collapsed (no flash); stats bar labeled Rate/Total/Tick with help.
-- Connection uses spaced card layout (not cramped Form LabeledContent).
-- SensorToggleGrid uses adaptive LazyVGrid (no ViewThatFits clip).
-- App `.tint(.accentColor)`; switches use `.controlSize(.large)`.
-- GPS selector map recenters on boat coordinate.
+Keep NMEA wire output at 20 Hz. Do not invent product features.
 
-## Next
+## Risks
 
-1. Manual pass: Connection / Simulation / GPS / console collapse.
-2. Optional: delete leftover `ConfigurationView` if unused after Connection/Simulation split.
-3. Optional: remove duplicate green/cyan status tints that fight system accent.
+Do not put UI publish back on a `Timer` for `.common`. Do not put `NSHostingView` inside `MKAnnotationView`. Watch memory on long soaks.
 
-## Notes
+## Accepted baseline (Debug, transmitting, dashboard)
 
-- Progressive lag fix still in tree (coalesced UI apply + 400-row console).
-- AccentColor asset is empty → resolves to system accent.
+- CPU ~26%
+- Memory ~438 MB
+- Energy Low
+- Filter console: `[MarineSim][hang]`
+- `CAMetalLayer` 0×0 and `pid 617` port-right messages are known noise

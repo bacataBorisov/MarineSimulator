@@ -1,5 +1,27 @@
 import SwiftUI
 
+/// Scrollable page shell used by Connection and the other sidebar panels.
+struct PageContainer<Content: View>: View {
+    var maxWidth: CGFloat = PageChrome.maxWidth
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        ScrollView {
+            content()
+                .pageContentFrame(maxWidth: maxWidth)
+        }
+    }
+}
+
+extension View {
+    func pageContentFrame(maxWidth: CGFloat = PageChrome.maxWidth) -> some View {
+        self
+            .padding(PageChrome.padding)
+            .frame(maxWidth: maxWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+}
+
 // MARK: - Transport styling
 
 extension TransportStatusLevel {

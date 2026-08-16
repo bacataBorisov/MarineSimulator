@@ -469,27 +469,21 @@ struct BoatSetupDetailView: View {
     @Bindable var nmeaManager: NMEASimulator
 
     var body: some View {
-        GeometryReader { _ in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 3 * UIConstants.spacing) {
-                    Text("Boat")
-                        .font(.largeTitle)
-                    Text("Choose the polar profile, speed model, and execute a timed tack onto the opposite close-hauled heading.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        PageContainer {
+            VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
+                Text("Boat")
+                    .font(.largeTitle)
+                Text("Choose the polar profile, speed model, and execute a timed tack onto the opposite close-hauled heading.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                    GroupBox(label: Label("Profile & maneuver", systemImage: "sailboat")) {
-                        BoatControls(nmea: nmeaManager, chrome: .setupForm)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.horizontal)
+                GroupBox(label: Label("Profile & maneuver", systemImage: "sailboat")) {
+                    BoatControls(nmea: nmeaManager, chrome: .setupForm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.vertical)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

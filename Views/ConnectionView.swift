@@ -4,8 +4,8 @@ struct ConnectionView: View {
     @Bindable var nmeaManager: NMEASimulator
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+        PageContainer {
+            VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
                 ConnectionHealthBanner(nmeaManager: nmeaManager)
 
                 if nmeaManager.outputEndpoints.allSatisfy({ !$0.isEnabled }) {
@@ -81,9 +81,6 @@ struct ConnectionView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(24)
-            .frame(maxWidth: 920, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 }
