@@ -17,6 +17,7 @@ struct ConsolePanelView: View {
 
     @AppStorage("console_panel.mode") private var consoleModeRawValue: String = ConsoleView.Mode.nmea.rawValue
     @AppStorage("console_panel.last_expanded_height") private var lastExpandedHeight: Double = 220
+    @State private var animatedHeight: CGFloat = 0
     @State private var liveHeight: CGFloat?
     @State private var dragOrigin: CGFloat?
     @State private var dragMaxHeight: CGFloat?
@@ -27,7 +28,11 @@ struct ConsolePanelView: View {
     private var isCollapsed: Bool { displayedHeight <= collapsedContentHeight }
 
     private var displayedHeight: CGFloat {
-        liveHeight ?? consoleHeight
+        liveHeight ?? animatedHeight
+    }
+
+    private var toggleAnimation: Animation {
+        .snappy(duration: 0.32, extraBounce: 0)
     }
 
     private var resolvedMode: ConsoleView.Mode {
@@ -66,9 +71,14 @@ struct ConsolePanelView: View {
             }
         }
         .onAppear {
+            animatedHeight = consoleHeight
             if consoleHeight > parkThreshold {
                 lastExpandedHeight = Double(max(consoleHeight, expandedMinimumHeight))
             }
+        }
+        .onChange(of: consoleHeight) { _, newValue in
+            guard liveHeight == nil, abs(animatedHeight - newValue) > 0.5 else { return }
+            setAnimatedHeight(newValue, animated: !reduceMotion)
         }
         .onReceive(statsTimer) { date in
             statsRefreshDate = date
@@ -209,6 +219,7 @@ struct ConsolePanelView: View {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
+            animatedHeight = parked
             consoleHeight = parked
             liveHeight = nil
             dragOrigin = nil
@@ -234,20 +245,24 @@ struct ConsolePanelView: View {
     }
 
     private func toggleCollapsedState() {
-        let apply = {
-            if isCollapsed {
-                consoleHeight = max(CGFloat(lastExpandedHeight), expandedMinimumHeight)
-            } else {
-                lastExpandedHeight = Double(max(displayedHeight, expandedMinimumHeight))
-                consoleHeight = collapsedContentHeight
-            }
-        }
-        if reduceMotion {
-            apply()
+        let target: CGFloat
+        if isCollapsed {
+            target = max(CGFloat(lastExpandedHeight), expandedMinimumHeight)
         } else {
-            withAnimation(.snappy(duration: 0.32, extraBounce: 0)) {
-                apply()
+            lastExpandedHeight = Double(max(displayedHeight, expandedMinimumHeight))
+            target = collapsedContentHeight
+        }
+        consoleHeight = target
+        setAnimatedHeight(target, animated: !reduceMotion)
+    }
+
+    private func setAnimatedHeight(_ height: CGFloat, animated: Bool) {
+        if animated {
+            withAnimation(toggleAnimation) {
+                animatedHeight = height
             }
+        } else {
+            animatedHeight = height
         }
     }
 }

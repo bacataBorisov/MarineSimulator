@@ -10,6 +10,7 @@ struct DashboardView: View {
     @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
     @AppStorage("dashboard.inspector_width") private var storedInspectorWidth: Double = 340
     @AppStorage("console_panel.last_expanded_height") private var lastExpandedConsoleHeight: Double = 220
+    @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
 
     private var leftRailWidth: CGFloat { AppChrome.liveControlRailOuterWidth }
     private let inspectorMinWidth: CGFloat = 280
@@ -17,8 +18,8 @@ struct DashboardView: View {
 
     private var consoleHeight: Binding<CGFloat> {
         Binding(
-            get: { ConsoleHeightStorage.logHeight },
-            set: { ConsoleHeightStorage.logHeight = $0 }
+            get: { CGFloat(max(0, storedLogHeight)) },
+            set: { storedLogHeight = Double(max(0, $0)) }
         )
     }
 
@@ -38,14 +39,17 @@ struct DashboardView: View {
                 ZStack(alignment: .bottom) {
                     workspaceMap
 
-                    ConsolePanelView(
-                        nmeaManager: nmeaManager,
-                        consoleHeight: consoleHeight,
-                        geometryHeight: geometry.size.height
-                    )
-                    .frame(maxWidth: .infinity)
+                    VStack(spacing: 0) {
+                        workspaceDocks
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    workspaceDocks
+                        ConsolePanelView(
+                            nmeaManager: nmeaManager,
+                            consoleHeight: consoleHeight,
+                            geometryHeight: geometry.size.height
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

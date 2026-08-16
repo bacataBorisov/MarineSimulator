@@ -12,6 +12,7 @@ struct MainView: View {
     @State private var sidebarNavigation = SidebarNavigation()
 
     @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
+    @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
 
     private var selection: Binding<SidebarItem?> {
         Binding(
@@ -26,8 +27,8 @@ struct MainView: View {
 
     private var consoleHeight: Binding<CGFloat> {
         Binding(
-            get: { ConsoleHeightStorage.logHeight },
-            set: { ConsoleHeightStorage.logHeight = $0 }
+            get: { CGFloat(max(0, storedLogHeight)) },
+            set: { storedLogHeight = Double(max(0, $0)) }
         )
     }
 
