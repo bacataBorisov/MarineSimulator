@@ -3,7 +3,7 @@
 Durable facts and patterns only (not ephemeral session chatter). Prune when obsolete.
 
 - MarineSimulator is a macOS SwiftUI app with a `NavigationSplitView` shell and a map-first dashboard as the primary control surface.
-- `NMEASimulator` is the central observable engine/state object; views consume it via SwiftUI environment or `@Bindable`.
+- `NMEASimulator` is the central observable engine/state object; views consume it via SwiftUI environment or `@Bindable`. Do not extract stored properties onto a second observable. The main file is ~2,065 lines; the agreed first split is `NMEASimulator+TransmitLoop.swift` (off-main loop ~1534–1952). Do not merge the main-thread and `simulationQueue` copies of `tickSimulation` in the same change.
 - The engine produces one coherent `SimulationSnapshot` per tick and builds all emitted NMEA sentences from that snapshot.
 - While transmitting, the fast 20 Hz scheduler runs on `simulationQueue` (`DispatchSourceTimer`); `TransmitRuntime` owns tick state off the main thread. Main-thread UI is published at 10 Hz via coalesced `DispatchQueue.main.asyncAfter` (latest-wins) — not a `Timer` on `.common`, which fires mid-layout and can freeze MapKit. The NMEA console is an AppKit `NSTextView` that appends/trims lines — do not rebuild it with SwiftUI `ForEach`, and do not mutate the text storage inside `updateNSView`.
 - Output is endpoint-based and supports both UDP and TCP; the first endpoint is kept in sync with the top-level IP/port fields. UDP is fire-and-forget: `EHOSTDOWN` / `EHOSTUNREACH` / `ENETDOWN` / `ENETUNREACH` from `sendto` must not paint “The host is down” or stop the tick — `TransportManager` treats those as still sending.
@@ -14,7 +14,7 @@ Durable facts and patterns only (not ephemeral session chatter). Prune when obso
 - The dashboard map stays full-bleed behind a full-width bottom console; left/right docks sit in the space above the console and shrink as it grows. Console drag uses an AppKit window-space handle (`ConsoleResizeHandle` in `ConsolePanelView`) because SwiftUI `DragGesture` on the moving bar jitters. Show/hide animates a local height; UserDefaults is persist-only. The dashboard map stays mounted when leaving the page (hidden, updates paused); docks/console remount. Do not destroy `MKMapView` on sidebar changes.
 - Primary output can be renamed and disabled; the engine no longer forces `outputEndpoints[0].isEnabled = true`.
 - The project already has broad engine coverage using the Swift `Testing` framework, including sentence families, persistence, timer/lifecycle, endpoint churn, and fault injection behavior.
-- Accepted Debug soak baseline after the freeze fix (dashboard, transmitting): ~18% CPU, ~410 MB, energy Low. Filter `[MarineSim][hang]`. `CAMetalLayer` 0×0 at launch is known noise.
+- Accepted Debug soak baseline after the freeze fix (dashboard, transmitting): start ~18% CPU / ~410 MB, energy Low. Filter `[MarineSim][hang]`. `CAMetalLayer` 0×0 at launch is known noise. Overnight 16–17 Aug (PID 6805, t≈13.6 h): **17% CPU, 364 MB, energy Low**, beats still ≈7–8. Compass `animationDelta` must not accumulate unbounded — fold / snap on `scenePhase` active (lid open), or a page-swap remount is what “fixes” heading lag.
 - Do not put SwiftUI `NSHostingView` inside `MKAnnotationView` — it re-enters MapKit layout and wedges the main thread (100% CPU, HangProbe `STALL`). Boat marker is AppKit `NSImageView` rotation only.
 
 ## Engineering conventions (Apple-aligned)

@@ -188,9 +188,7 @@ struct EndpointEditorView: View {
             }
 
             fieldRow("Port") {
-                TextField("Port", value: $endpoint.port, formatter: FormatKit.plainNumberFormatter)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 120)
+                DeferredNumericField(port: $endpoint.port, width: 120)
             }
 
             if isPrimary {

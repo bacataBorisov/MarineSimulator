@@ -189,13 +189,17 @@ private struct GPSSentencesSection: View {
                 }
                 HStack {
                     Text("Lat:")
-                    TextField("", value: $nmeaManager.waypointNavigation.originLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                        .frame(width: 100)
-                        .textFieldStyle(.roundedBorder)
+                    DeferredNumericField(
+                        value: $nmeaManager.waypointNavigation.originLatitude,
+                        fractionDigits: 6,
+                        width: 100
+                    )
                     Text("Lon:")
-                    TextField("", value: $nmeaManager.waypointNavigation.originLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                        .frame(width: 100)
-                        .textFieldStyle(.roundedBorder)
+                    DeferredNumericField(
+                        value: $nmeaManager.waypointNavigation.originLongitude,
+                        fractionDigits: 6,
+                        width: 100
+                    )
                 }
                 Button("Set to Current Position") {
                     nmeaManager.waypointNavigation.originLatitude = nmeaManager.gpsData.latitude
@@ -216,22 +220,28 @@ private struct GPSSentencesSection: View {
                 }
                 HStack {
                     Text("Lat:")
-                    TextField("", value: $nmeaManager.waypointNavigation.destinationLatitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                        .frame(width: 100)
-                        .textFieldStyle(.roundedBorder)
+                    DeferredNumericField(
+                        value: $nmeaManager.waypointNavigation.destinationLatitude,
+                        fractionDigits: 6,
+                        width: 100
+                    )
                     Text("Lon:")
-                    TextField("", value: $nmeaManager.waypointNavigation.destinationLongitude, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                        .frame(width: 100)
-                        .textFieldStyle(.roundedBorder)
+                    DeferredNumericField(
+                        value: $nmeaManager.waypointNavigation.destinationLongitude,
+                        fractionDigits: 6,
+                        width: 100
+                    )
                 }
             }
         }
 
         HStack {
             Text("Arrival Radius:")
-            TextField("", value: $nmeaManager.waypointNavigation.arrivalRadiusNm, formatter: FormatKit.decimalFormatter(fractionDigits: 2))
-                .frame(width: 60)
-                .textFieldStyle(.roundedBorder)
+            DeferredNumericField(
+                value: $nmeaManager.waypointNavigation.arrivalRadiusNm,
+                fractionDigits: 2,
+                width: 60
+            )
             Text("NM")
                 .font(.caption)
                 .foregroundStyle(.secondary)

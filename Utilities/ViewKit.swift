@@ -3,6 +3,7 @@
 //  NMEASimulator
 //
 
+import AppKit
 import SwiftUI
 
 struct ViewKit {
@@ -170,13 +171,31 @@ extension View {
     }
 }
 
-/// Numeric field that does not write the model until Return or focus loss.
-/// The generator keeps using the last committed value while the user types.
+/// Draft stays local while focused. The last committed value keeps driving the
+/// simulator until Return or click-outside.
 struct DeferredNumericField: View {
     @Binding var value: Double
     var fractionDigits: Int
     var width: CGFloat? = 84
     var onEditingChange: ((Bool) -> Void)?
+
+    init(value: Binding<Double>, fractionDigits: Int, width: CGFloat? = 84, onEditingChange: ((Bool) -> Void)? = nil) {
+        self._value = value
+        self.fractionDigits = fractionDigits
+        self.width = width
+        self.onEditingChange = onEditingChange
+    }
+
+    init(port: Binding<UInt16>, width: CGFloat? = 120) {
+        self.init(
+            value: Binding(
+                get: { Double(port.wrappedValue) },
+                set: { port.wrappedValue = UInt16(clamping: max(0, Int($0.rounded()))) }
+            ),
+            fractionDigits: 0,
+            width: width
+        )
+    }
 
     @FocusState private var focused: Bool
     @State private var draft = ""
@@ -187,6 +206,7 @@ struct DeferredNumericField: View {
             .monospacedDigit()
             .frame(width: width)
             .focused($focused)
+            .background(ResignFirstResponderOnOutsideClick(isActive: focused))
             .onAppear { draft = formatted(value) }
             .onChange(of: value) { _, newValue in
                 if !focused { draft = formatted(newValue) }
@@ -209,9 +229,13 @@ struct DeferredNumericField: View {
         value.formatted(.number.precision(.fractionLength(fractionDigits)).grouping(.never))
     }
 
-    private func commit() {
+    private func parsedDraft() -> Double? {
         let normalized = draft.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
-        guard let parsed = Double(normalized) else {
+        return Double(normalized)
+    }
+
+    private func commit() {
+        guard let parsed = parsedDraft() else {
             draft = formatted(value)
             return
         }
@@ -219,5 +243,55 @@ struct DeferredNumericField: View {
             value = parsed
         }
         draft = formatted(value)
+    }
+}
+
+/// macOS often keeps a TextField focused when the click lands on a slider or other non-field control.
+private struct ResignFirstResponderOnOutsideClick: NSViewRepresentable {
+    var isActive: Bool
+
+    func makeNSView(context: Context) -> NSView {
+        context.coordinator.view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.setActive(isActive)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        let view = NSView()
+        private var monitor: Any?
+
+        func setActive(_ active: Bool) {
+            if active {
+                guard monitor == nil else { return }
+                monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+                    self?.resignIfOutside(event)
+                    return event
+                }
+            } else if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
+            }
+        }
+
+        private func resignIfOutside(_ event: NSEvent) {
+            guard let window = view.window ?? event.window else { return }
+            guard let responder = window.firstResponder as? NSView else { return }
+            let point = event.locationInWindow
+            let rect = responder.convert(responder.bounds, to: nil)
+            guard !rect.contains(point) else { return }
+            window.makeFirstResponder(nil)
+        }
+
+        deinit {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+        }
     }
 }

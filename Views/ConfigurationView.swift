@@ -25,7 +25,7 @@ struct ConfigurationView: View {
                                 .foregroundStyle(broadcastActive ? Color.secondary : Color.primary)
                                 .gridColumnAlignment(.leading)
                                 Text("Port")
-                                TextField("Port", value: $nmeaManager.port, formatter: FormatKit.plainNumberFormatter)
+                                DeferredNumericField(port: $nmeaManager.port, width: 72)
                                 Text("Talker ID")
                                 TextField("Talker ID", text: $nmeaManager.talkerID)
                             }
@@ -525,7 +525,7 @@ struct ConfigurationView: View {
                             .labelsHidden()
                             .toggleStyle(.switch)
                         Text("Port")
-                        TextField("Port", value: endpoint.port, formatter: FormatKit.plainNumberFormatter)
+                        DeferredNumericField(port: endpoint.port, width: 72)
                     }
                     // Host row is always present so the card never resizes when toggling.
                     // When broadcast is on it shows the effective address, disabled + grayed.
@@ -544,7 +544,7 @@ struct ConfigurationView: View {
                         Text("Host")
                         TextField("Host", text: endpoint.host)
                         Text("Port")
-                        TextField("Port", value: endpoint.port, formatter: FormatKit.plainNumberFormatter)
+                        DeferredNumericField(port: endpoint.port, width: 72)
                     }
                 }
             }

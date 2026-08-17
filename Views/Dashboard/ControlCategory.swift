@@ -78,14 +78,6 @@ struct CompactControlRow: View {
     @Binding var value: Double
     var step: Double = 0.1
 
-    private static let formatter: NumberFormatter = {
-        let nf = NumberFormatter()
-        nf.minimumFractionDigits = 0
-        nf.maximumFractionDigits = 1
-        nf.usesGroupingSeparator = false
-        return nf
-    }()
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -102,9 +94,7 @@ struct CompactControlRow: View {
                 Stepper("", value: $value, in: range, step: step)
                     .labelsHidden()
                     .frame(width: 60)
-                TextField("", value: $value, formatter: Self.formatter)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 64)
+                DeferredNumericField(value: $value, fractionDigits: 1, width: 64)
             }
         }
         .padding(10)

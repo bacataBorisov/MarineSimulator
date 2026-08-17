@@ -3,6 +3,7 @@ import Combine
 
 struct WindCompass: View {
     @Environment(NMEASimulator.self) private var nmea
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("storedTrueWindAngle") private var storedTrueWindAngle: Double = 0.0
     @AppStorage("storedApparentWindAngle") private var storedApparentWindAngle: Double = 0.0
@@ -118,11 +119,27 @@ struct WindCompass: View {
             syncInstrumentsFromNMEA()
         }
         .onReceive(Self.idleInstrumentPoll) { _ in
+            guard scenePhase == .active else { return }
             guard !nmea.isTackInProgress else { return }
             let key = instrumentDependencyKey()
             guard key != lastAppliedInstrumentKey else { return }
             syncInstrumentsFromNMEA()
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            snapInstrumentsAfterWake()
+        }
+    }
+
+    /// Lid-open / page-remount equivalent: drop the 1 s ease and fold a night of accumulated dial degrees.
+    private func snapInstrumentsAfterWake() {
+        lastAppliedInstrumentKey = ""
+        anemometerShouldAnimate = false
+        compassShouldAnimate = false
+        syncInstrumentsFromNMEA()
+        foldCompassDeltaIfNeeded()
+        anemometerShouldAnimate = true
+        compassShouldAnimate = true
     }
 
     private func syncInstrumentsFromNMEA() {
@@ -179,8 +196,17 @@ struct WindCompass: View {
             } else {
                 compassAnimationDelta += shortestDelta
                 displayedHeading = newHeading
+                foldCompassDeltaIfNeeded()
             }
         }
+    }
+
+    /// `rotationEffect` uses the raw delta. Overnight noise can push it to tens of thousands of degrees.
+    private func foldCompassDeltaIfNeeded() {
+        guard abs(compassAnimationDelta) > 720 else { return }
+        var folded = compassAnimationDelta.truncatingRemainder(dividingBy: 360)
+        if folded < 0 { folded += 360 }
+        compassAnimationDelta = folded
     }
 }
 

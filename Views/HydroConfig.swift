@@ -135,10 +135,12 @@ private struct HydroSentencesSection: View {
                         }
                         .frame(width: 110, alignment: .leading)
                         
-                        TextField("0.00", value: $nmeaManager.depthOffsetMeters, formatter: FormatKit.decimalFormatter(fractionDigits: 2))
-                            .frame(width: 70)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.caption)
+                        DeferredNumericField(
+                            value: $nmeaManager.depthOffsetMeters,
+                            fractionDigits: 2,
+                            width: 70
+                        )
+                        .font(.caption)
                     }
                     .padding(.leading, 4)
                     if showOffsetHelp {
