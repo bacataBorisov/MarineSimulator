@@ -92,7 +92,7 @@ enum AppColors {
 
 #if DEBUG
 /// Filter Xcode console for `[MarineSim][hang]`.
-/// A 1 Hz `beat` line dumps counters; `STALL` means the main run loop stopped.
+/// A 1 Hz `beat` line dumps counters; `STALL in=` is the scope that never returned.
 enum HangProbe {
     enum Event: String {
         case display
@@ -106,6 +106,7 @@ enum HangProbe {
 
     private static let lock = NSLock()
     private static var counts: [String: Int] = [:]
+    private static var section = "-"
     private static var lastMainBeat: CFAbsoluteTime = 0
     private static var startedAt: CFAbsoluteTime = 0
     private static var watchdog: DispatchSourceTimer?
@@ -131,9 +132,10 @@ enum HangProbe {
             let now = CFAbsoluteTimeGetCurrent()
             lock.lock()
             let age = now - lastMainBeat
+            let stuckIn = section
             lock.unlock()
             if age > 1.5 {
-                NSLog("[MarineSim][hang] STALL main-silent=%.1fs t=%.0fs", age, now - startedAt)
+                NSLog("[MarineSim][hang] STALL main-silent=%.1fs t=%.0fs in=%@", age, now - startedAt, stuckIn)
             }
         }
         timer.resume()
@@ -149,6 +151,18 @@ enum HangProbe {
     static func note(_ event: Event, _ detail: String) {
         tick(event)
         NSLog("[MarineSim][hang] %@ %@", event.rawValue, detail)
+    }
+
+    static func enter(_ name: String) {
+        lock.lock()
+        section = name
+        lock.unlock()
+    }
+
+    static func leave(_ name: String) {
+        lock.lock()
+        if section == name { section = "-" }
+        lock.unlock()
     }
 
     private static func armMainPing() {

@@ -151,6 +151,8 @@ class NMEASimulator {
     var gpsData = GPSData(latitude: 43.19542, longitude: 27.89615, speedOverGround: 6, courseOverGround: 90) {
         didSet { persistSettingsIfNeeded() }
     }
+    /// True while a GPS lat/lon field is focused — dead-reckoning must not overwrite the draft.
+    @ObservationIgnored var isEditingGPSCoordinates = false
     var faultInjection = FaultInjectionSettings() {
         didSet { persistSettingsIfNeeded() }
     }
@@ -279,6 +281,7 @@ class NMEASimulator {
     private(set) var latestSnapshot: SimulationSnapshot?
 
     private var lastSimulationTickDate: Date?
+    @ObservationIgnored
     private var lastEmissionDates: [NMEASentenceType: Date] = [:]
     var sentenceIntervals: [NMEASentenceType: TimeInterval] = [:] {
         didSet { persistSettingsIfNeeded() }
@@ -292,6 +295,7 @@ class NMEASimulator {
     var isApplyingHardwareProfile = false
     private var isSynchronizingEndpoints = false
 
+    @ObservationIgnored
     private var pendingTransmissions: [PendingTransmission] = []
     @ObservationIgnored private var liveWeatherTask: Task<Bool, Never>?
     /// Authoritative engine fields while the fast transmit timer runs off the main thread.
@@ -305,6 +309,7 @@ class NMEASimulator {
     /// Coalesced so a busy main queue never accumulates one apply per 50 ms tick.
     @ObservationIgnored private var pendingRuntimeApply: SimulationState?
     @ObservationIgnored private var displayPublishWorkItem: DispatchWorkItem?
+    @ObservationIgnored private var lastApplyDuration: TimeInterval = 0
     @ObservationIgnored private let runtimeApplyLock = NSLock()
 
     /// Mean-reverting offsets around the last live-weather snapshot (OU-style; small, smooth gusts).
@@ -1608,21 +1613,30 @@ class NMEASimulator {
     private func applyRuntimeToMain(_ runtime: SimulationState, flushConsoleImmediately: Bool) {
         #if DEBUG
         HangProbe.tick(.apply)
+        HangProbe.enter("apply")
+        defer { HangProbe.leave("apply") }
         #endif
+        let applyStarted = CFAbsoluteTimeGetCurrent()
+        defer {
+            let duration = CFAbsoluteTimeGetCurrent() - applyStarted
+            runtimeApplyLock.lock()
+            lastApplyDuration = duration
+            runtimeApplyLock.unlock()
+        }
         isApplyingSimulationTick = true
         // Only write changed fields — unconditional 20 Hz assignment of every SimulatedValue
         // floods Observation and makes live sliders fight the UI update storm.
-        if twd != runtime.twd { twd = runtime.twd }
-        if tws != runtime.tws { tws = runtime.tws }
-        if speed != runtime.speed { speed = runtime.speed }
-        if depth != runtime.depth { depth = runtime.depth }
-        if seaTemp != runtime.seaTemp { seaTemp = runtime.seaTemp }
-        if airTemp != runtime.airTemp { airTemp = runtime.airTemp }
-        if humidity != runtime.humidity { humidity = runtime.humidity }
-        if barometer != runtime.barometer { barometer = runtime.barometer }
-        if heading != runtime.heading { heading = runtime.heading }
-        if gyroHeading != runtime.gyroHeading { gyroHeading = runtime.gyroHeading }
-        if gpsData != runtime.gpsData { gpsData = runtime.gpsData }
+        applyGeneratedOutput(runtime.twd, to: &twd)
+        applyGeneratedOutput(runtime.tws, to: &tws)
+        applyGeneratedOutput(runtime.speed, to: &speed)
+        applyGeneratedOutput(runtime.depth, to: &depth)
+        applyGeneratedOutput(runtime.seaTemp, to: &seaTemp)
+        applyGeneratedOutput(runtime.airTemp, to: &airTemp)
+        applyGeneratedOutput(runtime.humidity, to: &humidity)
+        applyGeneratedOutput(runtime.barometer, to: &barometer)
+        applyGeneratedOutput(runtime.heading, to: &heading)
+        applyGeneratedOutput(runtime.gyroHeading, to: &gyroHeading)
+        applyGeneratedGPS(runtime.gpsData)
         if latestSnapshot?.timestamp != runtime.latestSnapshot?.timestamp {
             latestSnapshot = runtime.latestSnapshot
         }
@@ -1649,11 +1663,31 @@ class NMEASimulator {
         }
     }
 
+    /// Engine owns `value`; the user owns setpoint (`centerValue` / `offset`).
+    private func applyGeneratedOutput(_ incoming: SimulatedValue, to current: inout SimulatedValue) {
+        if current.value != incoming.value {
+            current.value = incoming.value
+        }
+    }
+
+    private func applyGeneratedGPS(_ incoming: GPSData) {
+        if isEditingGPSCoordinates {
+            var next = gpsData
+            next.speedOverGround = incoming.speedOverGround
+            next.courseOverGround = incoming.courseOverGround
+            if gpsData != next { gpsData = next }
+            return
+        }
+        if gpsData != incoming { gpsData = incoming }
+    }
+
     /// Latest-wins UI frame after the current run-loop turn. A `Timer` on `.common`
     /// fires during MapKit/SwiftUI layout and can freeze the main thread.
     private func publishDisplayFrame() {
         #if DEBUG
         HangProbe.tick(.display)
+        HangProbe.enter("display")
+        defer { HangProbe.leave("display") }
         #endif
         runtimeApplyLock.lock()
         displayPublishWorkItem = nil
@@ -1667,6 +1701,9 @@ class NMEASimulator {
         runtimeApplyLock.lock()
         pendingRuntimeApply = runtime
         let needsSchedule = displayPublishWorkItem == nil
+        let delay = lastApplyDuration > 0.05
+            ? Self.displayPublishInterval * 2
+            : Self.displayPublishInterval
         if needsSchedule {
             let work = DispatchWorkItem { [weak self] in
                 self?.publishDisplayFrame()
@@ -1674,7 +1711,7 @@ class NMEASimulator {
             displayPublishWorkItem = work
             runtimeApplyLock.unlock()
             DispatchQueue.main.asyncAfter(
-                deadline: .now() + Self.displayPublishInterval,
+                deadline: .now() + delay,
                 execute: work
             )
         } else {
@@ -1720,6 +1757,10 @@ class NMEASimulator {
     }
 
     private func flushConsoleDisplayToMain(immediate: Bool) {
+        #if DEBUG
+        HangProbe.enter("console.flush")
+        defer { HangProbe.leave("console.flush") }
+        #endif
         consoleLock.lock()
         consoleFlushWorkItem?.cancel()
         consoleFlushWorkItem = nil

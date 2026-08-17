@@ -11,10 +11,10 @@ Durable facts and patterns only (not ephemeral session chatter). Prune when obso
 - Product direction currently prioritizes external-reader interoperability, manual validation, and protocol fidelity over adding new feature families.
 - Configuration follows a basic-first pattern: core setup is always visible, while advanced transport/fault tools are hidden behind an explicit toggle.
 - Live weather V1 exists and is provider-backed, not synthetic: it uses Open-Meteo with GPS coordinates and currently overrides true wind and sea-surface temperature only.
-- The dashboard map stays full-bleed behind a full-width bottom console; left/right docks sit in the space above the console and shrink as it grows. Console drag uses an AppKit window-space handle (`ConsoleResizeHandle` in `ConsolePanelView`) because SwiftUI `DragGesture` on the moving bar jitters. Show/hide animates a local height; UserDefaults is persist-only.
+- The dashboard map stays full-bleed behind a full-width bottom console; left/right docks sit in the space above the console and shrink as it grows. Console drag uses an AppKit window-space handle (`ConsoleResizeHandle` in `ConsolePanelView`) because SwiftUI `DragGesture` on the moving bar jitters. Show/hide animates a local height; UserDefaults is persist-only. The dashboard map stays mounted when leaving the page (hidden, updates paused); docks/console remount. Do not destroy `MKMapView` on sidebar changes.
 - Primary output can be renamed and disabled; the engine no longer forces `outputEndpoints[0].isEnabled = true`.
 - The project already has broad engine coverage using the Swift `Testing` framework, including sentence families, persistence, timer/lifecycle, endpoint churn, and fault injection behavior.
-- Accepted Debug soak baseline after the freeze fix (dashboard, transmitting): ~26% CPU, ~438 MB, energy Low. Filter `[MarineSim][hang]`. `CAMetalLayer` 0×0 at launch is known noise.
+- Accepted Debug soak baseline after the freeze fix (dashboard, transmitting): ~18% CPU, ~410 MB, energy Low. Filter `[MarineSim][hang]`. `CAMetalLayer` 0×0 at launch is known noise.
 - Do not put SwiftUI `NSHostingView` inside `MKAnnotationView` — it re-enters MapKit layout and wedges the main thread (100% CPU, HangProbe `STALL`). Boat marker is AppKit `NSImageView` rotation only.
 
 ## Engineering conventions (Apple-aligned)

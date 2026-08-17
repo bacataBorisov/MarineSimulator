@@ -2,6 +2,8 @@ import SwiftUI
 import AppKit
 
 struct DashboardView: View {
+    var isVisible: Bool = true
+
     @Environment(NMEASimulator.self) private var nmeaManager
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -34,21 +36,25 @@ struct DashboardView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                topBarChrome
+                if isVisible {
+                    topBarChrome
+                }
 
                 ZStack(alignment: .bottom) {
                     workspaceMap
 
-                    VStack(spacing: 0) {
-                        workspaceDocks
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if isVisible {
+                        VStack(spacing: 0) {
+                            workspaceDocks
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                        ConsolePanelView(
-                            nmeaManager: nmeaManager,
-                            consoleHeight: consoleHeight,
-                            geometryHeight: geometry.size.height
-                        )
-                        .frame(maxWidth: .infinity)
+                            ConsolePanelView(
+                                nmeaManager: nmeaManager,
+                                consoleHeight: consoleHeight,
+                                geometryHeight: geometry.size.height
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -64,7 +70,10 @@ struct DashboardView: View {
 
     private var workspaceMap: some View {
         ZStack {
-            BoatMapView(trailingOverlayInset: showRightInspector ? inspectorWidth : 0)
+            BoatMapView(
+                isActive: isVisible,
+                trailingOverlayInset: showRightInspector ? inspectorWidth : 0
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             mapScrim

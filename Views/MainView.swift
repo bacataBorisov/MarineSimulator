@@ -8,7 +8,7 @@ enum SidebarItem: Hashable {
 }
 
 struct MainView: View {
-    @Bindable var nmeaManager: NMEASimulator
+    var nmeaManager: NMEASimulator
     @State private var sidebarNavigation = SidebarNavigation()
 
     @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
@@ -72,35 +72,19 @@ struct MainView: View {
             .navigationTitle("MarineSimulator")
             .navigationSplitViewStyle(.prominentDetail)
         } detail: {
+            let selected = selection.wrappedValue ?? .dashboard
             GeometryReader { geometry in
                 ZStack(alignment: .bottom) {
-                    Group {
-                        switch selection.wrappedValue {
-                        case .dashboard:
-                            DashboardView()
-                        case .gps:
-                            GPSConfig(nmeaManager: nmeaManager)
-                        case .connection:
-                            ConnectionView(nmeaManager: nmeaManager)
-                        case .simulation:
-                            SimulationView(nmeaManager: nmeaManager)
-                        case .manual:
-                            ManualView()
-                        case .wind:
-                            WindConfig(nmeaManager: nmeaManager)
-                        case .hydro:
-                            HydroConfig(nmeaManager: nmeaManager)
-                        case .compass:
-                            HeadingConfig(nmeaManager: nmeaManager)
-                        case .boat:
-                            BoatSetupDetailView(nmeaManager: nmeaManager)
-                        case .none:
-                            Text("Select a panel").foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    DashboardView(isVisible: selected == .dashboard)
+                        .environment(nmeaManager)
+                        .opacity(selected == .dashboard ? 1 : 0)
+                        .allowsHitTesting(selected == .dashboard)
+                        .accessibilityHidden(selected != .dashboard)
 
-                    if selection.wrappedValue != .dashboard {
+                    if selected != .dashboard {
+                        setupDetail(for: selected)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                         ConsolePanelView(
                             nmeaManager: nmeaManager,
                             consoleHeight: consoleHeight,
@@ -108,6 +92,7 @@ struct MainView: View {
                         )
                     }
                 }
+                .transaction { $0.animation = nil }
             }
         }
         .environment(nmeaManager)
@@ -124,56 +109,94 @@ struct MainView: View {
             selectedPanelRawValue = item.rawValue
         }
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                ZStack {
-                    if nmeaManager.isTransmitting {
-                        Button {
-                            nmeaManager.stopSimulation()
-                        } label: {
-                            Label("Stop", systemImage: "stop.fill")
-                        }
-                        .keyboardShortcut("r", modifiers: .command)
-                        .transition(.opacity)
-                    } else {
-                        Button {
-                            nmeaManager.startSimulation()
-                        } label: {
-                            Label(nmeaManager.isTimerSelected ? "Start" : "Send Once", systemImage: nmeaManager.isTimerSelected ? "play.fill" : "paperplane.fill")
-                        }
-                        .keyboardShortcut("r", modifiers: .command)
-                        .transition(.opacity)
+            MainWindowToolbar(
+                nmeaManager: nmeaManager,
+                sidebarNavigation: sidebarNavigation,
+                selectedPanelRawValue: $selectedPanelRawValue
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func setupDetail(for item: SidebarItem) -> some View {
+        switch item {
+        case .dashboard:
+            EmptyView()
+        case .gps:
+            GPSConfig(nmeaManager: nmeaManager)
+        case .connection:
+            ConnectionView(nmeaManager: nmeaManager)
+        case .simulation:
+            SimulationView(nmeaManager: nmeaManager)
+        case .manual:
+            ManualView()
+        case .wind:
+            WindConfig(nmeaManager: nmeaManager)
+        case .hydro:
+            HydroConfig(nmeaManager: nmeaManager)
+        case .compass:
+            HeadingConfig(nmeaManager: nmeaManager)
+        case .boat:
+            BoatSetupDetailView(nmeaManager: nmeaManager)
+        }
+    }
+}
+
+private struct MainWindowToolbar: ToolbarContent {
+    @Bindable var nmeaManager: NMEASimulator
+    var sidebarNavigation: SidebarNavigation
+    @Binding var selectedPanelRawValue: String
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            ZStack {
+                if nmeaManager.isTransmitting {
+                    Button {
+                        nmeaManager.stopSimulation()
+                    } label: {
+                        Label("Stop", systemImage: "stop.fill")
                     }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .transition(.opacity)
+                } else {
+                    Button {
+                        nmeaManager.startSimulation()
+                    } label: {
+                        Label(nmeaManager.isTimerSelected ? "Start" : "Send Once", systemImage: nmeaManager.isTimerSelected ? "play.fill" : "paperplane.fill")
+                    }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .transition(.opacity)
                 }
-                .animation(.easeInOut(duration: 0.3), value: nmeaManager.isTransmitting)
             }
+            .animation(.easeInOut(duration: 0.3), value: nmeaManager.isTransmitting)
+        }
 
-            ToolbarItem(placement: .status) {
-                Button {
-                    sidebarNavigation.select(.connection)
-                    selectedPanelRawValue = SidebarItem.connection.rawValue
-                } label: {
-                    HStack(spacing: 12) {
-                        Label(nmeaManager.isTransmitting ? "Transmitting" : "Idle",
-                              systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
-                            .foregroundStyle(nmeaManager.isTransmitting ? .green : .secondary)
+        ToolbarItem(placement: .status) {
+            Button {
+                sidebarNavigation.select(.connection)
+                selectedPanelRawValue = SidebarItem.connection.rawValue
+            } label: {
+                HStack(spacing: 12) {
+                    Label(nmeaManager.isTransmitting ? "Transmitting" : "Idle",
+                          systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
+                        .foregroundStyle(nmeaManager.isTransmitting ? .green : .secondary)
 
-                        if let transportStatus = nmeaManager.latestTransportStatus {
-                            Label(transportStatus.message, systemImage: transportStatus.level.systemImage)
-                                .font(.caption)
-                                .foregroundStyle(transportStatus.level.color)
-                                .labelStyle(.titleAndIcon)
-                                .lineLimit(1)
-                        }
-
-                        Text(PrimaryOutputSummary.label(for: nmeaManager))
+                    if let transportStatus = nmeaManager.latestTransportStatus {
+                        Label(transportStatus.message, systemImage: transportStatus.level.systemImage)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(transportStatus.level.color)
+                            .labelStyle(.titleAndIcon)
                             .lineLimit(1)
                     }
+
+                    Text(PrimaryOutputSummary.label(for: nmeaManager))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal)
             }
+            .buttonStyle(.plain)
+            .padding(.horizontal)
         }
     }
 }

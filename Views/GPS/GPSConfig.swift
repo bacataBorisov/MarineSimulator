@@ -289,15 +289,21 @@ private struct GPSCoordinatePreview: View {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 HStack {
                     Text("Latitude:")
-                    TextField("", value: latitudeBinding, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                        .frame(width: 100)
-                        .textFieldStyle(.roundedBorder)
+                    DeferredNumericField(
+                        value: latitudeBinding,
+                        fractionDigits: 6,
+                        width: 100,
+                        onEditingChange: { nmeaManager.isEditingGPSCoordinates = $0 }
+                    )
                 }
                 HStack {
                     Text("Longitude:")
-                    TextField("", value: longitudeBinding, formatter: FormatKit.decimalFormatter(fractionDigits: 6))
-                        .frame(width: 100)
-                        .textFieldStyle(.roundedBorder)
+                    DeferredNumericField(
+                        value: longitudeBinding,
+                        fractionDigits: 6,
+                        width: 100,
+                        onEditingChange: { nmeaManager.isEditingGPSCoordinates = $0 }
+                    )
                 }
                 Divider().padding(.vertical, 4)
                 GPSMapSelectorView(selectedCoordinate: selectedCoordinateBinding)

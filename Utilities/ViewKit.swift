@@ -169,3 +169,55 @@ extension View {
         self.opacity(condition ? 1.0 : 0.3)
     }
 }
+
+/// Numeric field that does not write the model until Return or focus loss.
+/// The generator keeps using the last committed value while the user types.
+struct DeferredNumericField: View {
+    @Binding var value: Double
+    var fractionDigits: Int
+    var width: CGFloat? = 84
+    var onEditingChange: ((Bool) -> Void)?
+
+    @FocusState private var focused: Bool
+    @State private var draft = ""
+
+    var body: some View {
+        TextField("", text: $draft)
+            .textFieldStyle(.roundedBorder)
+            .monospacedDigit()
+            .frame(width: width)
+            .focused($focused)
+            .onAppear { draft = formatted(value) }
+            .onChange(of: value) { _, newValue in
+                if !focused { draft = formatted(newValue) }
+            }
+            .onChange(of: focused) { _, isFocused in
+                onEditingChange?(isFocused)
+                if isFocused {
+                    draft = formatted(value)
+                } else {
+                    commit()
+                }
+            }
+            .onSubmit {
+                commit()
+                focused = false
+            }
+    }
+
+    private func formatted(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(fractionDigits)).grouping(.never))
+    }
+
+    private func commit() {
+        let normalized = draft.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        guard let parsed = Double(normalized) else {
+            draft = formatted(value)
+            return
+        }
+        if parsed != value {
+            value = parsed
+        }
+        draft = formatted(value)
+    }
+}

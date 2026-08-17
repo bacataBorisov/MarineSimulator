@@ -16,6 +16,7 @@ struct MarineSimulator: App {
     var body: some Scene {
         WindowGroup {
             MainView(nmeaManager: nmeaManager)
+                .environment(nmeaManager)
                 .onAppear {
                     SimulatorCommandTarget.current = nmeaManager
                     NSLog("[MarineSim] window onAppear sim=%@", String(describing: ObjectIdentifier(nmeaManager)))

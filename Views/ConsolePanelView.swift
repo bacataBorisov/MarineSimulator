@@ -21,7 +21,10 @@ struct ConsolePanelView: View {
     @State private var liveHeight: CGFloat?
     @State private var dragOrigin: CGFloat?
     @State private var dragMaxHeight: CGFloat?
-    @State private var statsRefreshDate = Date()
+    @State private var cachedSentPerSecond = 0
+    @State private var cachedTotalSent = 0
+    @State private var cachedHasNMEARows = false
+    @State private var cachedHasTransportRows = false
 
     private let statsTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -80,8 +83,11 @@ struct ConsolePanelView: View {
             guard liveHeight == nil, abs(animatedHeight - newValue) > 0.5 else { return }
             setAnimatedHeight(newValue, animated: !reduceMotion)
         }
-        .onReceive(statsTimer) { date in
-            statsRefreshDate = date
+        .onReceive(statsTimer) { _ in
+            cachedSentPerSecond = nmeaManager.sentPerSecond()
+            cachedTotalSent = nmeaManager.totalSentCount
+            cachedHasNMEARows = !nmeaManager.outputMessageRecords.isEmpty
+            cachedHasTransportRows = !nmeaManager.transportHistory.isEmpty
         }
     }
 
@@ -121,10 +127,9 @@ struct ConsolePanelView: View {
                 .controlSize(.small)
 
                 if resolvedMode == .nmea {
-                    let _ = statsRefreshDate
-                    toolbarMetric("Rate", "\(nmeaManager.sentPerSecond())/s")
+                    toolbarMetric("Rate", "\(cachedSentPerSecond)/s")
                         .help("Sentences transmitted in the last second")
-                    toolbarMetric("Total", "\(nmeaManager.totalSentCount)")
+                    toolbarMetric("Total", "\(cachedTotalSent)")
                         .help("Total sentences sent this session")
                     toolbarMetric("Tick", formattedSimulatorInterval)
                         .help("Base send-interval from Connection → Transmission")
@@ -151,8 +156,8 @@ struct ConsolePanelView: View {
                 .help(resolvedMode == .nmea ? "Copy NMEA console" : "Copy transport history")
                 .disabled(
                     resolvedMode == .nmea
-                    ? nmeaManager.allOutputMessageRecords.isEmpty
-                    : nmeaManager.transportHistory.isEmpty
+                    ? !cachedHasNMEARows
+                    : !cachedHasTransportRows
                 )
 
                 Button {

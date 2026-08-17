@@ -95,6 +95,7 @@ private final class ConsoleLogHost: NSView {
         )
         textView.minSize = .zero
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.layoutManager?.allowsNonContiguousLayout = true
 
         scrollView.documentView = textView
         addSubview(scrollView)
@@ -116,9 +117,13 @@ private final class ConsoleLogHost: NSView {
         #endif
         guard !syncQueued else { return }
         syncQueued = true
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
             self.syncQueued = false
+            #if DEBUG
+            HangProbe.enter("console.sync")
+            defer { HangProbe.leave("console.sync") }
+            #endif
             self.sync(
                 mode: mode,
                 records: simulator.outputMessageRecords,
@@ -193,7 +198,7 @@ private final class ConsoleLogHost: NSView {
         }
         storage.append(builder)
         lineCount += records.count
-        trimIfNeeded()
+        rebuildIfOverCap()
         if pin { scrollToEnd() }
     }
 
@@ -210,7 +215,7 @@ private final class ConsoleLogHost: NSView {
         }
         storage.append(builder)
         lineCount += events.count
-        trimIfNeeded()
+        rebuildIfOverCap()
         if pin { scrollToEnd() }
     }
 
@@ -221,7 +226,7 @@ private final class ConsoleLogHost: NSView {
         lineCount = 0
     }
 
-    private func trimIfNeeded() {
+    private func rebuildIfOverCap() {
         guard lineCount > Self.visibleLineCap, let storage = textView.textStorage else { return }
         let extra = lineCount - Self.visibleLineCap
         let string = storage.string as NSString
@@ -233,10 +238,10 @@ private final class ConsoleLogHost: NSView {
             location = range.location + 1
             removed += 1
         }
-        if location > 0 {
-            storage.deleteCharacters(in: NSRange(location: 0, length: location))
-            lineCount -= removed
-        }
+        guard location > 0 else { return }
+        let kept = storage.attributedSubstring(from: NSRange(location: location, length: string.length - location))
+        storage.setAttributedString(kept)
+        lineCount -= removed
     }
 
     private var isPinnedToBottom: Bool {
@@ -246,7 +251,11 @@ private final class ConsoleLogHost: NSView {
     }
 
     private func scrollToEnd() {
-        textView.scrollToEndOfDocument(nil)
+        let clip = scrollView.contentView
+        let documentHeight = scrollView.documentView?.bounds.height ?? 0
+        let y = max(0, documentHeight - clip.bounds.height)
+        clip.scroll(to: NSPoint(x: 0, y: y))
+        scrollView.reflectScrolledClipView(clip)
     }
 
     private static let timestampFormatter: DateFormatter = {

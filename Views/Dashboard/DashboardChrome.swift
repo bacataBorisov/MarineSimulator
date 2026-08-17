@@ -222,11 +222,12 @@ struct ControlSliderView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        TextField("", value: centerValueBinding, format: .number.precision(.fractionLength(precision)))
-                            .textFieldStyle(.roundedBorder)
-                            .monospacedDigit()
-                            .frame(width: 84)
-                            .disabled(isDisabled)
+                        DeferredNumericField(
+                            value: centerValueBinding,
+                            fractionDigits: precision,
+                            width: 84
+                        )
+                        .disabled(isDisabled)
                     }
 
                     ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {

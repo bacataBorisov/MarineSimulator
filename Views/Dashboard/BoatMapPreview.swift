@@ -12,11 +12,16 @@ private extension CLLocationCoordinate2D {
     func isEffectivelyEqual(to other: CLLocationCoordinate2D) -> Bool {
         abs(latitude - other.latitude) < 1e-8 && abs(longitude - other.longitude) < 1e-8
     }
+
+    func isVisuallyEqual(to other: CLLocationCoordinate2D) -> Bool {
+        abs(latitude - other.latitude) < 1e-5 && abs(longitude - other.longitude) < 1e-5
+    }
 }
 
 struct BoatMapView: NSViewRepresentable {
     @Environment(NMEASimulator.self) private var nmeaManager
 
+    var isActive: Bool = true
     var topChromeInset: CGFloat = 0
     var trailingOverlayInset: CGFloat = 0
 
@@ -40,6 +45,7 @@ struct BoatMapView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: BoatMapContainerView, context: Context) {
+        guard isActive else { return }
         context.coordinator.update(
             container: nsView,
             gpsData: nmeaManager.gpsData,
@@ -53,10 +59,10 @@ struct BoatMapView: NSViewRepresentable {
     final class Coordinator: NSObject, MKMapViewDelegate {
         private weak var container: BoatMapContainerView?
         private var boatAnnotation = MKPointAnnotation()
-        private let seamarkOverlay = MKTileOverlay(urlTemplate: "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png")
         private var hasPlacedInitialCamera = false
         private var lastBearingDegrees: Double = 0
         private var lastAppliedCameraHeading: CGFloat = .nan
+        private var lastMapApplyTime: CFAbsoluteTime = 0
         private var tackAnimationActive = false
 
         func attach(to container: BoatMapContainerView) {
@@ -76,6 +82,8 @@ struct BoatMapView: NSViewRepresentable {
         ) {
             #if DEBUG
             HangProbe.tick(.mapUpdate)
+            HangProbe.enter("map.update")
+            defer { HangProbe.leave("map.update") }
             #endif
             let mapView = container.mapView
             guard mapView.bounds.width > 1, mapView.bounds.height > 1 else {
@@ -85,16 +93,23 @@ struct BoatMapView: NSViewRepresentable {
                 return
             }
 
+            let now = CFAbsoluteTimeGetCurrent()
+            if hasPlacedInitialCamera, !tackInProgress, now - lastMapApplyTime < 0.25 {
+                container.updateControlInsets(top: topChromeInset, trailing: trailingOverlayInset)
+                return
+            }
+            lastMapApplyTime = now
+
             let coordinate = CLLocationCoordinate2D(latitude: gpsData.latitude, longitude: gpsData.longitude)
 
             if !mapView.annotations.contains(where: { $0 === boatAnnotation }) {
                 boatAnnotation.coordinate = coordinate
                 mapView.addAnnotation(boatAnnotation)
-            } else if !boatAnnotation.coordinate.isEffectivelyEqual(to: coordinate) {
+            } else if !boatAnnotation.coordinate.isVisuallyEqual(to: coordinate) {
                 boatAnnotation.coordinate = coordinate
             }
 
-            let bearingChanged = abs(lastBearingDegrees - bearingDegrees) > 0.05
+            let bearingChanged = abs(lastBearingDegrees - bearingDegrees) > (tackInProgress ? 0.5 : 2)
             tackAnimationActive = tackInProgress
             lastBearingDegrees = bearingDegrees
             if bearingChanged {
@@ -121,8 +136,6 @@ struct BoatMapView: NSViewRepresentable {
             mapView.isPitchEnabled = true
             mapView.isScrollEnabled = true
             mapView.cameraZoomRange = MKMapView.CameraZoomRange(minCenterCoordinateDistance: 200, maxCenterCoordinateDistance: 5_000_000)
-            seamarkOverlay.canReplaceMapContent = false
-            mapView.addOverlay(seamarkOverlay, level: .aboveLabels)
         }
 
         @objc
@@ -186,6 +199,8 @@ struct BoatMapView: NSViewRepresentable {
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
             #if DEBUG
             HangProbe.tick(.mapRegion)
+            HangProbe.enter("map.region")
+            defer { HangProbe.leave("map.region") }
             #endif
             let heading = mapView.camera.heading
             guard !lastAppliedCameraHeading.isFinite || abs(lastAppliedCameraHeading - heading) > 0.05 else { return }
@@ -365,7 +380,7 @@ private final class BoatAnnotationView: MKAnnotationView {
         guard screenDegrees.isFinite else { return }
         if lastScreenDegrees.isFinite, abs(screenDegrees - lastScreenDegrees) < 0.05 { return }
         lastScreenDegrees = screenDegrees
-        imageView.image = Self.makeImage(rotatedBy: screenDegrees)
+        imageView.image = Self.cachedImage(rotatedBy: screenDegrees)
     }
 
     private func setup() {
@@ -381,7 +396,21 @@ private final class BoatAnnotationView: MKAnnotationView {
         imageView.frame = box
         imageView.autoresizingMask = [.width, .height]
         addSubview(imageView)
-        imageView.image = Self.makeImage(rotatedBy: 0)
+        imageView.image = Self.cachedImage(rotatedBy: 0)
+    }
+
+    private static var imageCache: [Int: NSImage] = [:]
+
+    private static func cachedImage(rotatedBy degrees: CGFloat) -> NSImage {
+        let key = Int((degrees / 2).rounded()) * 2
+        if let cached = imageCache[key] { return cached }
+        #if DEBUG
+        HangProbe.enter("map.image")
+        defer { HangProbe.leave("map.image") }
+        #endif
+        let image = makeImage(rotatedBy: CGFloat(key))
+        imageCache[key] = image
+        return image
     }
 
     private static func makeImage(rotatedBy degrees: CGFloat) -> NSImage {
