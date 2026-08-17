@@ -24,4 +24,4 @@ Wake jank: first heading change lagged until a page swap remounted docks. Cause:
 
 ## Next
 
-If asked to refactor: TransmitLoop extension first, then stop.
+TransmitLoop extract is in progress (`NMEASimulator+TransmitLoop.swift`). Next optional splits: LiveWeather, Tack, Endpoints. Do not merge the two tickSimulation paths.

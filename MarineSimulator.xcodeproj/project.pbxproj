@@ -101,6 +101,7 @@
 		06B4B2E02DFE4C54005DC523 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */; };
 		06BFD0012F900001005DE47D /* HardwareProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BFD0022F900001005DE47D /* HardwareProfile.swift */; };
 		06BFD0032F900001005DE47D /* NMEASimulator+HardwareProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */; };
+		06TL00112F901002005DE47D /* NMEASimulator+TransmitLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */; };
 		06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D349022E91ED6C005F76A4 /* TopControlBar.swift */; };
 		06F0F94B2FF9E24C002F752C /* SimulationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94A2FF9E24C002F752C /* SimulationState.swift */; };
 		06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */; };
@@ -222,6 +223,7 @@
 		06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		06BFD0022F900001005DE47D /* HardwareProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareProfile.swift; sourceTree = "<group>"; };
 		06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+HardwareProfile.swift"; sourceTree = "<group>"; };
+		06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+TransmitLoop.swift"; sourceTree = "<group>"; };
 		06D349022E91ED6C005F76A4 /* TopControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopControlBar.swift; sourceTree = "<group>"; };
 		06E0A0112F88B0E10008299A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		06E0A0122F88B0E10008299A /* begin-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "begin-chat.md"; sourceTree = "<group>"; };
@@ -361,6 +363,7 @@
 			children = (
 				06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */,
 				06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */,
+				06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */,
 				0648D25C2E023240000DC7E3 /* NMEASimulator+SentenceBuilder.swift */,
 				0648D25E2E02339D000DC7E3 /* NMEASimulator+WindCalculations.swift */,
 				0648D2602E023437000DC7E3 /* NMEASimulator+FormattedValues.swift */,
@@ -817,6 +820,7 @@
 				06AFA9622F8C4DA900A76F15 /* BoatProfile.swift in Sources */,
 				06BFD0012F900001005DE47D /* HardwareProfile.swift in Sources */,
 				06BFD0032F900001005DE47D /* NMEASimulator+HardwareProfile.swift in Sources */,
+				06TL00112F901002005DE47D /* NMEASimulator+TransmitLoop.swift in Sources */,
 				06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */,
 				06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */,
 				06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */,
