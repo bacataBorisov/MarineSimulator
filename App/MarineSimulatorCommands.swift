@@ -10,11 +10,10 @@ struct MarineSimulatorCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
 
-        CommandMenu("Simulation") {
+        CommandGroup(after: .sidebar) {
             Button(SimulatorCommandTarget.current?.isTransmitting == true ? "Stop" : "Start") {
                 toggleSimulation()
             }
-            .keyboardShortcut("r", modifiers: .command)
             .disabled(SimulatorCommandTarget.current == nil)
 
             Button("Copy Console") {

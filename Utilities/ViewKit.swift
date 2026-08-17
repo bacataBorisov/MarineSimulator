@@ -10,13 +10,13 @@ struct ViewKit {
     static func displayLabel(_ label: String, value: Double?, precision: Int? = 0) -> some View {
         VStack(spacing: 4) {
             Text(label)
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
 
             Text(value.map { String(format: "%.\(precision ?? 0)f", $0) } ?? "--")
-                .font(.system(.title2, design: .monospaced))
+                .font(.system(.title, design: .monospaced))
                 .fontWeight(.semibold)
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)

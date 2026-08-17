@@ -19,7 +19,7 @@ struct HydroConfig: View {
     @State var showVLW: Bool = false
     
     var body: some View {
-        SentencePanelLayout {
+        SentencePage {
             HydroSentencesSection(
                 nmeaManager: nmeaManager, shouldSendDBT: $nmeaManager.sentenceToggles.shouldSendDBT,
                 shouldSendDPT: $nmeaManager.sentenceToggles.shouldSendDPT,
@@ -34,14 +34,10 @@ struct HydroConfig: View {
                 showVBW: $showVBW,
                 showVLW: $showVLW
             )
-        } preview: {
-            VStack(spacing: UIConstants.spacing * 2) {
-                ViewKit.displayLabel("Depth", value: nmeaManager.depth.value, precision: 1)
-                ViewKit.displayLabel("STW", value: nmeaManager.speed.value, precision: 1)
-                ViewKit.displayLabel("Sea °C", value: nmeaManager.seaTemp.value, precision: 1)
-            }
-            .padding()
-            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
+        } live: {
+            ViewKit.displayLabel("Depth", value: nmeaManager.isTransmitting ? nmeaManager.depth.value : nil, precision: 1)
+            ViewKit.displayLabel("STW", value: nmeaManager.isTransmitting ? nmeaManager.speed.value : nil, precision: 1)
+            ViewKit.displayLabel("Sea °C", value: nmeaManager.isTransmitting ? nmeaManager.seaTemp.value : nil, precision: 1)
         }
     }
 }
@@ -79,6 +75,7 @@ private struct HydroSentencesSection: View {
     }
     
     var body: some View {
+        VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
         GroupBox(label: Text("Depth")) {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 
@@ -283,6 +280,7 @@ private struct HydroSentencesSection: View {
             }
             .toggleStyle(.switch)
             .controlSize(.regular)
+        }
         }
     }
 }

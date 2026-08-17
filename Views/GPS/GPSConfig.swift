@@ -31,7 +31,7 @@ struct GPSConfig: View {
 
     
     var body: some View {
-        SentencePanelLayout {
+        SentencePage {
             GPSSentencesSection(
                 nmeaManager: nmeaManager,
                 shouldSendRMC: $nmeaManager.sentenceToggles.shouldSendRMC,

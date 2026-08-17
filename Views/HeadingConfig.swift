@@ -16,7 +16,7 @@ struct HeadingConfig: View {
     @State var showROT: Bool = false
     
     var body: some View {
-        SentencePanelLayout {
+        SentencePage {
             HeadingSentencesSection(
                 shouldSendHDG: $nmeaManager.sentenceToggles.shouldSendHDG,
                 shouldSendHDT: $nmeaManager.sentenceToggles.shouldSendHDT,
@@ -26,13 +26,9 @@ struct HeadingConfig: View {
                 showROT: $showROT,
                 nmeaManager: nmeaManager
             )
-        } preview: {
-            VStack(spacing: UIConstants.spacing * 2) {
-                ViewKit.displayLabel("Magnetic", value: nmeaManager.heading.value, precision: 1)
-                ViewKit.displayLabel("True (Gyro)", value: nmeaManager.gyroHeading.value, precision: 1)
-            }
-            .padding()
-            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
+        } live: {
+            ViewKit.displayLabel("Magnetic", value: nmeaManager.isTransmitting ? nmeaManager.heading.value : nil, precision: 1)
+            ViewKit.displayLabel("True (Gyro)", value: nmeaManager.isTransmitting ? nmeaManager.gyroHeading.value : nil, precision: 1)
         }
     }
 }
@@ -56,6 +52,7 @@ private struct HeadingSentencesSection: View {
     @Bindable var nmeaManager: NMEASimulator
     
     var body: some View {
+        VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
         GroupBox(label: Text("Magnetic Compass")) {
             VStack(alignment: .leading, spacing: UIConstants.spacing) {
                 
@@ -124,6 +121,7 @@ private struct HeadingSentencesSection: View {
             }
             .toggleStyle(.switch)
             .controlSize(.regular)
+        }
         }
     }
 }

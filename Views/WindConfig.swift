@@ -12,7 +12,7 @@ struct WindConfig: View {
     @State var showVPW: Bool = false
     
     var body: some View {
-        SentencePanelLayout {
+        SentencePage {
             WindSentencesSection(
                 shouldSendMWV: $nmeaManager.sentenceToggles.shouldSendMWV,
                 shouldSendMWD: $nmeaManager.sentenceToggles.shouldSendMWD,
@@ -22,14 +22,10 @@ struct WindConfig: View {
                 showVPW: $showVPW,
                 nmeaManager: nmeaManager
             )
-        } preview: {
-            VStack(spacing: UIConstants.spacing * 2) {
-                ViewKit.displayLabel("TWD", value: nmeaManager.twd.value, precision: 0)
-                ViewKit.displayLabel("TWS", value: nmeaManager.tws.value, precision: 1)
-                ViewKit.displayLabel("HDG", value: nmeaManager.heading.value, precision: 0)
-            }
-            .padding()
-            .background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
+        } live: {
+            ViewKit.displayLabel("TWD", value: nmeaManager.isTransmitting ? nmeaManager.twd.value : nil, precision: 0)
+            ViewKit.displayLabel("TWS", value: nmeaManager.isTransmitting ? nmeaManager.tws.value : nil, precision: 1)
+            ViewKit.displayLabel("HDG", value: nmeaManager.isTransmitting ? nmeaManager.heading.value : nil, precision: 0)
         }
     }
 }

@@ -31,7 +31,7 @@ enum ControlCategory: String, CaseIterable {
 // MARK: - Main Left Panel
 struct LeftControlsPanel: View {
     @Bindable var nmea: NMEASimulator
-    @State private var category: ControlCategory = .wind
+    @AppStorage("dashboard.live_control_category") private var category: ControlCategory = .wind
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppChrome.railSectionSpacing) {

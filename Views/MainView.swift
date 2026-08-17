@@ -148,27 +148,21 @@ private struct MainWindowToolbar: ToolbarContent {
     @Binding var selectedPanelRawValue: String
 
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            ZStack {
+        ToolbarItem(placement: .primaryAction) {
+            Button {
                 if nmeaManager.isTransmitting {
-                    Button {
-                        nmeaManager.stopSimulation()
-                    } label: {
-                        Label("Stop", systemImage: "stop.fill")
-                    }
-                    .keyboardShortcut("r", modifiers: .command)
-                    .transition(.opacity)
+                    nmeaManager.stopSimulation()
                 } else {
-                    Button {
-                        nmeaManager.startSimulation()
-                    } label: {
-                        Label(nmeaManager.isTimerSelected ? "Start" : "Send Once", systemImage: nmeaManager.isTimerSelected ? "play.fill" : "paperplane.fill")
-                    }
-                    .keyboardShortcut("r", modifiers: .command)
-                    .transition(.opacity)
+                    nmeaManager.startSimulation()
                 }
+            } label: {
+                Label(
+                    nmeaManager.isTransmitting ? "Stop" : "Start",
+                    systemImage: nmeaManager.isTransmitting ? "stop.fill" : "play.fill"
+                )
             }
-            .animation(.easeInOut(duration: 0.3), value: nmeaManager.isTransmitting)
+            .help(nmeaManager.isTransmitting ? "Stop sending data (⌘R)" : "Start sending data (⌘R)")
+            .keyboardShortcut("r", modifiers: .command)
         }
 
         ToolbarItem(placement: .status) {

@@ -45,6 +45,7 @@ enum PageChrome {
     static let stackSpacing: CGFloat = 20
     static let splitBreakpoint: CGFloat = 720
     static let previewColumnWidth: CGFloat = 320
+    static let sentenceCardMaxWidth: CGFloat = 520
 }
 
 public enum UIStrings {

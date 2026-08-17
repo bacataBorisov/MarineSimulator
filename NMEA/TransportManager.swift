@@ -138,6 +138,17 @@ final class TransportManager {
                 message: "\(endpoint.transport.rawValue.uppercased()) connected to \(endpoint.effectiveHost):\(endpoint.port)"
             )
         case .failure(let error):
+            // UDP is fire-and-forget. Sleeping phones / no route return EHOSTDOWN
+            // from sendto; the next tick still goes out. Do not paint that as a stop.
+            if endpoint.transport == .udp, isUDPUnreachable(error) {
+                status = OutputEndpointStatus(
+                    endpointID: endpoint.id,
+                    level: .connected,
+                    message: "UDP sending to \(endpoint.effectiveHost):\(endpoint.port)"
+                )
+                break
+            }
+
             let level: TransportStatusLevel = {
                 if case .posix(.ECONNREFUSED) = error {
                     return .warning
@@ -199,6 +210,15 @@ final class TransportManager {
         DispatchQueue.main.async { [weak self] in
             guard let self, let delegate = self.delegate else { return }
             delegate.transportManager(self, didUpdateStatus: status)
+        }
+    }
+
+    private func isUDPUnreachable(_ error: NWError) -> Bool {
+        switch error {
+        case .posix(.EHOSTDOWN), .posix(.EHOSTUNREACH), .posix(.ENETDOWN), .posix(.ENETUNREACH):
+            return true
+        default:
+            return false
         }
     }
 
