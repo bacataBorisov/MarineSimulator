@@ -14,7 +14,6 @@
 		06212DD92E0B6B59007A4537 /* HDTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD82E0B6B59007A4537 /* HDTHelpView.swift */; };
 		06212DDB2E0B6B83007A4537 /* ROTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DDA2E0B6B83007A4537 /* ROTHelpView.swift */; };
 		06212DDF2E0CCE27007A4537 /* ConsolePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DDE2E0CCE27007A4537 /* ConsolePanelView.swift */; };
-		06212DE52E10D9DD007A4537 /* WorkPlaygroundStuff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DE42E10D9CE007A4537 /* WorkPlaygroundStuff.swift */; };
 		06212DEA2E10DE31007A4537 /* DBTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DE92E10DE31007A4537 /* DBTHelpView.swift */; };
 		06212DEC2E10DE87007A4537 /* DPTHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DEB2E10DE87007A4537 /* DPTHelpView.swift */; };
 		06212DEE2E10DF0E007A4537 /* MTWHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DED2E10DF0E007A4537 /* MTWHelpView.swift */; };
@@ -140,7 +139,6 @@
 		06212DD82E0B6B59007A4537 /* HDTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HDTHelpView.swift; sourceTree = "<group>"; };
 		06212DDA2E0B6B83007A4537 /* ROTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROTHelpView.swift; sourceTree = "<group>"; };
 		06212DDE2E0CCE27007A4537 /* ConsolePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePanelView.swift; sourceTree = "<group>"; };
-		06212DE42E10D9CE007A4537 /* WorkPlaygroundStuff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkPlaygroundStuff.swift; sourceTree = "<group>"; };
 		06212DE92E10DE31007A4537 /* DBTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBTHelpView.swift; sourceTree = "<group>"; };
 		06212DEB2E10DE87007A4537 /* DPTHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DPTHelpView.swift; sourceTree = "<group>"; };
 		06212DED2E10DF0E007A4537 /* MTWHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTWHelpView.swift; sourceTree = "<group>"; };
@@ -587,7 +585,6 @@
 				0648D2592E010520000DC7E3 /* ViewKit.swift */,
 				06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */,
 				06HIG0172F901001005DE47D /* SettingsDocumentController.swift */,
-				06212DE42E10D9CE007A4537 /* WorkPlaygroundStuff.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -836,7 +833,6 @@
 				06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */,
 				06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */,
 				06212DF02E10DF3B007A4537 /* VHWHelpView.swift in Sources */,
-				06212DE52E10D9DD007A4537 /* WorkPlaygroundStuff.swift in Sources */,
 				06F0F94B2FF9E24C002F752C /* SimulationState.swift in Sources */,
 				06F0F9512FF9F42C002F752C /* SentenceScheduler.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
