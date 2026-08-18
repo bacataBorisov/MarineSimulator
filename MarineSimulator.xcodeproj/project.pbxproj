@@ -81,7 +81,6 @@
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
 		06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C92DF51286005DC523 /* UDPClient.swift */; };
-		06B4B2CC2DF52E09005DC523 /* ConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CB2DF52E02005DC523 /* ConfigurationView.swift */; };
 		06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */; };
 		06B4B2D02DF52FCD005DC523 /* HydroConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */; };
 		06B4B2D22DF52FEB005DC523 /* GPSConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2D12DF52FE8005DC523 /* GPSConfig.swift */; };
@@ -94,6 +93,7 @@
 		06BFD0012F900001005DE47D /* HardwareProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BFD0022F900001005DE47D /* HardwareProfile.swift */; };
 		06BFD0032F900001005DE47D /* NMEASimulator+HardwareProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */; };
 		06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D349022E91ED6C005F76A4 /* TopControlBar.swift */; };
+		06EP00112F901005005DE47D /* NMEASimulator+Endpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EP00102F901005005DE47D /* NMEASimulator+Endpoints.swift */; };
 		06F0F94B2FF9E24C002F752C /* SimulationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94A2FF9E24C002F752C /* SimulationState.swift */; };
 		06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */; };
 		06F0F94F2FF9EB27002F752C /* SimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94E2FF9EB27002F752C /* SimulationEngine.swift */; };
@@ -224,6 +224,7 @@
 		06E0A0142F88B0E10008299A /* end-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "end-chat.md"; sourceTree = "<group>"; };
 		06E0A0152F88B0E10008299A /* open-questions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "open-questions.md"; sourceTree = "<group>"; };
 		06E0A0162F88B0E10008299A /* project-memory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "project-memory.md"; sourceTree = "<group>"; };
+		06EP00102F901005005DE47D /* NMEASimulator+Endpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+Endpoints.swift"; sourceTree = "<group>"; };
 		06F0F94A2FF9E24C002F752C /* SimulationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationState.swift; sourceTree = "<group>"; };
 		06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationConfig.swift; sourceTree = "<group>"; };
 		06F0F94E2FF9EB27002F752C /* SimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationEngine.swift; sourceTree = "<group>"; };
@@ -370,6 +371,7 @@
 				06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */,
 				06LW00102F901003005DE47D /* NMEASimulator+LiveWeather.swift */,
 				06TK00102F901004005DE47D /* NMEASimulator+Tack.swift */,
+				06EP00102F901005005DE47D /* NMEASimulator+Endpoints.swift */,
 				0648D25C2E023240000DC7E3 /* NMEASimulator+SentenceBuilder.swift */,
 				0648D25E2E02339D000DC7E3 /* NMEASimulator+WindCalculations.swift */,
 				0648D2602E023437000DC7E3 /* NMEASimulator+FormattedValues.swift */,
@@ -770,7 +772,6 @@
 				06883DEA2F78B925005DE47D /* SimulatorSettings.swift in Sources */,
 				06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */,
 				06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */,
-				06B4B2CC2DF52E09005DC523 /* ConfigurationView.swift in Sources */,
 				0648D2642E02433E000DC7E3 /* MWVHelpView.swift in Sources */,
 				06212DD42E0B66FD007A4537 /* SensorToggleStates.swift in Sources */,
 				06HIG0012F901001005DE47D /* ConnectionView.swift in Sources */,
@@ -830,6 +831,7 @@
 				06TL00112F901002005DE47D /* NMEASimulator+TransmitLoop.swift in Sources */,
 				06LW00112F901003005DE47D /* NMEASimulator+LiveWeather.swift in Sources */,
 				06TK00112F901004005DE47D /* NMEASimulator+Tack.swift in Sources */,
+				06EP00112F901005005DE47D /* NMEASimulator+Endpoints.swift in Sources */,
 				06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */,
 				06883DE82F78B5AE005DE47D /* SimulationSnapshot.swift in Sources */,
 				06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */,
