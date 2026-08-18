@@ -70,6 +70,9 @@ private final class ConsoleLogHost: NSView {
     private var lineCount = 0
     private var syncQueued = false
     private var isSyncing = false
+    /// Fresh / empty log follows the tail until the user scrolls away from the bottom.
+    private var followTail = true
+    private var isProgrammaticScroll = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -98,6 +101,13 @@ private final class ConsoleLogHost: NSView {
         textView.layoutManager?.allowsNonContiguousLayout = true
 
         scrollView.documentView = textView
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(clipViewBoundsDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
         addSubview(scrollView)
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -105,6 +115,10 @@ private final class ConsoleLogHost: NSView {
             scrollView.topAnchor.constraint(equalTo: topAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     required init?(coder: NSCoder) {
@@ -187,7 +201,7 @@ private final class ConsoleLogHost: NSView {
 
     private func append(records: [NMEASimulator.OutputMessageRecord], startingAt: Int) {
         guard !records.isEmpty, let storage = textView.textStorage else { return }
-        let pin = isPinnedToBottom
+        let pin = followTail || isPinnedToBottom
         let builder = NSMutableAttributedString()
         for (offset, record) in records.enumerated() {
             builder.append(Self.line(
@@ -204,7 +218,7 @@ private final class ConsoleLogHost: NSView {
 
     private func append(events: [TransportHistoryEvent], startingAt: Int) {
         guard !events.isEmpty, let storage = textView.textStorage else { return }
-        let pin = isPinnedToBottom
+        let pin = followTail || isPinnedToBottom
         let builder = NSMutableAttributedString()
         for (offset, event) in events.enumerated() {
             builder.append(Self.line(
@@ -224,6 +238,7 @@ private final class ConsoleLogHost: NSView {
         lastRecordID = nil
         lastEventID = nil
         lineCount = 0
+        followTail = true
     }
 
     private func rebuildIfOverCap() {
@@ -244,18 +259,41 @@ private final class ConsoleLogHost: NSView {
         lineCount -= removed
     }
 
+    @objc
+    private func clipViewBoundsDidChange() {
+        guard !isProgrammaticScroll else { return }
+        followTail = isPinnedToBottom
+    }
+
     private var isPinnedToBottom: Bool {
-        let visible = scrollView.contentView.bounds.maxY
-        let document = scrollView.documentView?.bounds.maxY ?? visible
-        return document - visible < 40
+        let clip = scrollView.contentView
+        let documentHeight = scrollView.documentView?.bounds.height ?? 0
+        if documentHeight <= clip.bounds.height + 1 {
+            return true
+        }
+        return documentHeight - clip.bounds.maxY < 40
     }
 
     private func scrollToEnd() {
-        let clip = scrollView.contentView
-        let documentHeight = scrollView.documentView?.bounds.height ?? 0
-        let y = max(0, documentHeight - clip.bounds.height)
-        clip.scroll(to: NSPoint(x: 0, y: y))
-        scrollView.reflectScrolledClipView(clip)
+        guard let layoutManager = textView.layoutManager, let container = textView.textContainer else {
+            textView.scrollToEndOfDocument(nil)
+            return
+        }
+        layoutManager.ensureLayout(for: container)
+        let used = layoutManager.usedRect(for: container)
+        let inset = textView.textContainerInset.height * 2
+        var frame = textView.frame
+        frame.size.height = max(used.height + inset, scrollView.contentView.bounds.height)
+        textView.frame = frame
+
+        isProgrammaticScroll = true
+        let end = NSRange(location: (textView.string as NSString).length, length: 0)
+        textView.scrollRangeToVisible(end)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        followTail = true
+        DispatchQueue.main.async { [weak self] in
+            self?.isProgrammaticScroll = false
+        }
     }
 
     private static let timestampFormatter: DateFormatter = {
