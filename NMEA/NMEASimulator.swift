@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import CoreLocation
 
 @Observable
 class NMEASimulator {
@@ -29,7 +28,7 @@ class NMEASimulator {
     // SimulationConfig is defined in Model/SimulationConfig.swift
 
     @ObservationIgnored private let persistenceManager: PersistenceManager
-    @ObservationIgnored private let weatherService: any WeatherService
+    @ObservationIgnored let weatherService: any WeatherService
 
     // MARK: - Sensors & Sentences States
 
@@ -214,13 +213,13 @@ class NMEASimulator {
             persistSettingsIfNeeded()
         }
     }
-    private(set) var latestLiveWeather: LiveWeatherSnapshot? {
+    var latestLiveWeather: LiveWeatherSnapshot? {
         didSet {
             guard !isRestoringSettings else { return }
             persistSettingsIfNeeded()
         }
     }
-    private(set) var liveWeatherStatus: LiveWeatherStatus = .idle
+    var liveWeatherStatus: LiveWeatherStatus = .idle
 
     var isLiveWeatherActive: Bool {
         weatherSourceMode == .liveWeather
@@ -297,7 +296,7 @@ class NMEASimulator {
 
     @ObservationIgnored
     var pendingTransmissions: [PendingTransmission] = []
-    @ObservationIgnored private var liveWeatherTask: Task<Bool, Never>?
+    @ObservationIgnored var liveWeatherTask: Task<Bool, Never>?
     /// Authoritative engine fields while the fast transmit timer runs off the main thread.
     @ObservationIgnored var transmitRuntime: SimulationState?
     @ObservationIgnored var consoleRecordBuffer: [OutputMessageRecord] = []
@@ -317,7 +316,7 @@ class NMEASimulator {
     var liveWeatherWindDirectionOffsetDeg: Double = 0
     var liveWeatherNoiseBaselineFetchDate: Date?
 
-    private struct TackAnimationState {
+    struct TackAnimationState {
         let startDate: Date
         let duration: TimeInterval
         let fromTrueHeading: Double
@@ -336,8 +335,8 @@ class NMEASimulator {
         }
     }
 
-    private var tackAnimationState: TackAnimationState?
-    @ObservationIgnored private var tackAnimationTimer: Timer?
+    var tackAnimationState: TackAnimationState?
+    @ObservationIgnored var tackAnimationTimer: Timer?
 
     /// Exposed for `SimulationInputMirror` (the struct lives outside this file).
     var tackAnimationInProgress: Bool { tackAnimationState != nil }
@@ -500,26 +499,7 @@ class NMEASimulator {
         beginSimulationRun()
     }
 
-    private func startSimulationWithFreshLiveWeather() {
-        let startupDate = Date.now
-
-        liveWeatherTask?.cancel()
-        liveWeatherTask = Task { [weak self] in
-            guard let self else { return false }
-            defer { self.liveWeatherTask = nil }
-
-            let success = await self.refreshLiveWeatherNow(force: true, at: startupDate)
-            guard success || self.latestLiveWeather != nil else {
-                self.appendHistoryEvent(level: .warning, category: .lifecycle, message: "Simulation start cancelled: live weather unavailable")
-                return false
-            }
-
-            self.beginSimulationRun()
-            return true
-        }
-    }
-
-    private func beginSimulationRun() {
+    func beginSimulationRun() {
         guard isTimerSelected else {
             appendHistoryEvent(level: .connected, category: .lifecycle, message: "Single transmission sent")
             runSimulationCycle()
@@ -663,73 +643,6 @@ class NMEASimulator {
 
     func clearTransportHistory() {
         transportHistory.removeAll()
-    }
-
-    func refreshLiveWeather(force: Bool = false) {
-        if force, let liveWeatherTask {
-            liveWeatherTask.cancel()
-            self.liveWeatherTask = nil
-        } else if liveWeatherTask != nil {
-            return
-        }
-
-        liveWeatherTask = Task { [weak self] in
-            guard let self else { return false }
-            defer { self.liveWeatherTask = nil }
-            return await self.refreshLiveWeatherNow(force: force)
-        }
-    }
-
-    @discardableResult
-    func refreshLiveWeatherNow(force: Bool = false, at timestamp: Date = .now) async -> Bool {
-        guard weatherSourceMode == .liveWeather else {
-            liveWeatherStatus = .idle
-            return false
-        }
-
-        guard sensorToggles.hasGPS else {
-            liveWeatherStatus = LiveWeatherStatus(state: .failed, message: "Enable GPS to use live weather.", lastUpdated: latestLiveWeather?.fetchedAt)
-            return false
-        }
-
-        if !force, !shouldRefreshLiveWeather(at: timestamp) {
-            return false
-        }
-
-        liveWeatherStatus = LiveWeatherStatus(state: .fetching, message: "Fetching live weather…", lastUpdated: latestLiveWeather?.fetchedAt)
-
-        do {
-            let snapshot = try await weatherService.fetchWeather(
-                latitude: gpsData.latitude,
-                longitude: gpsData.longitude,
-                date: timestamp
-            )
-            guard !Task.isCancelled, weatherSourceMode == .liveWeather else {
-                liveWeatherStatus = .idle
-                return false
-            }
-            latestLiveWeather = snapshot
-            applyResolvedLiveWeatherValues()
-            liveWeatherStatus = LiveWeatherStatus(
-                state: .ready,
-                message: "Live weather updated from \(snapshot.sourceName).",
-                lastUpdated: snapshot.fetchedAt
-            )
-            return true
-        } catch {
-            guard !Task.isCancelled, weatherSourceMode == .liveWeather else {
-                liveWeatherStatus = .idle
-                return false
-            }
-            liveWeatherStatus = LiveWeatherStatus(
-                state: .failed,
-                message: latestLiveWeather == nil
-                    ? error.localizedDescription
-                    : "Live weather refresh failed. Using last good weather. \(error.localizedDescription)",
-                lastUpdated: latestLiveWeather?.fetchedAt
-            )
-            return false
-        }
     }
 
     func runSimulationCycle(at timestamp: Date = .now) {
@@ -975,7 +888,7 @@ class NMEASimulator {
         }
     }
 
-    private func persistSettingsIfNeeded() {
+    func persistSettingsIfNeeded() {
         syncInputMirror()
         persistenceManager.persistIfNeeded(
             isRestoring: isRestoringSettings,
@@ -1207,121 +1120,7 @@ class NMEASimulator {
         }
     }
 
-    private var activeLiveWeather: LiveWeatherSnapshot? {
-        guard weatherSourceMode == .liveWeather else {
-            return nil
-        }
-        return latestLiveWeather
-    }
-
-    func triggerLiveWeatherRefreshIfNeeded(at timestamp: Date) {
-        guard weatherSourceMode == .liveWeather else {
-            return
-        }
-
-        guard liveWeatherTask == nil, shouldRefreshLiveWeather(at: timestamp) else {
-            return
-        }
-
-        refreshLiveWeather(force: false)
-    }
-
-    private func shouldRefreshLiveWeather(at timestamp: Date) -> Bool {
-        guard weatherSourceMode == .liveWeather else {
-            return false
-        }
-
-        guard let latestLiveWeather else {
-            return true
-        }
-
-        if timestamp.timeIntervalSince(latestLiveWeather.fetchedAt) >= liveWeatherSettings.refreshInterval {
-            return true
-        }
-
-        let latestLocation = CLLocation(latitude: latestLiveWeather.latitude, longitude: latestLiveWeather.longitude)
-        let currentLocation = CLLocation(latitude: gpsData.latitude, longitude: gpsData.longitude)
-        let distanceNM = currentLocation.distance(from: latestLocation) / 1852
-        return distanceNM >= liveWeatherSettings.minimumRefreshDistanceNM
-    }
-
-    private func resetLiveWeatherWindNoiseState() {
-        liveWeatherWindSpeedOffsetKt = 0
-        liveWeatherWindDirectionOffsetDeg = 0
-        liveWeatherNoiseBaselineFetchDate = nil
-    }
-
-    private func syncLiveWeatherWindNoiseBaselineIfNeeded(fetchedAt: Date) {
-        if liveWeatherNoiseBaselineFetchDate != fetchedAt {
-            liveWeatherNoiseBaselineFetchDate = fetchedAt
-            liveWeatherWindSpeedOffsetKt = 0
-            liveWeatherWindDirectionOffsetDeg = 0
-        }
-    }
-
-    /// Smooth, mean-reverting variation around the forecast (not i.i.d. each tick).
-    private func evolveLiveWeatherWindNoise(deltaTime: TimeInterval) {
-        let dt = min(max(deltaTime, 0), 4)
-        guard dt > 0 else { return }
-
-        let zSpeed = unitGaussianRandom()
-        let zDir = unitGaussianRandom()
-
-        let thetaSpeed = 0.07
-        let sigmaSpeedKt = 0.017
-        liveWeatherWindSpeedOffsetKt += -thetaSpeed * liveWeatherWindSpeedOffsetKt * dt + sigmaSpeedKt * sqrt(dt) * zSpeed
-        liveWeatherWindSpeedOffsetKt = liveWeatherWindSpeedOffsetKt.clamped(to: -1.1...1.1)
-
-        let thetaDir = 0.06
-        let sigmaDirDeg = 0.22
-        liveWeatherWindDirectionOffsetDeg += -thetaDir * liveWeatherWindDirectionOffsetDeg * dt + sigmaDirDeg * sqrt(dt) * zDir
-        liveWeatherWindDirectionOffsetDeg = liveWeatherWindDirectionOffsetDeg.clamped(to: -10...10)
-    }
-
-    func generateLiveWeatherValue(
-        base: Double?,
-        jitter: Double,
-        range: ClosedRange<Double>,
-        wraps: Bool
-    ) -> Double? {
-        guard let base else {
-            return nil
-        }
-
-        let offset = Double.random(in: -jitter...jitter)
-        if wraps {
-            return normalizeAngle(base + offset)
-        }
-
-        return (base + offset).clamped(to: range)
-    }
-
-    private func applyResolvedLiveWeatherValues() {
-        guard let liveWeather = activeLiveWeather else {
-            return
-        }
-
-        twd.value = sensorToggles.hasAnemometer
-            ? liveWeather.trueWindDirection
-            : nil
-        tws.value = sensorToggles.hasAnemometer
-            ? liveWeather.trueWindSpeedKnots
-            : nil
-        seaTemp.value = sensorToggles.hasWaterTempSensor
-            ? liveWeather.seaSurfaceTemperatureCelsius
-            : nil
-        airTemp.value = sensorToggles.hasAirTempSensor
-            ? liveWeather.airTemperatureCelsius
-            : nil
-        humidity.value = sensorToggles.hasHumidtySensor
-            ? liveWeather.relativeHumidityPercent
-            : nil
-        barometer.value = sensorToggles.hasBarometer
-            ? liveWeather.airPressureHectopascals
-            : nil
-    }
-
-    private func resolvedTrueHeading(magneticHeading: Double?, gyroHeading: Double?, variation: Double) -> Double? {
+    func resolvedTrueHeading(magneticHeading: Double?, gyroHeading: Double?, variation: Double) -> Double? {
         if let gyroHeading {
             return normalizeAngle(gyroHeading)
         }
@@ -1334,11 +1133,11 @@ class NMEASimulator {
     }
 
 
-    private func simulatedMagneticVariation(for gpsData: GPSData, at timestamp: Date) -> Double {
+    func simulatedMagneticVariation(for gpsData: GPSData, at timestamp: Date) -> Double {
         SimulationEngine.simulatedMagneticVariation(for: gpsData, at: timestamp)
     }
 
-    private func simulatedCompassDeviation(heading: Double?) -> Double {
+    func simulatedCompassDeviation(heading: Double?) -> Double {
         SimulationEngine.simulatedCompassDeviation(heading: heading)
     }
 
@@ -1437,76 +1236,6 @@ class NMEASimulator {
         return visibleCount + bufferedCount
     }
 
-    private func scheduleTackTimer() {
-        tackAnimationTimer?.invalidate()
-        let timer = Timer(timeInterval: Self.tackAnimationTickInterval, repeats: true) { [weak self] _ in
-            self?.advanceTackAnimation(at: Date())
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        tackAnimationTimer = timer
-    }
-
-    private func advanceTackAnimation(at date: Date) {
-        guard let state = tackAnimationState else {
-            tackAnimationTimer?.invalidate()
-            tackAnimationTimer = nil
-            return
-        }
-
-        if state.isComplete(at: date) {
-            applySimulatedTrueHeading(state.toTrueHeading, at: date)
-            tackAnimationState = nil
-            tackAnimationTimer?.invalidate()
-            tackAnimationTimer = nil
-            persistSettingsIfNeeded()
-            return
-        }
-
-        applySimulatedTrueHeading(state.trueHeading(at: date), at: date)
-    }
-
-    private func applySimulatedTrueHeading(_ trueDeg: Double, at date: Date) {
-        let variation = simulatedMagneticVariation(for: gpsData, at: date)
-        let trueNorm = normalizeAngle(trueDeg)
-        if sensorToggles.hasGyro {
-            gyroHeading.value = trueNorm
-            gyroHeading.centerValue = trueNorm.clamped(to: gyroHeading.range)
-        }
-        if sensorToggles.hasCompass {
-            let mag = normalizeAngle(trueNorm - variation)
-            heading.value = mag
-            heading.centerValue = mag.clamped(to: heading.range)
-        }
-
-        if isTransmitting, let previous = latestSnapshot {
-            latestSnapshot = SimulationSnapshot(
-                timestamp: date,
-                windDirectionTrue: previous.windDirectionTrue,
-                windSpeedTrue: previous.windSpeedTrue,
-                magneticHeading: sensorToggles.hasCompass ? heading.value : nil,
-                gyroHeading: sensorToggles.hasGyro ? gyroHeading.value : nil,
-                magneticVariation: variation,
-                compassDeviation: simulatedCompassDeviation(heading: heading.value),
-                boatSpeed: previous.boatSpeed,
-                depth: previous.depth,
-                seaTemperature: previous.seaTemperature,
-                airTemperature: previous.airTemperature,
-                relativeHumidity: previous.relativeHumidity,
-                airPressure: previous.airPressure,
-                gpsData: previous.gpsData,
-                gpsSignal: previous.gpsSignal,
-                turnRate: previous.turnRate,
-                logDistanceNm: previous.logDistanceNm,
-                tripDistanceNm: previous.tripDistanceNm,
-                navigationTarget: previous.navigationTarget
-            )
-        }
-
-        if tackAnimationState != nil {
-            NotificationCenter.default.post(name: Self.tackInstrumentStepNotification, object: self)
-        }
-    }
-
 }
 
 // MARK: - Interlock Helpers
@@ -1538,64 +1267,6 @@ extension NMEASimulator {
 
     var canSendFullWindData: Bool {
         canSendTrueWind && hasTrueHeading
-    }
-
-    /// Whether a tack animation is currently driving heading / gyro.
-    var isTackInProgress: Bool {
-        tackAnimationState != nil
-    }
-
-    /// Tack needs wind direction and at least one heading source (gyro and/or compass).
-    var canExecuteTackManeuver: Bool {
-        sensorToggles.hasAnemometer && (sensorToggles.hasGyro || sensorToggles.hasCompass)
-    }
-
-    /// Animates true heading through the shortest path onto the opposite close-hauled tack using the selected boat profile’s optimal upwind angle.
-    func beginTackManeuver() {
-        guard canExecuteTackManeuver else { return }
-
-        let run: () -> Void = { [weak self] in
-            guard let self else { return }
-            self.tackAnimationTimer?.invalidate()
-            self.tackAnimationTimer = nil
-
-            let twsSample = self.tws.value ?? self.tws.centerValue
-            let optimal = self.boatProfile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: twsSample)
-            let twdDeg = normalizeAngle(self.twd.value ?? self.twd.centerValue)
-
-            let variation = self.simulatedMagneticVariation(for: self.gpsData, at: Date())
-            let currentTrue = self.resolvedTrueHeading(
-                magneticHeading: self.heading.value,
-                gyroHeading: self.gyroHeading.value,
-                variation: variation
-            ) ?? normalizeAngle(self.gpsData.courseOverGround)
-
-            let portCloseHauled = normalizeAngle(twdDeg + optimal)
-            let stbdCloseHauled = normalizeAngle(twdDeg - optimal)
-
-            let distToPort = abs(calculateShortestRotation(from: currentTrue, to: portCloseHauled))
-            let distToStbd = abs(calculateShortestRotation(from: currentTrue, to: stbdCloseHauled))
-            let targetTrue = distToPort <= distToStbd ? stbdCloseHauled : portCloseHauled
-
-            let turnSize = abs(calculateShortestRotation(from: currentTrue, to: targetTrue))
-            guard turnSize > 0.5 else { return }
-
-            let duration = (6 + turnSize / 18 * 10).clamped(to: 6...20)
-            self.tackAnimationState = TackAnimationState(
-                startDate: Date(),
-                duration: duration,
-                fromTrueHeading: currentTrue,
-                toTrueHeading: targetTrue
-            )
-            self.applySimulatedTrueHeading(currentTrue, at: Date())
-            self.scheduleTackTimer()
-        }
-
-        if Thread.isMainThread {
-            run()
-        } else {
-            DispatchQueue.main.async(execute: run)
-        }
     }
 }
 // MARK: - TransportManagerDelegate
