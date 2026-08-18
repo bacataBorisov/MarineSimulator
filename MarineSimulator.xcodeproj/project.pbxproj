@@ -203,7 +203,6 @@
 		06B4B2AE2DF50AB8005DC523 /* MarineSimulatorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMEASimulator.swift; sourceTree = "<group>"; };
 		06B4B2C92DF51286005DC523 /* UDPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPClient.swift; sourceTree = "<group>"; };
-		06B4B2CB2DF52E02005DC523 /* ConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationView.swift; sourceTree = "<group>"; };
 		06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindConfig.swift; sourceTree = "<group>"; };
 		06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HydroConfig.swift; sourceTree = "<group>"; };
 		06B4B2D12DF52FE8005DC523 /* GPSConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPSConfig.swift; sourceTree = "<group>"; };
@@ -542,7 +541,6 @@
 				06HIG0132F901001005DE47D /* ConfigurationChrome.swift */,
 				06HIG0142F901001005DE47D /* SidebarNavigation.swift */,
 				06HIG0152F901001005DE47D /* SentencePanelLayout.swift */,
-				06B4B2CB2DF52E02005DC523 /* ConfigurationView.swift */,
 				06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */,
 				0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */,
 				06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */,

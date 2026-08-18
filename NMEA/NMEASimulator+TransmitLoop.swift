@@ -261,6 +261,20 @@ extension NMEASimulator {
         }
     }
 
+    func performIdleSimulationCycle(at timestamp: Date) {
+        resetTransportConnectionsIfEndpointTargetsChangedWhileTransmitting()
+        _ = enabledOutputEndpoints()
+        syncInputMirror()
+
+        var runtime = idleRuntimeFromSelf()
+        let tickDateBefore = runtime.lastSimulationTickDate
+        let context = captureSimulationConfig()
+
+        performSimulationCycle(runtime: &runtime, context: context, at: timestamp)
+
+        applyIdleRuntimeToSelf(runtime, persist: runtime.lastSimulationTickDate != tickDateBefore)
+    }
+
     func runTransmitSimulationCycle(at timestamp: Date) {
         guard var runtime = transmitRuntime else { return }
 
@@ -271,6 +285,20 @@ extension NMEASimulator {
         if Thread.isMainThread {
             resetTransportConnectionsIfEndpointTargetsChangedWhileTransmitting()
         }
+
+        performSimulationCycle(runtime: &runtime, context: context, at: timestamp)
+
+        transmitRuntime = runtime
+        scheduleApplyRuntimeToMain(runtime)
+    }
+
+    /// Shared advance + schedule + dispatch. Callers keep their own writeback:
+    /// idle applies the full state immediately; transmit publishes value-only at 10 Hz.
+    private func performSimulationCycle(
+        runtime: inout SimulationState,
+        context: SimulationConfig,
+        at timestamp: Date
+    ) {
         flushPendingTransmissions(runtime: &runtime, at: timestamp, context: context)
 
         let snapshot: SimulationSnapshot
@@ -288,38 +316,90 @@ extension NMEASimulator {
             snapshot: snapshot,
             context: context
         )
-        transmitRuntime = runtime
+        guard !dueSentences.isEmpty else { return }
 
-        if !dueSentences.isEmpty {
-            // Capture mutable wind-reference toggle so the sentence builder
-            // mutates the local copy instead of `self.sendRelativeWind` (data race).
-            var mwvToggle = runtime.sendRelativeWind
+        var mwvToggle = runtime.sendRelativeWind
+        let schedule = SentenceScheduler.scheduleSentences(
+            dueSentences: dueSentences,
+            snapshot: snapshot,
+            config: context,
+            interval: context.interval,
+            at: timestamp,
+            sentenceBuilder: { [self] talkerID, type, snap in
+                buildNMEASentences(
+                    talkerID: talkerID,
+                    type: type,
+                    snapshot: snap,
+                    sendRelativeWind: &mwvToggle,
+                    config: context
+                )
+            },
+            talkerIDResolver: { talkerID(for: $0, context: context) }
+        )
+        runtime.sendRelativeWind = mwvToggle
 
-            let schedule = SentenceScheduler.scheduleSentences(
-                dueSentences: dueSentences,
-                snapshot: snapshot,
-                config: context,
-                interval: context.interval,
-                at: timestamp,
-                sentenceBuilder: { [self] talkerID, type, snap in
-                    buildNMEASentences(talkerID: talkerID, type: type, snapshot: snap, sendRelativeWind: &mwvToggle, config: context)
-                },
-                talkerIDResolver: { talkerID(for: $0, context: context) }
-            )
+        dispatchScheduleResult(
+            schedule,
+            runtime: &runtime,
+            endpoints: context.enabledOutputEndpoints,
+            at: timestamp
+        )
 
-            runtime.sendRelativeWind = mwvToggle
+        if let flushTime = SentenceScheduler.staggerFlushTimestamp(
+            sentenceCount: dueSentences.count,
+            interval: context.interval,
+            cycleTimestamp: timestamp
+        ) {
+            flushPendingTransmissions(runtime: &runtime, at: flushTime, context: context)
+        }
+    }
 
-            dispatchScheduleResult(schedule, runtime: &runtime, endpoints: context.enabledOutputEndpoints, at: timestamp)
+    private func idleRuntimeFromSelf() -> SimulationState {
+        var runtime = SimulationState(from: self)
+        runtime.lastSimulationTickDate = lastSimulationTickDate
+        runtime.previousTurnReferenceHeading = previousTurnReferenceHeading
+        runtime.totalLogDistanceNm = totalLogDistanceNm
+        runtime.totalTripDistanceNm = totalTripDistanceNm
+        runtime.sendRelativeWind = sendRelativeWind
+        runtime.lastEmissionDates = lastEmissionDates
+        runtime.pendingTransmissions = pendingTransmissions
+        return runtime
+    }
 
-            if let flushTime = SentenceScheduler.staggerFlushTimestamp(
-                sentenceCount: dueSentences.count, interval: context.interval, cycleTimestamp: timestamp
-            ) {
-                flushPendingTransmissions(runtime: &runtime, at: flushTime, context: context)
-            }
+    private func applyIdleRuntimeToSelf(_ runtime: SimulationState, persist: Bool) {
+        if persist {
+            isApplyingSimulationTick = true
+            twd = runtime.twd
+            tws = runtime.tws
+            speed = runtime.speed
+            depth = runtime.depth
+            seaTemp = runtime.seaTemp
+            airTemp = runtime.airTemp
+            humidity = runtime.humidity
+            barometer = runtime.barometer
+            heading = runtime.heading
+            gyroHeading = runtime.gyroHeading
+            gpsData = runtime.gpsData
+            latestSnapshot = runtime.latestSnapshot
+            lastSimulationTickDate = runtime.lastSimulationTickDate
+            previousTurnReferenceHeading = runtime.previousTurnReferenceHeading
+            totalLogDistanceNm = runtime.totalLogDistanceNm
+            totalTripDistanceNm = runtime.totalTripDistanceNm
+            liveWeatherWindSpeedOffsetKt = runtime.liveWeatherWindSpeedOffsetKt
+            liveWeatherWindDirectionOffsetDeg = runtime.liveWeatherWindDirectionOffsetDeg
+            liveWeatherNoiseBaselineFetchDate = runtime.liveWeatherNoiseBaselineFetchDate
         }
 
-        transmitRuntime = runtime
-        scheduleApplyRuntimeToMain(runtime)
+        lastEmissionDates = runtime.lastEmissionDates
+        pendingTransmissions = runtime.pendingTransmissions
+        sendRelativeWind = runtime.sendRelativeWind
+
+        if persist {
+            DispatchQueue.main.async { [weak self] in
+                self?.isApplyingSimulationTick = false
+            }
+            scheduleDebouncedSimulationPersist()
+        }
     }
 
     /// Off-main variant: dispatches schedule result using `runtime` for pending transmissions
@@ -394,8 +474,12 @@ extension NMEASimulator {
         // Dispatch live weather refresh to main thread since it accesses
         // @Observable properties and creates async Tasks.
         if context.weatherSourceMode == .liveWeather {
-            DispatchQueue.main.async { [weak self] in
-                self?.triggerLiveWeatherRefreshIfNeeded(at: timestamp)
+            if Thread.isMainThread {
+                triggerLiveWeatherRefreshIfNeeded(at: timestamp)
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.triggerLiveWeatherRefreshIfNeeded(at: timestamp)
+                }
             }
         }
         return SimulationEngine.tickSimulation(

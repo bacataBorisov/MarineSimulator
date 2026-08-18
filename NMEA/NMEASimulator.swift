@@ -615,123 +615,7 @@ class NMEASimulator {
             return
         }
 
-        resetTransportConnectionsIfEndpointTargetsChangedWhileTransmitting()
-        flushPendingTransmissions(at: timestamp)
-
-        let snapshot: SimulationSnapshot
-        if shouldAdvanceSimulation(at: timestamp) {
-            snapshot = tickSimulation(at: timestamp)
-        } else if let latestSnapshot {
-            snapshot = latestSnapshot
-        } else {
-            snapshot = tickSimulation(at: timestamp)
-        }
-
-        let dueSentences = scheduledSentenceTypes(at: timestamp, snapshot: snapshot)
-        guard !dueSentences.isEmpty else { return }
-
-        let schedule = SentenceScheduler.scheduleSentences(
-            dueSentences: dueSentences,
-            snapshot: snapshot,
-            config: captureSimulationConfig(),
-            interval: interval,
-            at: timestamp,
-            sentenceBuilder: { buildNMEASentences(talkerID: $0, type: $1, snapshot: $2) },
-            talkerIDResolver: { talkerID(for: $0) }
-        )
-
-        dispatchScheduleResult(schedule, at: timestamp)
-
-        if let flushTime = SentenceScheduler.staggerFlushTimestamp(
-            sentenceCount: dueSentences.count, interval: interval, cycleTimestamp: timestamp
-        ) {
-            flushPendingTransmissions(at: flushTime)
-        }
-    }
-
-    private func tickSimulation(at timestamp: Date) -> SimulationSnapshot {
-        isApplyingSimulationTick = true
-        defer {
-            DispatchQueue.main.async { [weak self] in
-                self?.isApplyingSimulationTick = false
-            }
-            scheduleDebouncedSimulationPersist()
-        }
-
-        triggerLiveWeatherRefreshIfNeeded(at: timestamp)
-
-        // Build a temporary SimulationState from self, run the engine, then apply results back.
-        var state = SimulationState(from: self)
-        state.lastSimulationTickDate = lastSimulationTickDate
-        state.previousTurnReferenceHeading = previousTurnReferenceHeading
-        state.totalLogDistanceNm = totalLogDistanceNm
-        state.totalTripDistanceNm = totalTripDistanceNm
-        state.sendRelativeWind = sendRelativeWind
-
-        let config = captureSimulationConfig()
-        let snapshot = SimulationEngine.tickSimulation(
-            state: &state,
-            config: config,
-            at: timestamp,
-            liveWeatherValueGenerator: generateLiveWeatherValue(base:jitter:range:wraps:)
-        )
-
-        // Apply engine results back to self.
-        twd = state.twd
-        tws = state.tws
-        speed = state.speed
-        depth = state.depth
-        seaTemp = state.seaTemp
-        airTemp = state.airTemp
-        humidity = state.humidity
-        barometer = state.barometer
-        heading = state.heading
-        gyroHeading = state.gyroHeading
-        gpsData = state.gpsData
-        latestSnapshot = state.latestSnapshot
-        lastSimulationTickDate = state.lastSimulationTickDate
-        previousTurnReferenceHeading = state.previousTurnReferenceHeading
-        totalLogDistanceNm = state.totalLogDistanceNm
-        totalTripDistanceNm = state.totalTripDistanceNm
-        liveWeatherWindSpeedOffsetKt = state.liveWeatherWindSpeedOffsetKt
-        liveWeatherWindDirectionOffsetDeg = state.liveWeatherWindDirectionOffsetDeg
-        liveWeatherNoiseBaselineFetchDate = state.liveWeatherNoiseBaselineFetchDate
-
-        return snapshot
-    }
-
-    /// Dispatches the result of `SentenceScheduler.scheduleSentences` by performing
-    /// the side effects: sending immediate sentences, queueing delayed ones, and logging fault events.
-    private func dispatchScheduleResult(_ result: SentenceScheduler.ScheduleResult, at timestamp: Date) {
-        for (sentence, _) in result.immediateSentences {
-            for endpoint in enabledOutputEndpoints() {
-                send(sentence, to: endpoint)
-            }
-            recordOutputMessage(sentence, timestamp: timestamp)
-        }
-
-        for delayed in result.delayedSentences {
-            pendingTransmissions.append(PendingTransmission(sentence: delayed.sentence, dueDate: delayed.dueDate))
-        }
-
-        for event in result.faultEvents {
-            appendHistoryEvent(level: event.level, category: .fault, message: event.message)
-        }
-    }
-
-    private func scheduledSentenceTypes(at timestamp: Date, snapshot: SimulationSnapshot) -> [NMEASentenceType] {
-        let config = captureSimulationConfig()
-        // Use a lightweight inout wrapper so the engine can update lastEmissionDates.
-        var emissionState = SimulationState(from: self)
-        emissionState.lastEmissionDates = lastEmissionDates
-        let result = SimulationEngine.scheduledSentenceTypes(
-            state: &emissionState,
-            at: timestamp,
-            snapshot: snapshot,
-            config: config
-        )
-        lastEmissionDates = emissionState.lastEmissionDates
-        return result
+        performIdleSimulationCycle(at: timestamp)
     }
 
     func appendHistoryEvent(
@@ -790,12 +674,6 @@ class NMEASimulator {
         ) { [weak self] in
             self?.makeSettingsSnapshot()
         }
-    }
-
-    private func shouldAdvanceSimulation(at timestamp: Date) -> Bool {
-        var state = SimulationState(from: self)
-        state.lastSimulationTickDate = lastSimulationTickDate
-        return SimulationEngine.shouldAdvanceSimulation(state: state, at: timestamp, interval: interval)
     }
 
     var persistSettingsInvocationCount: Int {
@@ -991,26 +869,11 @@ class NMEASimulator {
 
 
     func nextMWVReference(in snapshot: SimulationSnapshot) -> String {
-        let hasApparent = computeAWA(from: snapshot) != nil && computeAWS(from: snapshot) != nil
-        let hasTrue = computeTWA(from: snapshot) != nil && computeTWS(from: snapshot) != nil
-
-        switch mwvReferenceMode {
-        case .relative:
-            return hasApparent ? "R" : "T"
-        case .trueReference:
-            return hasTrue ? "T" : "R"
-        case .auto:
-            if hasApparent && hasTrue {
-                defer { sendRelativeWind.toggle() }
-                return sendRelativeWind ? "R" : "T"
-            }
-
-            if hasApparent {
-                return "R"
-            }
-
-            return "T"
-        }
+        nextMWVReference(
+            in: snapshot,
+            sendRelativeWind: &sendRelativeWind,
+            mwvReferenceMode: mwvReferenceMode
+        )
     }
 
     /// Off-main variant: uses captured toggles to avoid data races from the simulation queue.
@@ -1034,18 +897,6 @@ class NMEASimulator {
             }
 
             return "T"
-        }
-    }
-
-    private func flushPendingTransmissions(at timestamp: Date) {
-        let due = pendingTransmissions.filter { $0.dueDate <= timestamp }
-        pendingTransmissions.removeAll { $0.dueDate <= timestamp }
-
-        for pending in due {
-            for endpoint in enabledOutputEndpoints() {
-                send(pending.sentence, to: endpoint)
-            }
-            recordOutputMessage(pending.sentence, timestamp: timestamp)
         }
     }
 
