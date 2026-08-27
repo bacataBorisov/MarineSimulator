@@ -69,6 +69,9 @@ struct MainView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.black)
+            .background(OpaqueSidebarColumnBackground())
             .navigationTitle("MarineSimulator")
             .navigationSplitViewStyle(.prominentDetail)
         } detail: {
@@ -138,6 +141,45 @@ struct MainView: View {
             HeadingConfig(nmeaManager: nmeaManager)
         case .boat:
             BoatSetupDetailView(nmeaManager: nmeaManager)
+        }
+    }
+}
+
+/// `NavigationSplitView` installs an `NSVisualEffectView` sidebar material. Hide that
+/// vibrancy inside this column so the list can be solid black like the dashboard rails.
+private struct OpaqueSidebarColumnBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        SidebarMaterialFlattener()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class SidebarMaterialFlattener: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            flattenSidebarEffects()
+        }
+
+        override func layout() {
+            super.layout()
+            flattenSidebarEffects()
+        }
+
+        private func flattenSidebarEffects() {
+            var current: NSView? = self
+            while let view = current {
+                if let effect = view as? NSVisualEffectView {
+                    effect.material = .contentBackground
+                    effect.blendingMode = .withinWindow
+                    effect.state = .active
+                    effect.wantsLayer = true
+                    effect.layer?.backgroundColor = NSColor.black.cgColor
+                }
+                if view is NSSplitView {
+                    break
+                }
+                current = view.superview
+            }
         }
     }
 }
