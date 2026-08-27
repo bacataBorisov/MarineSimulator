@@ -359,6 +359,59 @@ struct NavigationMathTests {
     // MARK: - GPS Position Update
 
     @Test
+    func rmcFixesAdvanceAtPublishedSOG() {
+        let sogKnots = 6.3
+        let simulator = makeDeadReckoningSimulator(sogKnots: sogKnots, cogDegrees: 0)
+        var state = SimulationState(from: simulator)
+        let config = simulator.captureSimulationConfig()
+        let t0 = Date(timeIntervalSince1970: 1_700_000_500)
+
+        var rmcFixes: [(date: Date, latitude: Double, longitude: Double, sog: Double)] = []
+
+        for step in 0...20 {
+            let timestamp = t0.addingTimeInterval(Double(step) * 0.05)
+            let snapshot = SimulationEngine.tickSimulation(
+                state: &state,
+                config: config,
+                at: timestamp,
+                liveWeatherValueGenerator: { base, _, _, _ in base }
+            )
+
+            if step == 10 {
+                let half = haversineMeters(
+                    lat1: 43.0, lon1: 28.0,
+                    lat2: state.gpsData.latitude, lon2: state.gpsData.longitude
+                )
+                #expect(abs(half - sogKnots * 0.514444 * 0.5) < 0.15,
+                        "0.5 s of 20 Hz integration should be ~1.62 m, got \(half)")
+            }
+
+            if step % 20 == 0 {
+                let sentences = simulator.buildNMEASentences(talkerID: "GP", type: .rmc, snapshot: snapshot)
+                #expect(sentences.count == 1)
+                rmcFixes.append(parseRMCFix(sentences[0], timestamp: timestamp))
+            }
+        }
+
+        #expect(rmcFixes.count == 2)
+        let distance = haversineMeters(
+            lat1: rmcFixes[0].latitude, lon1: rmcFixes[0].longitude,
+            lat2: rmcFixes[1].latitude, lon2: rmcFixes[1].longitude
+        )
+        let elapsed = rmcFixes[1].date.timeIntervalSince(rmcFixes[0].date)
+        let impliedMS = distance / elapsed
+        let impliedKnots = impliedMS / 0.514444
+        let publishedSOG = rmcFixes[1].sog
+
+        #expect(abs(distance - sogKnots * 0.514444 * elapsed) < 0.15,
+                "1 Hz RMC step should be ~3.2 m at 6.3 kn, got \(distance)")
+        #expect(abs(impliedKnots - publishedSOG) / publishedSOG <= 0.05,
+                "Implied SOG \(impliedKnots) should be within 5% of RMC \(publishedSOG)")
+        #expect(abs(publishedSOG - sogKnots) < 0.15,
+                "Do not 'fix' motion by publishing a slower SOG; RMC SOG was \(publishedSOG)")
+    }
+
+    @Test
     func gpsPositionAdvancesWhenMoving() {
         let simulator = NMEASimulator(userDefaults: isolatedDefaults())
         simulator.outputEndpoints[0].isEnabled = false
@@ -540,4 +593,52 @@ private func isolatedDefaults() -> UserDefaults {
 private func stripChecksum(_ sentence: String) -> String {
     guard let starIdx = sentence.firstIndex(of: "*") else { return sentence }
     return String(sentence[sentence.startIndex..<starIdx])
+}
+
+private func makeDeadReckoningSimulator(sogKnots: Double, cogDegrees: Double) -> NMEASimulator {
+    let simulator = NMEASimulator(userDefaults: isolatedDefaults())
+    simulator.outputEndpoints[0].isEnabled = false
+    simulator.isTimerSelected = false
+    simulator.interval = 1.0
+    simulator.boatSpeedMode = .manual
+    simulator.sensorToggles.hasGyro = false
+    simulator.sensorToggles.hasCompass = false
+    simulator.sensorToggles.hasGPS = true
+    simulator.sensorToggles.hasSpeedLog = true
+    simulator.speed = SimulatedValue(type: .speedLog, center: sogKnots, offset: 0, value: sogKnots)
+    simulator.gpsData = GPSData(
+        latitude: 43.0,
+        longitude: 28.0,
+        speedOverGround: sogKnots,
+        courseOverGround: cogDegrees
+    )
+    return simulator
+}
+
+private func parseRMCFix(_ sentence: String, timestamp: Date) -> (date: Date, latitude: Double, longitude: Double, sog: Double) {
+    let fields = stripChecksum(sentence).components(separatedBy: ",")
+    let latitude = nmeaCoordinate(fields[3], hemisphere: fields[4])
+    let longitude = nmeaCoordinate(fields[5], hemisphere: fields[6])
+    let sog = Double(fields[7]) ?? 0
+    return (timestamp, latitude, longitude, sog)
+}
+
+private func nmeaCoordinate(_ value: String, hemisphere: String) -> Double {
+    guard let dot = value.firstIndex(of: ".") else { return 0 }
+    let minutesStart = value.index(dot, offsetBy: -2)
+    let degrees = Double(value[..<minutesStart]) ?? 0
+    let minutes = Double(value[minutesStart...]) ?? 0
+    let signed = degrees + minutes / 60
+    return (hemisphere == "S" || hemisphere == "W") ? -signed : signed
+}
+
+private func haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+    let earthRadius = 6_371_000.0
+    let phi1 = lat1 * .pi / 180
+    let phi2 = lat2 * .pi / 180
+    let dPhi = (lat2 - lat1) * .pi / 180
+    let dLambda = (lon2 - lon1) * .pi / 180
+    let a = sin(dPhi / 2) * sin(dPhi / 2)
+        + cos(phi1) * cos(phi2) * sin(dLambda / 2) * sin(dLambda / 2)
+    return 2 * earthRadius * asin(min(1, sqrt(a)))
 }

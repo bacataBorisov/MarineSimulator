@@ -25,6 +25,11 @@ enum SimulationEngine {
         liveWeatherValueGenerator: (_ base: Double?, _ jitter: Double, _ range: ClosedRange<Double>, _ wraps: Bool) -> Double?
     ) -> SimulationSnapshot {
         let deltaTime = resolvedDeltaTime(state: state, for: timestamp)
+        let evolveSensors = shouldAdvance(
+            since: state.lastSensorEvolutionDate,
+            at: timestamp,
+            interval: config.interval
+        )
 
         // --- Weather ---
         if config.weatherSourceMode == .liveWeather {
@@ -86,7 +91,7 @@ enum SimulationEngine {
                 state.humidity.value = nil
                 state.barometer.value = nil
             }
-        } else {
+        } else if evolveSensors {
             state.twd.value = state.twd.generateRandomValue(shouldGenerate: config.sensorToggles.hasAnemometer)
             state.tws.value = state.tws.generateRandomValue(shouldGenerate: config.sensorToggles.hasAnemometer)
             state.seaTemp.value = state.seaTemp.generateRandomValue(shouldGenerate: config.sensorToggles.hasWaterTempSensor)
@@ -98,7 +103,7 @@ enum SimulationEngine {
         // --- Heading ---
         // Magnetic heading is the primary random walk; gyro is synced to magnetic + variation
         // so the compass dial (which shows magnetic heading) stays aligned with the user's slider.
-        if !config.tackAnimationInProgress {
+        if evolveSensors, !config.tackAnimationInProgress {
             state.heading.value = state.heading.generateRandomValue(shouldGenerate: config.sensorToggles.hasCompass)
             if config.sensorToggles.hasGyro {
                 let variation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
@@ -109,7 +114,9 @@ enum SimulationEngine {
                 state.gyroHeading.value = nil
             }
         }
-        state.depth.value = state.depth.generateRandomValue(shouldGenerate: config.sensorToggles.hasEchoSounder)
+        if evolveSensors {
+            state.depth.value = state.depth.generateRandomValue(shouldGenerate: config.sensorToggles.hasEchoSounder)
+        }
 
         // --- Speed & Movement ---
         let magneticVariation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
@@ -125,7 +132,7 @@ enum SimulationEngine {
                 state: state,
                 config: config
             )
-        } else {
+        } else if evolveSensors {
             state.speed.value = state.speed.generateRandomValue(shouldGenerate: config.sensorToggles.hasSpeedLog)
         }
 
@@ -193,6 +200,9 @@ enum SimulationEngine {
 
         state.latestSnapshot = snapshot
         state.lastSimulationTickDate = timestamp
+        if evolveSensors {
+            state.lastSensorEvolutionDate = timestamp
+        }
         return snapshot
     }
 
@@ -203,10 +213,18 @@ enum SimulationEngine {
         at timestamp: Date,
         interval: TimeInterval
     ) -> Bool {
-        guard let lastTick = state.lastSimulationTickDate else {
+        shouldAdvance(since: state.lastSimulationTickDate, at: timestamp, interval: interval)
+    }
+
+    private static func shouldAdvance(
+        since lastDate: Date?,
+        at timestamp: Date,
+        interval: TimeInterval
+    ) -> Bool {
+        guard let lastDate else {
             return true
         }
-        return timestamp.timeIntervalSince(lastTick) >= interval
+        return timestamp.timeIntervalSince(lastDate) >= interval
     }
 
     static func effectiveInterval(

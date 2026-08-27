@@ -33,14 +33,6 @@ struct BoatMapView: NSViewRepresentable {
         let container = BoatMapContainerView()
         container.mapView.delegate = context.coordinator
         context.coordinator.attach(to: container)
-        context.coordinator.update(
-            container: container,
-            gpsData: nmeaManager.gpsData,
-            bearingDegrees: nmeaManager.geographicBearingDegreesForMap,
-            tackInProgress: nmeaManager.isTackInProgress,
-            topChromeInset: topChromeInset,
-            trailingOverlayInset: trailingOverlayInset
-        )
         return container
     }
 
@@ -64,6 +56,11 @@ struct BoatMapView: NSViewRepresentable {
         private var lastAppliedCameraHeading: CGFloat = .nan
         private var lastMapApplyTime: CFAbsoluteTime = 0
         private var tackAnimationActive = false
+        private var isApplyingMap = false
+        private var applyScheduled = false
+        private var pendingGPS: GPSData?
+        private var pendingBearing: Double = 0
+        private var pendingTack = false
 
         func attach(to container: BoatMapContainerView) {
             self.container = container
@@ -85,42 +82,69 @@ struct BoatMapView: NSViewRepresentable {
             HangProbe.enter("map.update")
             defer { HangProbe.leave("map.update") }
             #endif
-            let mapView = container.mapView
-            guard mapView.bounds.width > 1, mapView.bounds.height > 1 else {
+            container.updateControlInsets(top: topChromeInset, trailing: trailingOverlayInset)
+            guard container.mapView.bounds.width > 1, container.mapView.bounds.height > 1 else {
                 #if DEBUG
                 HangProbe.tick(.mapZero)
                 #endif
                 return
             }
+            pendingGPS = gpsData
+            pendingBearing = bearingDegrees
+            pendingTack = tackInProgress
+            guard !applyScheduled else { return }
+            applyScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                self?.flushPendingMapApply()
+            }
+        }
+
+        private func flushPendingMapApply() {
+            applyScheduled = false
+            guard let container, let gpsData = pendingGPS else { return }
+            let mapView = container.mapView
+            guard mapView.bounds.width > 1, mapView.bounds.height > 1 else { return }
+            guard !isApplyingMap else { return }
 
             let now = CFAbsoluteTimeGetCurrent()
-            if hasPlacedInitialCamera, !tackInProgress, now - lastMapApplyTime < 0.25 {
-                container.updateControlInsets(top: topChromeInset, trailing: trailingOverlayInset)
+            if hasPlacedInitialCamera, !pendingTack, now - lastMapApplyTime < 0.25 {
                 return
             }
             lastMapApplyTime = now
 
-            let coordinate = CLLocationCoordinate2D(latitude: gpsData.latitude, longitude: gpsData.longitude)
+            #if DEBUG
+            HangProbe.enter("map.apply")
+            defer { HangProbe.leave("map.apply") }
+            #endif
+            isApplyingMap = true
+            defer { isApplyingMap = false }
 
-            if !mapView.annotations.contains(where: { $0 === boatAnnotation }) {
+            let coordinate = CLLocationCoordinate2D(latitude: gpsData.latitude, longitude: gpsData.longitude)
+            if mapView.annotations.contains(where: { $0 === boatAnnotation }) {
+                if !boatAnnotation.coordinate.isVisuallyEqual(to: coordinate) {
+                    boatAnnotation.coordinate = coordinate
+                }
+            } else {
                 boatAnnotation.coordinate = coordinate
                 mapView.addAnnotation(boatAnnotation)
-            } else if !boatAnnotation.coordinate.isVisuallyEqual(to: coordinate) {
-                boatAnnotation.coordinate = coordinate
             }
 
-            let bearingChanged = abs(lastBearingDegrees - bearingDegrees) > (tackInProgress ? 0.5 : 2)
-            tackAnimationActive = tackInProgress
-            lastBearingDegrees = bearingDegrees
+            let bearingChanged = abs(lastBearingDegrees - pendingBearing) > (pendingTack ? 0.5 : 2)
+            tackAnimationActive = pendingTack
+            lastBearingDegrees = pendingBearing
             if bearingChanged {
                 applyBoatRotation(on: mapView)
             }
 
-            container.updateControlInsets(top: topChromeInset, trailing: trailingOverlayInset)
-
             if !hasPlacedInitialCamera {
                 hasPlacedInitialCamera = true
-                centerMap(on: coordinate, in: mapView, animated: false)
+                let camera = MKMapCamera(
+                    lookingAtCenter: coordinate,
+                    fromDistance: 120_000,
+                    pitch: 0,
+                    heading: 0
+                )
+                mapView.setCamera(camera, animated: false)
             }
         }
 
@@ -202,6 +226,7 @@ struct BoatMapView: NSViewRepresentable {
             HangProbe.enter("map.region")
             defer { HangProbe.leave("map.region") }
             #endif
+            guard !isApplyingMap else { return }
             let heading = mapView.camera.heading
             guard !lastAppliedCameraHeading.isFinite || abs(lastAppliedCameraHeading - heading) > 0.05 else { return }
             lastAppliedCameraHeading = heading

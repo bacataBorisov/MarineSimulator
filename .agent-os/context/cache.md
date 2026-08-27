@@ -1,15 +1,15 @@
 # Session Cache
 
-Last updated: 2026-08-17
+Last updated: 2026-08-24
 
 ## Current Objective
 
-Session closed. Engine splits + cycle unification are done. Do not extract stored properties. Keep 20 Hz wire / 10 Hz `asyncAfter`.
+24 h soak passed (t≈79 ks, beats 6–8, heading immediate). GPS wall-dt + deferred MapKit writes + 0.12 s instruments are in. Keep 20 Hz wire / 10 Hz UI.
 
 ## Constraints
 
-Do not invent product features. Do not put UI publish on a `Timer` for `.common`. Do not put `NSHostingView` in `MKAnnotationView`. Do not put ⌘R on both toolbar and a CommandMenu.
+Do not put UI publish on a `Timer` for `.common`. Do not put `NSHostingView` in `MKAnnotationView`. Do not put ⌘R on both toolbar and a CommandMenu.
 
 ## Next
 
-Protocol fidelity / external-reader check, or leftover folds (`buildNMEASentences` / `buildWindSentences`). Optional: soak, `BoatMapPreview` preview crash, weather V1 vs stop.
+Protocol fidelity / external-reader check, or stop.

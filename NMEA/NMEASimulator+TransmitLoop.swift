@@ -75,8 +75,10 @@ extension NMEASimulator {
         runtime.tws.value = mirror.tws.value ?? mirror.tws.centerValue
         runtime.heading.value = mirror.heading.value
         runtime.gyroHeading.value = mirror.gyroHeading.value
-        runtime.gpsData.latitude = mirror.gpsData.latitude
-        runtime.gpsData.longitude = mirror.gpsData.longitude
+        if mirror.isEditingGPSCoordinates {
+            runtime.gpsData.latitude = mirror.gpsData.latitude
+            runtime.gpsData.longitude = mirror.gpsData.longitude
+        }
         runtime.gpsData.speedOverGround = mirror.gpsData.speedOverGround
         runtime.gpsData.courseOverGround = mirror.gpsData.courseOverGround
     }
@@ -301,14 +303,9 @@ extension NMEASimulator {
     ) {
         flushPendingTransmissions(runtime: &runtime, at: timestamp, context: context)
 
-        let snapshot: SimulationSnapshot
-        if shouldAdvanceSimulation(runtime: runtime, at: timestamp, interval: context.interval) {
-            snapshot = tickSimulation(runtime: &runtime, context: context, at: timestamp)
-        } else if let latestSnapshot = runtime.latestSnapshot {
-            snapshot = latestSnapshot
-        } else {
-            snapshot = tickSimulation(runtime: &runtime, context: context, at: timestamp)
-        }
+        // Position integrates on every fast tick with wall dt. Sentence emission
+        // stays on its own intervals; do not gate physics on the NMEA send interval.
+        let snapshot = tickSimulation(runtime: &runtime, context: context, at: timestamp)
 
         let dueSentences = scheduledSentenceTypes(
             runtime: &runtime,
@@ -424,14 +421,6 @@ extension NMEASimulator {
         for event in result.faultEvents {
             appendHistoryEventOnMain(level: event.level, category: .fault, message: event.message)
         }
-    }
-
-    private func shouldAdvanceSimulation(
-        runtime: SimulationState,
-        at timestamp: Date,
-        interval: TimeInterval
-    ) -> Bool {
-        SimulationEngine.shouldAdvanceSimulation(state: runtime, at: timestamp, interval: interval)
     }
 
     private func talkerID(for sentence: NMEASentenceType, context: SimulationConfig) -> String {

@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import AppKit
 
 struct WindCompass: View {
     @Environment(NMEASimulator.self) private var nmea
@@ -34,26 +35,20 @@ struct WindCompass: View {
         return "\(m)|\(g)|\(c)|\(t)|\(a)"
     }
 
-    /// Snap during tack (no stacked `withAnimation`); smooth ease when idle.
-    private var windArrowAnimation: Animation? {
+    /// Match the 10 Hz poll. A 1 s ease at 10 Hz stacks ~10 in-flight rotations
+    /// and wedges the main thread after a long soak (`STALL in=-`).
+    private var liveInstrumentAnimation: Animation? {
         if nmea.isTackInProgress {
             return nil
         }
-        if anemometerShouldAnimate {
-            return .easeInOut(duration: 1)
+        if anemometerShouldAnimate || compassShouldAnimate {
+            return .easeInOut(duration: 0.12)
         }
         return nil
     }
 
-    private var compassDialAnimation: Animation? {
-        if nmea.isTackInProgress {
-            return nil
-        }
-        if compassShouldAnimate {
-            return .easeInOut(duration: 1)
-        }
-        return nil
-    }
+    private var windArrowAnimation: Animation? { liveInstrumentAnimation }
+    private var compassDialAnimation: Animation? { liveInstrumentAnimation }
 
     var body: some View {
         GeometryReader { geometry in
@@ -92,9 +87,8 @@ struct WindCompass: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 let twa = nmea.calculatedTWA ?? 0
                 let awa = nmea.calculatedAWA ?? 180
-                let introAnim = anemometerShouldAnimate ? Animation.easeInOut(duration: 1) : nil
-                applyWindDelta($displayedTrueWindAngle, to: twa, animation: introAnim)
-                applyWindDelta($displayedApparentWindAngle, to: awa, animation: introAnim)
+                applyWindDelta($displayedTrueWindAngle, to: twa)
+                applyWindDelta($displayedApparentWindAngle, to: awa)
                 anemometerShouldAnimate = true
                 lastAppliedInstrumentKey = instrumentDependencyKey()
             }
@@ -119,6 +113,7 @@ struct WindCompass: View {
             syncInstrumentsFromNMEA()
         }
         .onReceive(Self.idleInstrumentPoll) { _ in
+            guard NSApp.isActive else { return }
             guard scenePhase == .active else { return }
             guard !nmea.isTackInProgress else { return }
             let key = instrumentDependencyKey()
@@ -127,6 +122,9 @@ struct WindCompass: View {
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
+            snapInstrumentsAfterWake()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             snapInstrumentsAfterWake()
         }
     }
@@ -145,11 +143,8 @@ struct WindCompass: View {
     private func syncInstrumentsFromNMEA() {
         let twa = nmea.calculatedTWA ?? 0
         let awa = nmea.calculatedAWA ?? 180
-        let windAnim: Animation? = nmea.isTackInProgress
-            ? nil
-            : (anemometerShouldAnimate ? .easeInOut(duration: 1) : nil)
-        applyWindDelta($displayedTrueWindAngle, to: twa, animation: windAnim)
-        applyWindDelta($displayedApparentWindAngle, to: awa, animation: windAnim)
+        applyWindDelta($displayedTrueWindAngle, to: twa)
+        applyWindDelta($displayedApparentWindAngle, to: awa)
 
         // Match mapDashboardBearingBeforeFirstSnapshot: respect sensor toggles
         // so a stale gyroHeading.value doesn't drive the compass when gyro is off.
@@ -167,15 +162,9 @@ struct WindCompass: View {
         lastAppliedInstrumentKey = instrumentDependencyKey()
     }
 
-    private func applyWindDelta(_ value: Binding<Double>, to newAngle: Double, animation: Animation?) {
+    private func applyWindDelta(_ value: Binding<Double>, to newAngle: Double) {
         let shortestDelta = calculateShortestRotation(from: value.wrappedValue, to: newAngle)
-        guard let animation else {
-            value.wrappedValue += shortestDelta
-            return
-        }
-        withAnimation(animation) {
-            value.wrappedValue += shortestDelta
-        }
+        value.wrappedValue += shortestDelta
     }
 
     private func applyCompassRotation(to newHeading: Double) {
@@ -185,28 +174,24 @@ struct WindCompass: View {
             hasValidCompassHeading = true
         } else {
             let shortestDelta = calculateShortestRotation(from: displayedHeading, to: newHeading)
-            let compassAnim: Animation? = nmea.isTackInProgress
-                ? nil
-                : (compassShouldAnimate ? .easeInOut(duration: 1) : nil)
-            if let compassAnim {
-                withAnimation(compassAnim) {
-                    compassAnimationDelta += shortestDelta
-                    displayedHeading = newHeading
-                }
-            } else {
-                compassAnimationDelta += shortestDelta
-                displayedHeading = newHeading
-                foldCompassDeltaIfNeeded()
-            }
+            compassAnimationDelta += shortestDelta
+            displayedHeading = newHeading
+            foldCompassDeltaIfNeeded()
         }
     }
 
-    /// `rotationEffect` uses the raw delta. Overnight noise can push it to tens of thousands of degrees.
+    /// `rotationEffect` uses the raw delta. A day of 10 Hz heading noise can push it
+    /// to tens of thousands of degrees; fold without animation so the next slider
+    /// move is not a 1 s ease across a huge stacked rotation.
     private func foldCompassDeltaIfNeeded() {
-        guard abs(compassAnimationDelta) > 720 else { return }
+        guard abs(compassAnimationDelta) > 360 else { return }
         var folded = compassAnimationDelta.truncatingRemainder(dividingBy: 360)
         if folded < 0 { folded += 360 }
-        compassAnimationDelta = folded
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            compassAnimationDelta = folded
+        }
     }
 }
 

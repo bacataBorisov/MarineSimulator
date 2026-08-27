@@ -14,6 +14,13 @@ struct DashboardView: View {
     @AppStorage("console_panel.last_expanded_height") private var lastExpandedConsoleHeight: Double = 220
     @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
 
+    /// Bumped after sleep, a long background, or a long foreground soak so docks remount like a tab swap.
+    @State private var dockGeneration = 0
+    @State private var resignedActiveAt: Date?
+
+    /// Tab-swap equivalent while staying on the dashboard. `.common` is unsafe with MapKit.
+    private static let dockSoakRefresh = Timer.publish(every: 15 * 60, on: .main, in: .default).autoconnect()
+
     private var leftRailWidth: CGFloat { AppChrome.liveControlRailOuterWidth }
     private let inspectorMinWidth: CGFloat = 280
     private let inspectorMaxWidth: CGFloat = 420
@@ -55,6 +62,7 @@ struct DashboardView: View {
                             )
                             .frame(maxWidth: .infinity)
                         }
+                        .id(dockGeneration)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -65,6 +73,29 @@ struct DashboardView: View {
         .onAppear {
             NSLog("[MarineSim] DashboardView.onAppear")
             ConsoleHeightStorage.migrateIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            resignedActiveAt = .now
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            remountDocksIfStale(minimumAbsence: 120)
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in
+            remountDocksIfStale(minimumAbsence: 0)
+        }
+        .onReceive(Self.dockSoakRefresh) { _ in
+            guard isVisible else { return }
+            dockGeneration &+= 1
+        }
+    }
+
+    /// Sidebar page-swap remounts docks and the console (map stays).
+    /// Same after sleep, a long background, or the 15 min soak timer.
+    private func remountDocksIfStale(minimumAbsence: TimeInterval) {
+        let absence = resignedActiveAt.map { Date().timeIntervalSince($0) }
+        resignedActiveAt = nil
+        if minimumAbsence <= 0 || (absence ?? 0) >= minimumAbsence {
+            dockGeneration &+= 1
         }
     }
 

@@ -8,6 +8,7 @@ import Foundation
 /// of ``NMEASimulator`` via `applyRuntimeToMain`.
 struct SimulationState {
     var lastSimulationTickDate: Date?
+    var lastSensorEvolutionDate: Date?
     var lastEmissionDates: [NMEASentenceType: Date] = [:]
     var pendingTransmissions: [PendingTransmission] = []
     var previousTurnReferenceHeading: Double?

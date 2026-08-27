@@ -44,6 +44,7 @@ struct SimulationInputMirror {
     var heading: SimulatedValue
     var gyroHeading: SimulatedValue
     var gpsData: GPSData
+    var isEditingGPSCoordinates: Bool
 
     // MARK: - Config values (used by captureSimulationConfig)
 
@@ -76,6 +77,7 @@ struct SimulationInputMirror {
         heading = sim.heading
         gyroHeading = sim.gyroHeading
         gpsData = sim.gpsData
+        isEditingGPSCoordinates = sim.isEditingGPSCoordinates
         sensorToggles = sim.sensorToggles
         sentenceToggles = sim.sentenceToggles
         interval = sim.interval

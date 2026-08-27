@@ -171,6 +171,71 @@ struct TransmitLoopRegressionTests {
     }
 
     @Test @MainActor
+    func transmitLoopIntegratesGPSWithWallTimeAndDoesNotRewindFromMirror() {
+        let sogKnots = 6.3
+        let simulator = makeLoopSimulator()
+        simulator.interval = 1.0
+        simulator.sensorToggles.hasGyro = false
+        simulator.sensorToggles.hasCompass = false
+        simulator.sensorToggles.hasGPS = true
+        simulator.speed = SimulatedValue(type: .speedLog, center: sogKnots, offset: 0, value: sogKnots)
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 28.0, speedOverGround: sogKnots, courseOverGround: 0)
+        simulator.isEditingGPSCoordinates = false
+        simulator.syncInputMirror()
+        simulator.transmitRuntime = SimulationState(from: simulator)
+        defer { simulator.transmitRuntime = nil }
+
+        let t0 = Date(timeIntervalSince1970: 1_700_000_600)
+        let start = simulator.gpsData
+
+        for step in 0...20 {
+            simulator.runTransmitSimulationCycle(at: t0.addingTimeInterval(Double(step) * 0.05))
+            if step == 10 || step == 20 {
+                simulator.applyRuntimeToMain(simulator.transmitRuntime!, flushConsoleImmediately: true)
+            }
+        }
+
+        let runtime = simulator.transmitRuntime!
+        let distance = haversineMeters(
+            lat1: start.latitude, lon1: start.longitude,
+            lat2: runtime.gpsData.latitude, lon2: runtime.gpsData.longitude
+        )
+        let expected = sogKnots * 0.514444
+        #expect(abs(distance - expected) < 0.2,
+                "1 s at 6.3 kn should move ~3.24 m; rewind would leave ~0.16 m. Got \(distance)")
+        #expect(abs(runtime.gpsData.speedOverGround - sogKnots) < 0.15)
+        #expect(abs(simulator.gpsData.latitude - runtime.gpsData.latitude) < 1e-9)
+    }
+
+    @Test @MainActor
+    func transmitLoopCopiesLatLonOnlyWhileEditingGPS() {
+        let simulator = makeLoopSimulator()
+        simulator.sensorToggles.hasGyro = false
+        simulator.sensorToggles.hasCompass = false
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 28.0, speedOverGround: 0, courseOverGround: 0)
+        simulator.speed = SimulatedValue(type: .speedLog, center: 0, offset: 0, value: 0)
+        simulator.syncInputMirror()
+        simulator.transmitRuntime = SimulationState(from: simulator)
+        defer { simulator.transmitRuntime = nil }
+
+        let t0 = Date(timeIntervalSince1970: 1_700_000_700)
+        simulator.runTransmitSimulationCycle(at: t0)
+
+        simulator.gpsData.latitude = 44.0
+        simulator.gpsData.longitude = 29.0
+        simulator.syncInputMirror()
+        simulator.runTransmitSimulationCycle(at: t0.addingTimeInterval(0.05))
+        #expect(abs((simulator.transmitRuntime?.gpsData.latitude ?? 0) - 43.0) < 0.01)
+        #expect(abs((simulator.transmitRuntime?.gpsData.longitude ?? 0) - 28.0) < 0.01)
+
+        simulator.isEditingGPSCoordinates = true
+        simulator.syncInputMirror()
+        simulator.runTransmitSimulationCycle(at: t0.addingTimeInterval(0.10))
+        #expect(abs((simulator.transmitRuntime?.gpsData.latitude ?? 0) - 44.0) < 0.01)
+        #expect(abs((simulator.transmitRuntime?.gpsData.longitude ?? 0) - 29.0) < 0.01)
+    }
+
+    @Test @MainActor
     func restartAfterStopTransmitsAgain() {
         let simulator = configuredSimulatorForDeterministicOutput()
         simulator.weatherSourceMode = .manual
@@ -298,6 +363,17 @@ private func countSentences(
     return simulator.allOutputMessageRecords.filter { record in
         predicate(record.sentence) && record.timestamp >= cutoff
     }.count
+}
+
+private func haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+    let earthRadius = 6_371_000.0
+    let phi1 = lat1 * .pi / 180
+    let phi2 = lat2 * .pi / 180
+    let dPhi = (lat2 - lat1) * .pi / 180
+    let dLambda = (lon2 - lon1) * .pi / 180
+    let a = sin(dPhi / 2) * sin(dPhi / 2)
+        + cos(phi1) * cos(phi2) * sin(dLambda / 2) * sin(dLambda / 2)
+    return 2 * earthRadius * asin(min(1, sqrt(a)))
 }
 
 @MainActor
