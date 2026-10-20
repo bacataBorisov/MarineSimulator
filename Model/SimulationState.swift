@@ -9,6 +9,7 @@ import Foundation
 struct SimulationState {
     var lastSimulationTickDate: Date?
     var lastSensorEvolutionDate: Date?
+    var lastAppliedGPSCoordinateGeneration: UInt64 = 0
     var lastEmissionDates: [NMEASentenceType: Date] = [:]
     var pendingTransmissions: [PendingTransmission] = []
     var previousTurnReferenceHeading: Double?
@@ -47,6 +48,7 @@ struct SimulationState {
         liveWeatherWindSpeedOffsetKt = simulator.liveWeatherWindSpeedOffsetKt
         liveWeatherWindDirectionOffsetDeg = simulator.liveWeatherWindDirectionOffsetDeg
         liveWeatherNoiseBaselineFetchDate = simulator.liveWeatherNoiseBaselineFetchDate
+        lastAppliedGPSCoordinateGeneration = simulator.gpsCoordinateSetpointGeneration
     }
 }
 

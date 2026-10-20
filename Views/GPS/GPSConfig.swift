@@ -262,7 +262,7 @@ private struct GPSCoordinatePreview: View {
         Binding(
             get: { nmeaManager.gpsData.latitude },
             set: { newValue in
-                nmeaManager.gpsData.latitude = newValue
+                nmeaManager.applyUserGPSCoordinates(latitude: newValue, longitude: nmeaManager.gpsData.longitude)
                 nmeaManager.persistLiveSettings()
             }
         )
@@ -272,7 +272,7 @@ private struct GPSCoordinatePreview: View {
         Binding(
             get: { nmeaManager.gpsData.longitude },
             set: { newValue in
-                nmeaManager.gpsData.longitude = newValue
+                nmeaManager.applyUserGPSCoordinates(latitude: nmeaManager.gpsData.latitude, longitude: newValue)
                 nmeaManager.persistLiveSettings()
             }
         )
@@ -286,8 +286,7 @@ private struct GPSCoordinatePreview: View {
             },
             set: { newValue in
                 if let coord = newValue {
-                    nmeaManager.gpsData.latitude = coord.latitude
-                    nmeaManager.gpsData.longitude = coord.longitude
+                    nmeaManager.applyUserGPSCoordinates(latitude: coord.latitude, longitude: coord.longitude)
                     nmeaManager.persistLiveSettings()
                 }
             }

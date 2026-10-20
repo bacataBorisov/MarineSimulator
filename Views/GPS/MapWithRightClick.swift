@@ -9,8 +9,7 @@ struct MapWithRightClick: NSViewRepresentable {
 
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: MapWithRightClick
-        var lastCenteredCoordinate: CLLocationCoordinate2D?
-        var pendingCenterWorkItem: DispatchWorkItem?
+        let pin = MKPointAnnotation()
 
         init(parent: MapWithRightClick) {
             self.parent = parent
@@ -41,18 +40,6 @@ struct MapWithRightClick: NSViewRepresentable {
             return view
         }
 
-        func scheduleCenter(on coordinate: CLLocationCoordinate2D, mapView: MKMapView, animated: Bool) {
-            pendingCenterWorkItem?.cancel()
-            let work = DispatchWorkItem { [weak self] in
-                guard let self else { return }
-                let region = MKCoordinateRegion(center: coordinate, span: MapWithRightClick.defaultSpan)
-                mapView.setRegion(region, animated: animated)
-                self.lastCenteredCoordinate = coordinate
-            }
-            pendingCenterWorkItem = work
-            // Defer out of NSHostingView / SwiftUI layout to avoid reentrant layout warnings.
-            DispatchQueue.main.async(execute: work)
-        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -67,7 +54,9 @@ struct MapWithRightClick: NSViewRepresentable {
             ?? CLLocationCoordinate2D(latitude: 43.2141, longitude: 27.9147)
         let region = MKCoordinateRegion(center: initial, span: Self.defaultSpan)
         mapView.setRegion(region, animated: false)
-        context.coordinator.lastCenteredCoordinate = initial
+        context.coordinator.pin.coordinate = initial
+        context.coordinator.pin.title = "Boat"
+        mapView.addAnnotation(context.coordinator.pin)
 
         let rightClickRecognizer = NSClickGestureRecognizer(
             target: context.coordinator,
@@ -80,23 +69,16 @@ struct MapWithRightClick: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: MKMapView, context: Context) {
-        nsView.removeAnnotations(nsView.annotations)
-
         guard let coord = coordinate else { return }
 
-        let annotation = MKPointAnnotation()
-        annotation.coordinate = coord
-        annotation.title = "Boat"
-        annotation.subtitle = String(format: "%.5f, %.5f", coord.latitude, coord.longitude)
-        nsView.addAnnotation(annotation)
-
-        let last = context.coordinator.lastCenteredCoordinate
-        let movedFar = last.map {
-            abs($0.latitude - coord.latitude) > 0.0005 || abs($0.longitude - coord.longitude) > 0.0005
-        } ?? true
-
-        if movedFar {
-            context.coordinator.scheduleCenter(on: coord, mapView: nsView, animated: true)
+        let pin = context.coordinator.pin
+        pin.subtitle = String(format: "%.5f, %.5f", coord.latitude, coord.longitude)
+        if abs(pin.coordinate.latitude - coord.latitude) > 1e-8
+            || abs(pin.coordinate.longitude - coord.longitude) > 1e-8 {
+            pin.coordinate = coord
+        }
+        if !nsView.annotations.contains(where: { $0 === pin }) {
+            nsView.addAnnotation(pin)
         }
     }
 }

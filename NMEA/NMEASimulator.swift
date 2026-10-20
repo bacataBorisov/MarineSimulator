@@ -152,6 +152,17 @@ class NMEASimulator {
     }
     /// True while a GPS lat/lon field is focused — dead-reckoning must not overwrite the draft.
     @ObservationIgnored var isEditingGPSCoordinates = false
+    /// Bumped when the user sets lat/lon (map or field). Transmit copies that fix once.
+    @ObservationIgnored var gpsCoordinateSetpointGeneration: UInt64 = 0
+
+    func applyUserGPSCoordinates(latitude: Double, longitude: Double) {
+        var next = gpsData
+        next.latitude = latitude
+        next.longitude = longitude
+        guard next != gpsData else { return }
+        gpsCoordinateSetpointGeneration &+= 1
+        gpsData = next
+    }
     var faultInjection = FaultInjectionSettings() {
         didSet { persistSettingsIfNeeded() }
     }

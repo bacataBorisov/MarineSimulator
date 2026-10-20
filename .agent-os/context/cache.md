@@ -4,7 +4,7 @@ Last updated: 2026-08-24
 
 ## Current Objective
 
-24 h soak passed (t≈79 ks, beats 6–8, heading immediate). GPS wall-dt + deferred MapKit writes + 0.12 s instruments are in. Keep 20 Hz wire / 10 Hz UI.
+Accept GPS map/field teleports while transmitting without rewinding the 20 Hz integrator. Keep 20 Hz wire / 10 Hz UI.
 
 ## Constraints
 

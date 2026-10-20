@@ -236,6 +236,27 @@ struct TransmitLoopRegressionTests {
     }
 
     @Test @MainActor
+    func transmitLoopAcceptsUserGPSCoordinateSetpointWhileRunning() {
+        let simulator = makeLoopSimulator()
+        simulator.sensorToggles.hasGyro = false
+        simulator.sensorToggles.hasCompass = false
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 28.0, speedOverGround: 0, courseOverGround: 0)
+        simulator.speed = SimulatedValue(type: .speedLog, center: 0, offset: 0, value: 0)
+        simulator.syncInputMirror()
+        simulator.transmitRuntime = SimulationState(from: simulator)
+        defer { simulator.transmitRuntime = nil }
+
+        let t0 = Date(timeIntervalSince1970: 1_700_000_800)
+        simulator.runTransmitSimulationCycle(at: t0)
+        simulator.applyUserGPSCoordinates(latitude: 44.0, longitude: 29.0)
+        simulator.syncInputMirror()
+        simulator.runTransmitSimulationCycle(at: t0.addingTimeInterval(0.05))
+
+        #expect(abs((simulator.transmitRuntime?.gpsData.latitude ?? 0) - 44.0) < 0.01)
+        #expect(abs((simulator.transmitRuntime?.gpsData.longitude ?? 0) - 29.0) < 0.01)
+    }
+
+    @Test @MainActor
     func restartAfterStopTransmitsAgain() {
         let simulator = configuredSimulatorForDeterministicOutput()
         simulator.weatherSourceMode = .manual

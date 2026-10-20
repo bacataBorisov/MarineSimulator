@@ -22,9 +22,13 @@ struct WindCompass: View {
 
     /// Last NMEA-derived key we applied; avoids idle timer work and avoids `onChange(of: String)`.
     @State private var lastAppliedInstrumentKey: String = ""
+    @State private var lastInstrumentCommitAt: CFAbsoluteTime = 0
 
     /// Match the 10 Hz display clock. `.common` fires during MapKit tracking and can wedge the main thread.
     private static let idleInstrumentPoll = Timer.publish(every: 0.1, on: .main, in: .default).autoconnect()
+    /// One 1 s ease at a time. Retargeting at 10 Hz is what stacked overnight.
+    private static let instrumentCommitInterval: TimeInterval = 0.85
+    private static let largeInstrumentStep = 2.5
 
     private func instrumentDependencyKey() -> String {
         let m = nmea.heading.value.map { String(format: "%.4f", $0) } ?? "nil"
@@ -35,14 +39,12 @@ struct WindCompass: View {
         return "\(m)|\(g)|\(c)|\(t)|\(a)"
     }
 
-    /// Match the 10 Hz poll. A 1 s ease at 10 Hz stacks ~10 in-flight rotations
-    /// and wedges the main thread after a long soak (`STALL in=-`).
     private var liveInstrumentAnimation: Animation? {
         if nmea.isTackInProgress {
             return nil
         }
         if anemometerShouldAnimate || compassShouldAnimate {
-            return .easeInOut(duration: 0.12)
+            return .easeInOut(duration: 1)
         }
         return nil
     }
@@ -110,7 +112,7 @@ struct WindCompass: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NMEASimulator.tackInstrumentStepNotification)) { output in
             guard let sender = output.object as? NMEASimulator, sender === nmea else { return }
-            syncInstrumentsFromNMEA()
+            syncInstrumentsFromNMEA(force: true)
         }
         .onReceive(Self.idleInstrumentPoll) { _ in
             guard NSApp.isActive else { return }
@@ -134,20 +136,15 @@ struct WindCompass: View {
         lastAppliedInstrumentKey = ""
         anemometerShouldAnimate = false
         compassShouldAnimate = false
-        syncInstrumentsFromNMEA()
+        syncInstrumentsFromNMEA(force: true)
         foldCompassDeltaIfNeeded()
         anemometerShouldAnimate = true
         compassShouldAnimate = true
     }
 
-    private func syncInstrumentsFromNMEA() {
+    private func syncInstrumentsFromNMEA(force: Bool = false) {
         let twa = nmea.calculatedTWA ?? 0
         let awa = nmea.calculatedAWA ?? 180
-        applyWindDelta($displayedTrueWindAngle, to: twa)
-        applyWindDelta($displayedApparentWindAngle, to: awa)
-
-        // Match mapDashboardBearingBeforeFirstSnapshot: respect sensor toggles
-        // so a stale gyroHeading.value doesn't drive the compass when gyro is off.
         let headingValue: Double = {
             if nmea.sensorToggles.hasGyro, let gyro = nmea.gyroHeading.value {
                 return gyro
@@ -157,8 +154,26 @@ struct WindCompass: View {
             }
             return nmea.gpsData.courseOverGround
         }()
-        applyCompassRotation(to: headingValue)
 
+        let windStep = max(
+            abs(calculateShortestRotation(from: displayedTrueWindAngle, to: twa)),
+            abs(calculateShortestRotation(from: displayedApparentWindAngle, to: awa))
+        )
+        let headingStep = hasValidCompassHeading
+            ? abs(calculateShortestRotation(from: displayedHeading, to: headingValue))
+            : Self.largeInstrumentStep
+        let now = CFAbsoluteTimeGetCurrent()
+        let due = force
+            || nmea.isTackInProgress
+            || now - lastInstrumentCommitAt >= Self.instrumentCommitInterval
+            || windStep >= Self.largeInstrumentStep
+            || headingStep >= Self.largeInstrumentStep
+        guard due else { return }
+
+        lastInstrumentCommitAt = now
+        applyWindDelta($displayedTrueWindAngle, to: twa)
+        applyWindDelta($displayedApparentWindAngle, to: awa)
+        applyCompassRotation(to: headingValue)
         lastAppliedInstrumentKey = instrumentDependencyKey()
     }
 

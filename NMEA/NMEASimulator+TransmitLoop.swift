@@ -75,9 +75,11 @@ extension NMEASimulator {
         runtime.tws.value = mirror.tws.value ?? mirror.tws.centerValue
         runtime.heading.value = mirror.heading.value
         runtime.gyroHeading.value = mirror.gyroHeading.value
-        if mirror.isEditingGPSCoordinates {
+        if mirror.isEditingGPSCoordinates
+            || mirror.gpsCoordinateSetpointGeneration != runtime.lastAppliedGPSCoordinateGeneration {
             runtime.gpsData.latitude = mirror.gpsData.latitude
             runtime.gpsData.longitude = mirror.gpsData.longitude
+            runtime.lastAppliedGPSCoordinateGeneration = mirror.gpsCoordinateSetpointGeneration
         }
         runtime.gpsData.speedOverGround = mirror.gpsData.speedOverGround
         runtime.gpsData.courseOverGround = mirror.gpsData.courseOverGround
@@ -109,7 +111,10 @@ extension NMEASimulator {
         applyGeneratedOutput(runtime.barometer, to: &barometer)
         applyGeneratedOutput(runtime.heading, to: &heading)
         applyGeneratedOutput(runtime.gyroHeading, to: &gyroHeading)
-        applyGeneratedGPS(runtime.gpsData)
+        applyGeneratedGPS(
+            runtime.gpsData,
+            appliedCoordinateGeneration: runtime.lastAppliedGPSCoordinateGeneration
+        )
         if latestSnapshot?.timestamp != runtime.latestSnapshot?.timestamp {
             latestSnapshot = runtime.latestSnapshot
         }
@@ -143,8 +148,9 @@ extension NMEASimulator {
         }
     }
 
-    private func applyGeneratedGPS(_ incoming: GPSData) {
-        if isEditingGPSCoordinates {
+    private func applyGeneratedGPS(_ incoming: GPSData, appliedCoordinateGeneration: UInt64) {
+        if isEditingGPSCoordinates
+            || appliedCoordinateGeneration < gpsCoordinateSetpointGeneration {
             var next = gpsData
             next.speedOverGround = incoming.speedOverGround
             next.courseOverGround = incoming.courseOverGround
