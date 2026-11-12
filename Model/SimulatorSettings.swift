@@ -81,6 +81,11 @@ struct SimulatorSettings: Codable {
     var liveWeatherSettings: LiveWeatherSettings
     var latestLiveWeather: LiveWeatherSnapshot?
     var waypointNavigation: WaypointNavigation
+    var maneuverSettings: ManeuverOperatorSettings
+    /// Persisted vessel identity. Absent means no selection has been stored.
+    var activeVesselID: String?
+    /// True when `activeVesselID` or a legacy vessel name was present in saved settings.
+    var vesselSelectionWasStored: Bool
 
     private enum CodingKeys: String, CodingKey {
         case ip
@@ -116,6 +121,9 @@ struct SimulatorSettings: Codable {
         case liveWeatherSettings
         case latestLiveWeather
         case waypointNavigation
+        case maneuverSettings
+        case activeVesselID
+        case vesselSelectionWasStored
     }
 
     init(
@@ -151,7 +159,10 @@ struct SimulatorSettings: Codable {
         weatherSourceMode: WeatherSourceMode,
         liveWeatherSettings: LiveWeatherSettings,
         latestLiveWeather: LiveWeatherSnapshot?,
-        waypointNavigation: WaypointNavigation = WaypointNavigation()
+        waypointNavigation: WaypointNavigation = WaypointNavigation(),
+        maneuverSettings: ManeuverOperatorSettings = ManeuverOperatorSettings(),
+        activeVesselID: String? = nil,
+        vesselSelectionWasStored: Bool = false
     ) {
         self.ip = ip
         self.port = port
@@ -186,6 +197,9 @@ struct SimulatorSettings: Codable {
         self.liveWeatherSettings = liveWeatherSettings
         self.latestLiveWeather = latestLiveWeather
         self.waypointNavigation = waypointNavigation
+        self.maneuverSettings = maneuverSettings
+        self.activeVesselID = activeVesselID
+        self.vesselSelectionWasStored = vesselSelectionWasStored
     }
 
     init(from decoder: Decoder) throws {
@@ -219,11 +233,34 @@ struct SimulatorSettings: Codable {
         selectedProfile = try container.decodeIfPresent(HardwareProfile.self, forKey: .selectedProfile) ?? .bngTriton2
         sentenceRateMode = try container.decodeIfPresent(SentenceRateMode.self, forKey: .sentenceRateMode) ?? .realistic
         perSentenceTalkerID = try container.decodeIfPresent([String: String].self, forKey: .perSentenceTalkerID) ?? [:]
-        boatProfile = try container.decodeIfPresent(BoatProfile.self, forKey: .boatProfile) ?? .beneteauFirst407
+        if container.contains(.activeVesselID) {
+            activeVesselID = try container.decodeIfPresent(String.self, forKey: .activeVesselID) ?? ""
+            vesselSelectionWasStored = true
+            if let known = BoatProfile(rawValue: try container.decodeIfPresent(String.self, forKey: .boatProfile) ?? "") {
+                boatProfile = known
+            } else {
+                boatProfile = .beneteauFirst407
+            }
+        } else if container.contains(.boatProfile) {
+            let raw = try container.decode(String.self, forKey: .boatProfile)
+            if let known = BoatProfile(rawValue: raw) {
+                boatProfile = known
+                activeVesselID = (known == .nimana ? BuiltInVesselID.nimana : BuiltInVesselID.extasy).uuidString
+            } else {
+                boatProfile = .nimana
+                activeVesselID = raw
+            }
+            vesselSelectionWasStored = true
+        } else {
+            boatProfile = .beneteauFirst407
+            activeVesselID = nil
+            vesselSelectionWasStored = false
+        }
         boatSpeedMode = try container.decodeIfPresent(BoatSpeedMode.self, forKey: .boatSpeedMode) ?? .manual
         weatherSourceMode = try container.decodeIfPresent(WeatherSourceMode.self, forKey: .weatherSourceMode) ?? .manual
         liveWeatherSettings = try container.decodeIfPresent(LiveWeatherSettings.self, forKey: .liveWeatherSettings) ?? LiveWeatherSettings()
         latestLiveWeather = try container.decodeIfPresent(LiveWeatherSnapshot.self, forKey: .latestLiveWeather)
         waypointNavigation = try container.decodeIfPresent(WaypointNavigation.self, forKey: .waypointNavigation) ?? WaypointNavigation()
+        maneuverSettings = try container.decodeIfPresent(ManeuverOperatorSettings.self, forKey: .maneuverSettings) ?? ManeuverOperatorSettings()
     }
 }

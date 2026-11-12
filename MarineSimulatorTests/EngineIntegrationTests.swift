@@ -123,6 +123,7 @@ struct EngineIntegrationTests {
 
         var checkedMessages = 0
         var hdtCount = 0
+        var latestTransmittedHeading: Double?
         let deadline = Date().addingTimeInterval(2.0)
         while Date() < deadline {
             RunLoop.main.run(until: Date().addingTimeInterval(0.02))
@@ -137,13 +138,41 @@ struct EngineIntegrationTests {
                 }
 
                 hdtCount += 1
+                latestTransmittedHeading = transmitted
+            }
+
+            if let latestTransmittedHeading {
                 let dashboardHeading = simulator.geographicBearingDegreesForMap
-                let delta = abs(calculateShortestRotation(from: transmitted, to: dashboardHeading))
-                #expect(delta <= 0.2, "HDT \(transmitted) vs dashboard \(dashboardHeading)")
+                let delta = abs(calculateShortestRotation(from: latestTransmittedHeading, to: dashboardHeading))
+                #expect(delta <= 0.2, "HDT \(latestTransmittedHeading) vs dashboard \(dashboardHeading)")
             }
         }
 
         #expect(hdtCount >= 3)
+    }
+
+    @Test @MainActor
+    func tackSamplesTheHeadingAlreadyOnTheRuntime() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.applyHardwareProfile(.bngTriton2)
+        simulator.twd = SimulatedValue(type: .windDirection, center: 90, offset: 0, value: 90)
+        simulator.tws = SimulatedValue(type: .windSpeed, center: 12, offset: 0, value: 12)
+        simulator.heading = SimulatedValue(type: .magneticCompass, center: 45, offset: 0, value: 45)
+        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 45, offset: 0, value: 45)
+        simulator.syncInputMirror()
+        var runtime = SimulationState(from: simulator)
+        runtime.gyroHeading.value = 55.5
+        runtime.heading.value = 45
+        simulator.transmitRuntime = runtime
+        defer { simulator.stopSimulation() }
+
+        simulator.beginTackManeuver()
+
+        #expect(simulator.tackAnimationInProgress)
+        #expect(abs((simulator.gyroHeading.value ?? 0) - 55.5) < 0.01)
+        let mirrored = simulator.simulationQueue.sync { simulator.transmitRuntime?.gyroHeading.value }
+        #expect(abs((mirrored ?? 0) - 55.5) < 0.01)
     }
 }
 

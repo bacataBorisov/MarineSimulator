@@ -7,6 +7,9 @@ import Foundation
 /// off-main fast transmit loop, eliminating the duplicated method pairs.
 enum SimulationEngine {
 
+    /// Manual environment and vessel redraw. Independent of the 20 Hz physics tick and of per-sentence NMEA rates.
+    static let environmentEvolutionInterval: TimeInterval = 1
+
     // MARK: - Tick
 
     /// Advance all simulated sensor values by one step and return a snapshot.
@@ -24,11 +27,15 @@ enum SimulationEngine {
         at timestamp: Date,
         liveWeatherValueGenerator: (_ base: Double?, _ jitter: Double, _ range: ClosedRange<Double>, _ wraps: Bool) -> Double?
     ) -> SimulationSnapshot {
+        // Only manually evolved experiment values use this generator. Live weather remains
+        // provider-driven, and unseeded operator sessions preserve their existing randomness.
+        var experimentRandomGenerator = state.experimentRandomGenerator
+        defer { state.experimentRandomGenerator = experimentRandomGenerator }
         let deltaTime = resolvedDeltaTime(state: state, for: timestamp)
         let evolveSensors = shouldAdvance(
             since: state.lastSensorEvolutionDate,
             at: timestamp,
-            interval: config.interval
+            interval: Self.environmentEvolutionInterval
         )
 
         // --- Weather ---
@@ -40,49 +47,49 @@ enum SimulationEngine {
                 )
                 evolveLiveWeatherWindNoise(state: &state, deltaTime: deltaTime)
 
-                if config.sensorToggles.hasAnemometer, let baseDir = liveWeather.trueWindDirection {
+                if let baseDir = liveWeather.trueWindDirection {
                     state.twd.value = normalizeAngle(baseDir + state.liveWeatherWindDirectionOffsetDeg)
                 } else {
                     state.twd.value = nil
                 }
-                if config.sensorToggles.hasAnemometer, let baseKt = liveWeather.trueWindSpeedKnots {
+                if let baseKt = liveWeather.trueWindSpeedKnots {
                     state.tws.value = (baseKt + state.liveWeatherWindSpeedOffsetKt)
                         .clamped(to: SimulatedValueType.windSpeed.defaultRange)
                 } else {
                     state.tws.value = nil
                 }
-                state.seaTemp.value = config.sensorToggles.hasWaterTempSensor
-                    ? liveWeatherValueGenerator(
+                if evolveSensors {
+                    state.seaTemp.value = liveWeatherValueGenerator(
                         liveWeather.seaSurfaceTemperatureCelsius,
                         0.3,
                         SimulatedValueType.seaTemp.defaultRange,
                         false
                     )
-                    : nil
-                state.airTemp.value = config.sensorToggles.hasAirTempSensor
-                    ? liveWeatherValueGenerator(
-                        liveWeather.airTemperatureCelsius,
-                        0.4,
-                        SimulatedValueType.airTemp.defaultRange,
-                        false
+                    ensureMeasurementGenerator(state: &state)
+                    state.airTemp.value = jitteredEnvironmentValue(
+                        base: liveWeather.airTemperatureCelsius,
+                        jitter: 0.4,
+                        range: SimulatedValueType.airTemp.defaultRange,
+                        state: &state
                     )
-                    : nil
-                state.humidity.value = config.sensorToggles.hasHumidtySensor
-                    ? liveWeatherValueGenerator(
-                        liveWeather.relativeHumidityPercent,
-                        1.8,
-                        SimulatedValueType.humidity.defaultRange,
-                        false
+                    state.humidity.value = jitteredEnvironmentValue(
+                        base: liveWeather.relativeHumidityPercent,
+                        jitter: 1.8,
+                        range: SimulatedValueType.humidity.defaultRange,
+                        state: &state
                     )
-                    : nil
-                state.barometer.value = config.sensorToggles.hasBarometer
-                    ? liveWeatherValueGenerator(
-                        liveWeather.airPressureHectopascals,
-                        0.8,
-                        SimulatedValueType.barometer.defaultRange,
-                        false
+                    state.barometer.value = jitteredEnvironmentValue(
+                        base: liveWeather.airPressureHectopascals,
+                        jitter: 0.8,
+                        range: SimulatedValueType.barometer.defaultRange,
+                        state: &state
                     )
-                    : nil
+                } else {
+                    state.seaTemp.value = state.environmentTruth.seaTemperatureCelsius
+                    state.airTemp.value = state.environmentTruth.airTemperatureCelsius
+                    state.humidity.value = state.environmentTruth.relativeHumidityPercent
+                    state.barometer.value = state.environmentTruth.airPressureHectopascals
+                }
             } else {
                 state.twd.value = nil
                 state.tws.value = nil
@@ -91,32 +98,69 @@ enum SimulationEngine {
                 state.humidity.value = nil
                 state.barometer.value = nil
             }
+            commitEnvironmentTruth(state: &state)
         } else if evolveSensors {
-            state.twd.value = state.twd.generateRandomValue(shouldGenerate: config.sensorToggles.hasAnemometer)
-            state.tws.value = state.tws.generateRandomValue(shouldGenerate: config.sensorToggles.hasAnemometer)
-            state.seaTemp.value = state.seaTemp.generateRandomValue(shouldGenerate: config.sensorToggles.hasWaterTempSensor)
-            state.airTemp.value = state.airTemp.generateRandomValue(shouldGenerate: config.sensorToggles.hasAirTempSensor)
-            state.humidity.value = state.humidity.generateRandomValue(shouldGenerate: config.sensorToggles.hasHumidtySensor)
-            state.barometer.value = state.barometer.generateRandomValue(shouldGenerate: config.sensorToggles.hasBarometer)
+            state.twd.value = state.twd.generateRandomValue {
+                nextRandomUnitInterval(using: &experimentRandomGenerator)
+            }
+            state.tws.value = state.tws.generateRandomValue {
+                nextRandomUnitInterval(using: &experimentRandomGenerator)
+            }
+            state.seaTemp.value = state.seaTemp.generateRandomValue {
+                nextRandomUnitInterval(using: &experimentRandomGenerator)
+            }
+            ensureMeasurementGenerator(state: &state)
+            state.airTemp.value = state.airTemp.generateRandomValue {
+                nextRandomUnitInterval(using: &state.measurementRandomGenerator)
+            }
+            state.humidity.value = state.humidity.generateRandomValue {
+                nextRandomUnitInterval(using: &state.measurementRandomGenerator)
+            }
+            state.barometer.value = state.barometer.generateRandomValue {
+                nextRandomUnitInterval(using: &state.measurementRandomGenerator)
+            }
+            commitEnvironmentTruth(state: &state)
+        } else {
+            projectEnvironmentTruth(state: &state)
         }
+        hideDisabledEnvironmentMeasurements(state: &state, config: config)
 
         // --- Heading ---
-        // Magnetic heading is the primary random walk; gyro is synced to magnetic + variation
-        // so the compass dial (which shows magnetic heading) stays aligned with the user's slider.
-        if evolveSensors, !config.tackAnimationInProgress {
-            state.heading.value = state.heading.generateRandomValue(shouldGenerate: config.sensorToggles.hasCompass)
-            if config.sensorToggles.hasGyro {
-                let variation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
-                let syncedTrue = normalizeAngle((state.heading.value ?? state.heading.centerValue) + variation)
-                state.gyroHeading.value = syncedTrue
-                state.gyroHeading.centerValue = syncedTrue.clamped(to: state.gyroHeading.range)
-            } else {
-                state.gyroHeading.value = nil
+        // The heading sample is physical. Compass and gyro switches only decide whether it is published.
+        let headingVariation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
+        if evolveSensors, !config.tackAnimationInProgress, state.activeManeuver?.drivesHeading != true {
+            state.heading.value = state.heading.generateRandomValue {
+                nextRandomUnitInterval(using: &experimentRandomGenerator)
             }
+            state.vesselTruth.magneticHeading = state.heading.value
+            if let magnetic = state.vesselTruth.magneticHeading {
+                state.vesselTruth.trueHeading = normalizeAngle(magnetic + headingVariation)
+            }
+            if config.sensorToggles.hasGyro {
+                state.gyroHeading.centerValue = state.vesselTruth.trueHeading.clamped(to: state.gyroHeading.range)
+            }
+        } else if config.tackAnimationInProgress {
+            state.vesselTruth.magneticHeading = state.heading.value
+        } else if state.vesselTruth.magneticHeading == nil {
+            state.vesselTruth.magneticHeading = state.heading.value
         }
         if evolveSensors {
-            state.depth.value = state.depth.generateRandomValue(shouldGenerate: config.sensorToggles.hasEchoSounder)
+            state.depth.value = state.depth.generateRandomValue {
+                nextRandomUnitInterval(using: &experimentRandomGenerator)
+            }
+            state.environmentTruth.depthMeters = state.depth.value
+        } else {
+            state.depth.value = state.environmentTruth.depthMeters
         }
+        if !config.sensorToggles.hasEchoSounder {
+            state.depth.value = nil
+        }
+
+        let maneuverDrivesHeading = applyDrivenManeuverHeading(state: &state, config: config, at: timestamp)
+        if !maneuverDrivesHeading {
+            state.publishManeuverHeadingSetpoint = false
+        }
+        publishHeadingInstruments(state: &state, config: config)
 
         // --- Speed & Movement ---
         let magneticVariation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
@@ -126,17 +170,60 @@ enum SimulationEngine {
             variation: magneticVariation
         )
 
-        if config.boatSpeedMode == .estimated {
-            state.speed.value = estimatedBoatSpeed(
+        applyDuePerformanceChanges(state: &state, at: timestamp)
+        updateManeuverPhase(state: &state, animationInProgress: config.tackAnimationInProgress, at: timestamp)
+        state.vesselObservation.referenceProfile = config.boatProfile
+        state.vesselObservation.sailConfiguration = state.sailConfiguration
+        let windDirection = state.environmentTruth.trueWindDirection ?? state.twd.centerValue
+        let windSpeed = state.environmentTruth.trueWindSpeedKnots ?? state.tws.centerValue
+        state.vesselObservation.sailingState = config.boatProfile.sailingProfile.resolve(
+            trueHeading: boatTrueHeading,
+            trueWindDirection: windDirection,
+            trueWindSpeedKnots: windSpeed
+        )
+
+        let truthProfile = state.hiddenPolarOverride ?? config.boatProfile
+        if config.boatSpeedMode == .estimated, truthProfile.hasSpeedPolar {
+            if let target = hiddenTargetSpeedKnots(
                 trueHeading: boatTrueHeading,
                 state: state,
-                config: config
-            )
+                config: config,
+                at: timestamp
+            ) {
+                let next = respondedSpeed(
+                    current: state.vesselTruth.speedThroughWaterKnots ?? target,
+                    target: target,
+                    deltaTime: deltaTime,
+                    parameters: state.performance
+                )
+                state.vesselTruth.speedThroughWaterKnots = next
+                state.speed.value = config.sensorToggles.hasSpeedLog ? next : nil
+            } else if state.performance.speedResponse == .instant {
+                state.speed.value = nil
+                state.vesselTruth.speedThroughWaterKnots = nil
+            } else {
+                state.speed.value = nil
+            }
+        } else if config.boatSpeedMode == .estimated {
+            let held = state.vesselTruth.speedThroughWaterKnots ?? state.speed.value
+            state.vesselTruth.speedThroughWaterKnots = held
+            state.speed.value = config.sensorToggles.hasSpeedLog ? held : nil
         } else if evolveSensors {
-            state.speed.value = state.speed.generateRandomValue(shouldGenerate: config.sensorToggles.hasSpeedLog)
+            let sample = state.speed.generateRandomValue {
+                nextRandomUnitInterval(using: &experimentRandomGenerator)
+            }
+            state.vesselTruth.speedThroughWaterKnots = sample
+            state.speed.value = config.sensorToggles.hasSpeedLog ? sample : nil
+        } else {
+            if state.vesselTruth.speedThroughWaterKnots == nil {
+                state.vesselTruth.speedThroughWaterKnots = state.speed.value
+            }
+            state.speed.value = config.sensorToggles.hasSpeedLog ? state.vesselTruth.speedThroughWaterKnots : nil
         }
 
-        let waterSpeed = state.speed.value ?? state.gpsData.speedOverGround
+        let keepThroughWaterSpeed = state.hiddenPolarOverride != nil && !truthProfile.hasSpeedPolar
+        let waterSpeed = state.vesselTruth.speedThroughWaterKnots
+            ?? (keepThroughWaterSpeed ? 0 : state.gpsData.speedOverGround)
         let movement = simulatedMovement(
             waterSpeed: waterSpeed,
             trueHeading: boatTrueHeading,
@@ -144,13 +231,33 @@ enum SimulationEngine {
             gpsData: state.gpsData
         )
 
-        if config.sensorToggles.hasGPS && deltaTime > 0 {
+        if state.lastAppliedGPSCoordinateGeneration != state.vesselTruth.acceptedCoordinateGeneration {
+            state.vesselTruth.latitude = state.gpsData.latitude
+            state.vesselTruth.longitude = state.gpsData.longitude
+            state.vesselTruth.acceptedCoordinateGeneration = state.lastAppliedGPSCoordinateGeneration
+        } else {
+            state.gpsData.latitude = state.vesselTruth.latitude
+            state.gpsData.longitude = state.vesselTruth.longitude
+        }
+
+        if deltaTime > 0 {
             state.gpsData.updatePosition(
                 deltaTime: deltaTime,
                 sog: movement.speedOverGround,
                 cog: movement.courseOverGround
             )
         }
+
+        state.vesselTruth.trueHeading = boatTrueHeading
+        if keepThroughWaterSpeed {
+            state.vesselTruth.speedThroughWaterKnots = state.speed.value ?? state.vesselTruth.speedThroughWaterKnots
+        } else {
+            state.vesselTruth.speedThroughWaterKnots = waterSpeed
+        }
+        state.vesselTruth.latitude = state.gpsData.latitude
+        state.vesselTruth.longitude = state.gpsData.longitude
+        state.vesselTruth.speedOverGroundKnots = state.gpsData.speedOverGround
+        state.vesselTruth.courseOverGroundDegrees = state.gpsData.courseOverGround
 
         if config.sensorToggles.hasSpeedLog {
             state.totalLogDistanceNm += max(0, waterSpeed) * deltaTime / 3600
@@ -164,6 +271,13 @@ enum SimulationEngine {
             previousReference: &state.previousTurnReferenceHeading
         )
         let compassDeviation = simulatedCompassDeviation(heading: state.heading.value)
+        let experimentPublication = recordExperimentMeasurement(
+            state: &state,
+            config: config,
+            variation: magneticVariation,
+            deviation: compassDeviation,
+            at: timestamp
+        )
         let gpsSignal = simulatedGPSSignal(for: state.gpsData, at: timestamp)
 
         let navTarget: NavigationTarget? = config.waypointNavigation.isActive ? NavigationTarget(
@@ -195,7 +309,8 @@ enum SimulationEngine {
             turnRate: turnRate,
             logDistanceNm: state.totalLogDistanceNm,
             tripDistanceNm: state.totalTripDistanceNm,
-            navigationTarget: navTarget
+            navigationTarget: navTarget,
+            experimentPublication: experimentPublication
         )
 
         state.latestSnapshot = snapshot
@@ -204,6 +319,17 @@ enum SimulationEngine {
             state.lastSensorEvolutionDate = timestamp
         }
         return snapshot
+    }
+
+    private static func nextRandomUnitInterval(
+        using generator: inout ExperimentRandomGenerator?
+    ) -> Double {
+        guard var current = generator else {
+            return Double.random(in: 0...1)
+        }
+        let value = current.nextUnitInterval()
+        generator = current
+        return value
     }
 
     // MARK: - Scheduling
@@ -235,6 +361,104 @@ enum SimulationEngine {
             return configured
         }
         return config.interval
+    }
+
+    private static func commitEnvironmentTruth(state: inout SimulationState) {
+        var next = state.environmentTruth
+        next.trueWindDirection = state.twd.value
+        next.trueWindSpeedKnots = state.tws.value
+        next.seaTemperatureCelsius = state.seaTemp.value
+        next.airTemperatureCelsius = state.airTemp.value
+        next.relativeHumidityPercent = state.humidity.value
+        next.airPressureHectopascals = state.barometer.value
+        next.depthMeters = state.environmentTruth.depthMeters
+        state.environmentTruth = next
+    }
+
+    private static func ensureMeasurementGenerator(state: inout SimulationState) {
+        if state.measurementRandomGenerator == nil {
+            state.measurementRandomGenerator = ExperimentRandomGenerator(seed: 0x6D34_4A11_5EED)
+        }
+    }
+
+    private static func jitteredEnvironmentValue(
+        base: Double?,
+        jitter: Double,
+        range: ClosedRange<Double>,
+        state: inout SimulationState
+    ) -> Double? {
+        guard let base else { return nil }
+        let unit = nextRandomUnitInterval(using: &state.measurementRandomGenerator)
+        let offset = (unit * 2 - 1) * jitter
+        return (base + offset).clamped(to: range)
+    }
+
+    /// One measurement for this timestamp. A repeated timestamp reuses the stored sample.
+    private static func recordExperimentMeasurement(
+        state: inout SimulationState,
+        config: SimulationConfig,
+        variation: Double,
+        deviation: Double,
+        at timestamp: Date
+    ) -> ExperimentNavigationPublication? {
+        guard var session = state.experimentInstruments else { return nil }
+        if session.sampleTimestamp != timestamp || session.latest == nil {
+            let truth = ExperimentSensorTruth(
+                trueWindSpeedKnots: state.environmentTruth.trueWindSpeedKnots,
+                trueHeadingDegrees: state.vesselTruth.trueHeading,
+                trueWindDirectionDegrees: state.environmentTruth.trueWindDirection,
+                speedThroughWaterKnots: state.vesselTruth.speedThroughWaterKnots,
+                magneticVariationDegrees: variation,
+                compassDeviationDegrees: deviation
+            )
+            let availability = InstrumentAvailability(
+                trueHeadingInstrument: config.sensorToggles.hasGyro,
+                magneticCompass: config.sensorToggles.hasCompass,
+                apparentWind: config.sensorToggles.hasAnemometer,
+                speedThroughWater: config.sensorToggles.hasSpeedLog
+            )
+            session.latest = session.model.measure(truth, errors: session.errors, availability: availability)
+            session.sampleTimestamp = timestamp
+            state.experimentInstruments = session
+        }
+        guard let latest = state.experimentInstruments?.latest else { return nil }
+        return ExperimentInstrumentRuntime.publication(from: latest)
+    }
+
+    private static func publishHeadingInstruments(state: inout SimulationState, config: SimulationConfig) {
+        state.heading.value = config.sensorToggles.hasCompass ? state.vesselTruth.magneticHeading : nil
+        state.gyroHeading.value = config.sensorToggles.hasGyro ? state.vesselTruth.trueHeading : nil
+    }
+
+    /// Hide measurements for sensors that are off. Does not write ground truth.
+    private static func hideDisabledEnvironmentMeasurements(state: inout SimulationState, config: SimulationConfig) {
+        if !config.sensorToggles.hasAnemometer {
+            state.twd.value = nil
+            state.tws.value = nil
+        }
+        if !config.sensorToggles.hasWaterTempSensor {
+            state.seaTemp.value = nil
+        }
+        if !config.sensorToggles.hasAirTempSensor {
+            state.airTemp.value = nil
+        }
+        if !config.sensorToggles.hasHumidtySensor {
+            state.humidity.value = nil
+        }
+        if !config.sensorToggles.hasBarometer {
+            state.barometer.value = nil
+        }
+    }
+
+    /// Copy environment truth onto the instrument fields. Does not read those fields back.
+    private static func projectEnvironmentTruth(state: inout SimulationState) {
+        state.twd.value = state.environmentTruth.trueWindDirection
+        state.tws.value = state.environmentTruth.trueWindSpeedKnots
+        state.seaTemp.value = state.environmentTruth.seaTemperatureCelsius
+        state.airTemp.value = state.environmentTruth.airTemperatureCelsius
+        state.humidity.value = state.environmentTruth.relativeHumidityPercent
+        state.barometer.value = state.environmentTruth.airPressureHectopascals
+        state.depth.value = state.environmentTruth.depthMeters
     }
 
     static func scheduledSentenceTypes(
@@ -351,15 +575,9 @@ enum SimulationEngine {
         config: SimulationConfig,
         variation: Double
     ) -> Double {
-        if config.sensorToggles.hasGyro {
-            return normalizeAngle(state.gyroHeading.value ?? state.gyroHeading.centerValue)
-        }
-
-        if config.sensorToggles.hasCompass {
-            return normalizeAngle((state.heading.value ?? state.heading.centerValue) + variation)
-        }
-
-        return normalizeAngle(state.gpsData.courseOverGround)
+        _ = config
+        _ = variation
+        return normalizeAngle(state.vesselTruth.trueHeading)
     }
 
     static func computedTurnRate(
@@ -381,25 +599,276 @@ enum SimulationEngine {
 
     // MARK: - Boat speed estimation
 
+    static func referencePolar(for config: SimulationConfig) -> PolarModel {
+        PolarModel(profile: config.boatProfile)
+    }
+
+    static func hiddenPolar(for state: SimulationState, config: SimulationConfig) -> PolarModel {
+        PolarModel(profile: state.hiddenPolarOverride ?? config.boatProfile)
+    }
+
+    /// First-order step. `tau <= 0` assigns the target immediately.
+    static func stepSpeed(current: Double, target: Double, deltaTime: TimeInterval, tau: TimeInterval) -> Double {
+        guard deltaTime > 0, tau > 0, tau.isFinite, target.isFinite, current.isFinite else {
+            return target.isFinite ? target : current
+        }
+        return target + (current - target) * exp(-deltaTime / tau)
+    }
+
+    static func classifyManeuver(
+        fromHeading: Double,
+        toHeading: Double,
+        trueWindDirection: Double
+    ) -> ManeuverKind? {
+        let wind = normalizeAngle(trueWindDirection)
+        if shortArcContains(start: fromHeading, end: toHeading, angle: wind) {
+            return .tack
+        }
+        if shortArcContains(start: fromHeading, end: toHeading, angle: normalizeAngle(wind + 180)) {
+            return .gybe
+        }
+        return nil
+    }
+
+    /// Sailing tack from signed true wind angle `normalize(TWD − HDG)`.
+    /// `(0°, 180°)` is starboard, wind on the starboard side. `(180°, 360°)` is port.
+    /// Head-to-wind and dead downwind, within half a degree, are not a tack.
+    static func currentTack(trueHeading: Double, trueWindDirection: Double) -> ManeuverSide? {
+        let trueWindAngle = normalizeAngle(trueWindDirection - trueHeading)
+        if trueWindAngle <= 0.5 || trueWindAngle >= 359.5 { return nil }
+        if trueWindAngle >= 179.5 && trueWindAngle <= 180.5 { return nil }
+        return trueWindAngle < 180 ? .starboard : .port
+    }
+
+    /// Heading reflected across the captured true wind. Absolute true wind angle is unchanged.
+    static func mirroredTrueHeading(trueWindDirection: Double, trueHeading: Double) -> Double {
+        normalizeAngle(2 * normalizeAngle(trueWindDirection) - trueHeading)
+    }
+
+    /// Destination tack is `command.side`. The current tack, head-to-wind, and dead downwind return nil.
+    /// A tack sweeps through the captured true wind. A gybe sweeps through the captured downwind axis.
+    /// `turnDelta` is the unwrapped sweep, including the long way around.
+    static func maneuverPlan(
+        command: ManeuverCommand,
+        fromHeading: Double,
+        trueWindDirection: Double
+    ) -> (target: Double, turnDelta: Double)? {
+        let wind = normalizeAngle(trueWindDirection)
+        let start = normalizeAngle(fromHeading)
+        guard let tack = currentTack(trueHeading: start, trueWindDirection: wind), tack != command.side else {
+            return nil
+        }
+        let target = mirroredTrueHeading(trueWindDirection: wind, trueHeading: start)
+        let axis = command.kind == .tack ? wind : normalizeAngle(wind + 180)
+        guard let turnDelta = maneuverTurnDelta(from: start, to: target, mustContain: axis) else {
+            return nil
+        }
+        return (target, turnDelta)
+    }
+
+    /// Signed sweep whose interior contains `axis`. Nil when the turn is under half a degree or neither arc contains it.
+    static func maneuverTurnDelta(from start: Double, to end: Double, mustContain axis: Double) -> Double? {
+        let short = calculateShortestRotation(from: start, to: end)
+        guard abs(short) > 0.5 else { return nil }
+        if arcContains(start: start, delta: short, angle: axis) {
+            return short
+        }
+        let long = short > 0 ? short - 360 : short + 360
+        guard abs(long) > 0.5, arcContains(start: start, delta: long, angle: axis) else { return nil }
+        return long
+    }
+
+    static func maneuverHeading(maneuver: ActiveManeuver, at timestamp: Date) -> Double {
+        let duration = maneuver.duration
+        guard duration > 0 else { return normalizeAngle(maneuver.fromTrueHeading + maneuver.turnDelta) }
+        let progress = min(1, max(0, timestamp.timeIntervalSince(maneuver.startedAt) / duration))
+        let smooth = progress * progress * (3 - 2 * progress)
+        return normalizeAngle(maneuver.fromTrueHeading + maneuver.turnDelta * smooth)
+    }
+
+    static func arcContains(start: Double, delta: Double, angle: Double) -> Bool {
+        guard abs(delta) > 0.5 else { return false }
+        let short = calculateShortestRotation(from: start, to: normalizeAngle(angle))
+        let offset = delta > 0
+            ? (short >= -0.05 ? short : short + 360)
+            : (short <= 0.05 ? short : short - 360)
+        if delta > 0 {
+            return offset > 0.5 && offset < delta - 0.5
+        }
+        return offset < -0.5 && offset > delta + 0.5
+    }
+
+    private static func applyDrivenManeuverHeading(
+        state: inout SimulationState,
+        config: SimulationConfig,
+        at timestamp: Date
+    ) -> Bool {
+        guard let maneuver = state.activeManeuver, maneuver.drivesHeading else { return false }
+        let end = maneuver.startedAt.addingTimeInterval(maneuver.duration)
+        let trueHeading = timestamp >= end
+            ? normalizeAngle(maneuver.toTrueHeading)
+            : maneuverHeading(maneuver: maneuver, at: timestamp)
+        let variation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
+        let magnetic = normalizeAngle(trueHeading - variation)
+        state.vesselTruth.magneticHeading = magnetic
+        state.vesselTruth.trueHeading = trueHeading
+        if config.sensorToggles.hasGyro {
+            state.gyroHeading.value = trueHeading
+            state.gyroHeading.centerValue = trueHeading.clamped(to: state.gyroHeading.range)
+        }
+        if config.sensorToggles.hasCompass {
+            state.heading.value = magnetic
+            state.heading.centerValue = magnetic.clamped(to: state.heading.range)
+        }
+        state.publishManeuverHeadingSetpoint = true
+        return true
+    }
+
     static func estimatedBoatSpeed(
         trueHeading: Double,
         state: SimulationState,
         config: SimulationConfig
     ) -> Double? {
-        guard config.sensorToggles.hasSpeedLog, let trueWindSpeed = state.tws.value else {
+        guard let trueWindSpeed = state.environmentTruth.trueWindSpeedKnots else {
             return nil
         }
 
-        let trueWindDirection = state.twd.value ?? state.gpsData.courseOverGround
+        let trueWindDirection = state.environmentTruth.trueWindDirection ?? state.gpsData.courseOverGround
         let trueWindAngle = abs(calculateShortestRotation(from: trueHeading, to: trueWindDirection))
         let baseSpeed = config.boatProfile.estimatedBoatSpeed(
             trueWindSpeedKnots: trueWindSpeed,
             trueWindAngleDegrees: trueWindAngle
         )
+        guard let baseSpeed else { return nil }
 
         let seaStatePenalty = config.weatherSourceMode == .liveWeather ? 0.96 : 1.0
         let variationPenalty = max(0.88, 1.0 - (state.speed.offset / 100))
         return (baseSpeed * seaStatePenalty * variationPenalty).clamped(to: SimulatedValueType.speedLog.defaultRange)
+    }
+
+    private static func hiddenTargetSpeedKnots(
+        trueHeading: Double,
+        state: SimulationState,
+        config: SimulationConfig,
+        at timestamp: Date
+    ) -> Double? {
+        guard let trueWindSpeed = state.environmentTruth.trueWindSpeedKnots else {
+            return nil
+        }
+        let trueWindDirection = state.environmentTruth.trueWindDirection ?? state.gpsData.courseOverGround
+        let trueWindAngle = abs(calculateShortestRotation(from: trueHeading, to: trueWindDirection))
+        guard let hiddenSpeed = hiddenPolar(for: state, config: config).targetSpeedKnots(
+            trueWindSpeedKnots: trueWindSpeed,
+            trueWindAngleDegrees: trueWindAngle
+        ) else { return nil }
+        let seaStatePenalty = config.weatherSourceMode == .liveWeather ? 0.96 : 1.0
+        let variationPenalty = max(0.88, 1.0 - (state.speed.offset / 100))
+        let factors = state.performance.sanitized()
+        let retention = maneuverRetention(state: state, at: timestamp, parameters: factors)
+        return (hiddenSpeed * seaStatePenalty * variationPenalty
+            * factors.hullFactor * factors.sailFactor * factors.trimEfficiency * factors.seaStateFactor * retention)
+            .clamped(to: SimulatedValueType.speedLog.defaultRange)
+    }
+
+    private static func respondedSpeed(
+        current: Double,
+        target: Double,
+        deltaTime: TimeInterval,
+        parameters: PerformanceParameters
+    ) -> Double {
+        let clean = parameters.sanitized()
+        guard clean.speedResponse == .firstOrder else { return target }
+        guard deltaTime > 0 else { return current }
+        let tau = target >= current
+            ? clean.accelerationTimeConstantSeconds
+            : clean.decelerationTimeConstantSeconds
+        return stepSpeed(current: current, target: target, deltaTime: deltaTime, tau: tau)
+            .clamped(to: SimulatedValueType.speedLog.defaultRange)
+    }
+
+    private static func maneuverRetention(
+        state: SimulationState,
+        at timestamp: Date,
+        parameters: PerformanceParameters
+    ) -> Double {
+        guard state.vesselObservation.maneuverPhase == .inProgress, let maneuver = state.activeManeuver else {
+            return 1
+        }
+        let minimum = maneuver.kind == .gybe ? parameters.gybeSpeedRetention : parameters.tackSpeedRetention
+        guard maneuver.duration > 0 else { return minimum }
+        let progress = min(1, max(0, timestamp.timeIntervalSince(maneuver.startedAt) / maneuver.duration))
+        return 1 - (1 - minimum) * sin(progress * Double.pi)
+    }
+
+    private static func applyDuePerformanceChanges(state: inout SimulationState, at timestamp: Date) {
+        state.performance = state.performance.sanitized()
+        guard timestamp.timeIntervalSinceReferenceDate.isFinite else { return }
+        var remaining: [ScheduledPerformanceChange] = []
+        for change in state.scheduledPerformanceChanges.sorted(by: { $0.simulationTime < $1.simulationTime }) {
+            guard change.simulationTime.timeIntervalSinceReferenceDate.isFinite else { continue }
+            if change.simulationTime <= timestamp {
+                state.performance = change.parameters.sanitized()
+            } else {
+                remaining.append(change)
+            }
+        }
+        state.scheduledPerformanceChanges = remaining
+    }
+
+    private static func updateManeuverPhase(
+        state: inout SimulationState,
+        animationInProgress: Bool,
+        at timestamp: Date
+    ) {
+        if let maneuver = state.activeManeuver, maneuver.drivesHeading {
+            let end = maneuver.startedAt.addingTimeInterval(maneuver.duration)
+            if timestamp < end {
+                state.vesselObservation.maneuverPhase = .inProgress
+                state.vesselObservation.maneuverKind = maneuver.kind
+                state.recoveryStartedAt = nil
+                return
+            }
+            state.vesselObservation.maneuverPhase = .recovery
+            state.vesselObservation.maneuverKind = maneuver.kind
+            state.recoveryStartedAt = timestamp
+            state.activeManeuver = nil
+            return
+        }
+
+        if animationInProgress, state.activeManeuver != nil {
+            state.vesselObservation.maneuverPhase = .inProgress
+            state.vesselObservation.maneuverKind = state.activeManeuver?.kind
+            state.recoveryStartedAt = nil
+            return
+        }
+
+        if state.vesselObservation.maneuverPhase == .inProgress {
+            state.vesselObservation.maneuverPhase = .recovery
+            state.recoveryStartedAt = timestamp
+            state.activeManeuver = nil
+            return
+        }
+
+        guard state.vesselObservation.maneuverPhase == .recovery else { return }
+        let parameters = state.performance.sanitized()
+        let elapsed = timestamp.timeIntervalSince(state.recoveryStartedAt ?? timestamp)
+        let tau = max(parameters.accelerationTimeConstantSeconds, parameters.decelerationTimeConstantSeconds)
+        let limit = parameters.speedResponse == .instant ? 0 : max(3 * tau, 1)
+        if elapsed > 0, elapsed >= limit {
+            state.vesselObservation.maneuverPhase = .idle
+            state.vesselObservation.maneuverKind = nil
+            state.recoveryStartedAt = nil
+        }
+    }
+
+    private static func shortArcContains(start: Double, end: Double, angle: Double) -> Bool {
+        let sweep = calculateShortestRotation(from: start, to: end)
+        guard abs(sweep) > 0.5 else { return false }
+        let toAngle = calculateShortestRotation(from: start, to: normalizeAngle(angle))
+        if sweep > 0 {
+            return toAngle > 0.5 && toAngle < sweep - 0.5
+        }
+        return toAngle < -0.5 && toAngle > sweep + 0.5
     }
 
     // MARK: - Live weather noise

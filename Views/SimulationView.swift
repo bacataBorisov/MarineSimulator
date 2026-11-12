@@ -195,10 +195,15 @@ struct SimulationView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
+                        Text("GNSS Receiver and DSC Radio are saved but do not emit sentences yet.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+
                         SensorToggleGroup(title: "Satellite & Communication", icon: "antenna.radiowaves.left.and.right.circle", toggles: [
                             ("GNSS Receiver", $nmeaManager.sensorToggles.shouldSendGNSS),
                             ("DSC Radio / MMSI", $nmeaManager.sensorToggles.shouldSendDSC),
                         ])
+                        .disabled(true)
 
                         RecentTransportEventsSection(nmeaManager: nmeaManager)
                         FaultInjectionSection(nmeaManager: nmeaManager)

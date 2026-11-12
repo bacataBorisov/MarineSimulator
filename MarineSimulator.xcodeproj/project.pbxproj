@@ -110,8 +110,18 @@
 		06HIG0072F901001005DE47D /* SettingsDocumentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0172F901001005DE47D /* SettingsDocumentController.swift */; };
 		06HIG0082F901001005DE47D /* MarineSimulatorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0182F901001005DE47D /* MarineSimulatorCommands.swift */; };
 		06LW00112F901003005DE47D /* NMEASimulator+LiveWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06LW00102F901003005DE47D /* NMEASimulator+LiveWeather.swift */; };
+		06SAI0122F901030005DE47D /* SailInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SAI0112F901030005DE47D /* SailInventory.swift */; };
+		06SAI0222F901030005DE47D /* SailInventoryEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SAI0212F901030005DE47D /* SailInventoryEditor.swift */; };
+		06SCR022F901100005DE47D /* ScrollRuntimeTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SCR012F901100005DE47D /* ScrollRuntimeTrace.swift */; };
 		06TK00112F901004005DE47D /* NMEASimulator+Tack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06TK00102F901004005DE47D /* NMEASimulator+Tack.swift */; };
 		06TL00112F901002005DE47D /* NMEASimulator+TransmitLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */; };
+		06V6F1022F901010005DE47D /* VesselProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06V6F1012F901010005DE47D /* VesselProfile.swift */; };
+		06V6F2022F901020005DE47D /* BoatProfileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06V6F2012F901020005DE47D /* BoatProfileEditor.swift */; };
+		0A5C3EAA2FA0000000000002 /* ExperimentScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAA2FA0000000000001 /* ExperimentScenario.swift */; };
+		0A5C3EAB2FA0000000000002 /* ExperimentScenarioRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAB2FA0000000000001 /* ExperimentScenarioRunner.swift */; };
+		0A5C3EAC2FA0000000000002 /* ExperimentSensorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */; };
+		0A5C3EAD2FA0000000000002 /* ExperimentDiagnosticsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */; };
+		0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -239,8 +249,18 @@
 		06HIG0172F901001005DE47D /* SettingsDocumentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDocumentController.swift; sourceTree = "<group>"; };
 		06HIG0182F901001005DE47D /* MarineSimulatorCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulatorCommands.swift; sourceTree = "<group>"; };
 		06LW00102F901003005DE47D /* NMEASimulator+LiveWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+LiveWeather.swift"; sourceTree = "<group>"; };
+		06SAI0112F901030005DE47D /* SailInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SailInventory.swift; sourceTree = "<group>"; };
+		06SAI0212F901030005DE47D /* SailInventoryEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SailInventoryEditor.swift; sourceTree = "<group>"; };
+		06SCR012F901100005DE47D /* ScrollRuntimeTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollRuntimeTrace.swift; sourceTree = "<group>"; };
 		06TK00102F901004005DE47D /* NMEASimulator+Tack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+Tack.swift"; sourceTree = "<group>"; };
 		06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+TransmitLoop.swift"; sourceTree = "<group>"; };
+		06V6F1012F901010005DE47D /* VesselProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VesselProfile.swift; sourceTree = "<group>"; };
+		06V6F2012F901020005DE47D /* BoatProfileEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatProfileEditor.swift; sourceTree = "<group>"; };
+		0A5C3EAA2FA0000000000001 /* ExperimentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentScenario.swift; sourceTree = "<group>"; };
+		0A5C3EAB2FA0000000000001 /* ExperimentScenarioRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentScenarioRunner.swift; sourceTree = "<group>"; };
+		0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentSensorModel.swift; sourceTree = "<group>"; };
+		0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDiagnosticsSession.swift; sourceTree = "<group>"; };
+		0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDiagnosticsView.swift; sourceTree = "<group>"; };
 		33962C04C5CB6F13174882D6 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
 		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -524,8 +544,14 @@
 				06883DE92F78B925005DE47D /* SimulatorSettings.swift */,
 				06AFA9392F8B049300A76F15 /* LiveWeather.swift */,
 				06AFA9612F8C4DA900A76F15 /* BoatProfile.swift */,
+				06V6F1012F901010005DE47D /* VesselProfile.swift */,
+				06SAI0112F901030005DE47D /* SailInventory.swift */,
 				06BFD0022F900001005DE47D /* HardwareProfile.swift */,
 				06F0F94A2FF9E24C002F752C /* SimulationState.swift */,
+				0A5C3EAA2FA0000000000001 /* ExperimentScenario.swift */,
+				0A5C3EAB2FA0000000000001 /* ExperimentScenarioRunner.swift */,
+				0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */,
+				0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */,
 				06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */,
 			);
 			path = Model;
@@ -536,11 +562,14 @@
 			children = (
 				063AADF42E949A24003B2A7A /* NauticalChars */,
 				06B4B2962DF50AB6005DC523 /* MainView.swift */,
+				0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */,
 				06HIG0112F901001005DE47D /* ConnectionView.swift */,
 				06HIG0122F901001005DE47D /* SimulationView.swift */,
 				06HIG0132F901001005DE47D /* ConfigurationChrome.swift */,
 				06HIG0142F901001005DE47D /* SidebarNavigation.swift */,
 				06HIG0152F901001005DE47D /* SentencePanelLayout.swift */,
+				06V6F2012F901020005DE47D /* BoatProfileEditor.swift */,
+				06SAI0212F901030005DE47D /* SailInventoryEditor.swift */,
 				06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */,
 				0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */,
 				06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */,
@@ -578,6 +607,7 @@
 			children = (
 				0682C7632DFE640A00AD0C0B /* Shapes.swift */,
 				06B4B2D92DFCE731005DC523 /* AppConstants.swift */,
+				06SCR012F901100005DE47D /* ScrollRuntimeTrace.swift */,
 				06B4B2D72DFCE6D6005DC523 /* MathUtilities.swift */,
 				06B4B2D52DFA5973005DC523 /* FormatKit.swift */,
 				0648D2592E010520000DC7E3 /* ViewKit.swift */,
@@ -774,6 +804,7 @@
 				06HIG0032F901001005DE47D /* ConfigurationChrome.swift in Sources */,
 				06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */,
 				06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */,
+				06V6F2022F901020005DE47D /* BoatProfileEditor.swift in Sources */,
 				06HIG0062F901001005DE47D /* ConsoleHeightStorage.swift in Sources */,
 				06HIG0072F901001005DE47D /* SettingsDocumentController.swift in Sources */,
 				06HIG0082F901001005DE47D /* MarineSimulatorCommands.swift in Sources */,
@@ -805,6 +836,7 @@
 				06212E962E149D03007A4537 /* VTGHelpView.swift in Sources */,
 				066372FB2DFF8E9200B7348E /* ConsoleView.swift in Sources */,
 				06B4B2DA2DFCE735005DC523 /* AppConstants.swift in Sources */,
+				06SCR022F901100005DE47D /* ScrollRuntimeTrace.swift in Sources */,
 				0682C76E2DFE66D100AD0C0B /* CompassLabelView.swift in Sources */,
 				0682C76F2DFE66D100AD0C0B /* GaugeMarkerCompass.swift in Sources */,
 				06883DEE2F78C6CD005DE47D /* ManualView.swift in Sources */,
@@ -821,6 +853,9 @@
 				06AFA93C2F8B049400A76F15 /* WeatherService.swift in Sources */,
 				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
 				06AFA9622F8C4DA900A76F15 /* BoatProfile.swift in Sources */,
+				06V6F1022F901010005DE47D /* VesselProfile.swift in Sources */,
+				06SAI0122F901030005DE47D /* SailInventory.swift in Sources */,
+				06SAI0222F901030005DE47D /* SailInventoryEditor.swift in Sources */,
 				06BFD0012F900001005DE47D /* HardwareProfile.swift in Sources */,
 				06BFD0032F900001005DE47D /* NMEASimulator+HardwareProfile.swift in Sources */,
 				06TL00112F901002005DE47D /* NMEASimulator+TransmitLoop.swift in Sources */,
@@ -832,6 +867,11 @@
 				06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */,
 				06212DF02E10DF3B007A4537 /* VHWHelpView.swift in Sources */,
 				06F0F94B2FF9E24C002F752C /* SimulationState.swift in Sources */,
+				0A5C3EAA2FA0000000000002 /* ExperimentScenario.swift in Sources */,
+				0A5C3EAB2FA0000000000002 /* ExperimentScenarioRunner.swift in Sources */,
+				0A5C3EAC2FA0000000000002 /* ExperimentSensorModel.swift in Sources */,
+				0A5C3EAD2FA0000000000002 /* ExperimentDiagnosticsSession.swift in Sources */,
+				0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */,
 				06F0F9512FF9F42C002F752C /* SentenceScheduler.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
 				063AADE82E946F2A003B2A7A /* LeadingSidePanel.swift in Sources */,
@@ -937,7 +977,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -997,7 +1037,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -1030,7 +1070,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1063,7 +1103,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1076,11 +1116,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = V73TDMAF88;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1094,11 +1136,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = V73TDMAF88;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1115,6 +1159,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1131,6 +1176,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bacata.NMEASimulatorUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";

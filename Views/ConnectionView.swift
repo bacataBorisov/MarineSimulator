@@ -72,7 +72,7 @@ struct ConnectionView: View {
                         Spacer(minLength: 0)
                     }
 
-                    Text("Base tick rate; per-sentence rates in Realistic mode may be faster.")
+                    Text("Fallback sentence interval and stagger window. Sensor redraw stays at 1 s. Profile sentence rates are separate.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
 

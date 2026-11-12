@@ -288,33 +288,28 @@ struct NavigationMathTests {
         let profile = BoatProfile.beneteauFirst407
 
         // TWA 45°, TWS 12 → expect 7.01 kt
-        let speed45 = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 45)
+        let speed45 = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 45) ?? -1
         #expect(abs(speed45 - 7.01) < 0.01, "Polar at TWA 45° TWS 12 should be 7.01, got \(speed45)")
 
         // TWA 90°, TWS 12 → expect 8.18 kt
-        let speed90 = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 90)
+        let speed90 = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 90) ?? -1
         #expect(abs(speed90 - 8.18) < 0.01, "Polar at TWA 90° TWS 12 should be 8.18, got \(speed90)")
 
         // TWA 5° (deep pinch) should be very slow
-        let speed5 = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 5)
+        let speed5 = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 5) ?? -1
         #expect(speed5 < 2.0, "Polar at TWA 5° should produce very slow speed, got \(speed5)")
-
-        // J/109 at TWA 90°, TWS 10 → expect 8.2
-        let j109Speed = BoatProfile.j109.estimatedBoatSpeed(trueWindSpeedKnots: 10, trueWindAngleDegrees: 90)
-        #expect(abs(j109Speed - 8.2) < 0.01, "J/109 at TWA 90° TWS 10 should be 8.2, got \(j109Speed)")
     }
 
     @Test
     func optimalUpwindAngleInterpolatesForKnownWindSpeeds() {
         let profile = BoatProfile.beneteauFirst407
 
-        // TWS 6 → expect ~36.5°
+        // Farr Design #354 Up.Bt: TWS 6 is 45.2°. TWS 12 is 40.4°.
         let angle6 = profile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: 6)
-        #expect(abs(angle6 - 36.5) < 0.1, "Optimal upwind at TWS 6 should be ~36.5°, got \(angle6)")
+        #expect(abs(angle6 - 45.2) < 0.01, "Optimal upwind at TWS 6 should be 45.2°, got \(angle6)")
 
-        // TWS 12 → interpolated between 10 (34.3°) and 14 (33.5°) → ~33.9°
         let angle12 = profile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: 12)
-        #expect(angle12 > 33.0 && angle12 < 35.0, "Optimal upwind at TWS 12 should be ~33.9°, got \(angle12)")
+        #expect(abs(angle12 - 40.4) < 0.01, "Optimal upwind at TWS 12 should be 40.4°, got \(angle12)")
     }
 
     // MARK: - Tack Animation
@@ -433,21 +428,34 @@ struct NavigationMathTests {
     }
 
     @Test
-    func gpsPositionDoesNotChangeWhenGPSDisabled() {
+    func gpsPositionAdvancesWhenTheReceiverIsDisabled() {
         let simulator = NMEASimulator(userDefaults: isolatedDefaults())
         simulator.outputEndpoints[0].isEnabled = false
         simulator.isTimerSelected = false
-        simulator.sensorToggles.hasGPS = false
-        simulator.gpsData = GPSData(latitude: 43.0, longitude: 28.0, speedOverGround: 10, courseOverGround: 90)
-
-        let initialLat = simulator.gpsData.latitude
-        let initialLon = simulator.gpsData.longitude
-
-        simulator.startSimulation()
-        simulator.stopSimulation()
-
-        #expect(simulator.gpsData.latitude == initialLat, "Latitude should not change with GPS disabled")
-        #expect(simulator.gpsData.longitude == initialLon, "Longitude should not change with GPS disabled")
+        simulator.weatherSourceMode = .manual
+        simulator.boatSpeedMode = .manual
+        simulator.sensorToggles.hasGPS = true
+        simulator.speed = SimulatedValue(type: .speedLog, center: 6, offset: 0, value: 6)
+        simulator.heading = SimulatedValue(type: .magneticCompass, center: 90, offset: 0, value: 90)
+        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 90, offset: 0, value: 90)
+        simulator.gpsData = GPSData(latitude: 43.0, longitude: 28.0, speedOverGround: 6, courseOverGround: 90)
+        var moving = SimulationState(from: simulator)
+        var quiet = moving
+        let enabled = simulator.captureSimulationConfig()
+        var toggles = enabled.sensorToggles
+        toggles.hasGPS = false
+        simulator.sensorToggles = toggles
+        let disabled = simulator.captureSimulationConfig()
+        let start = Date(timeIntervalSince1970: 1_700_000_800)
+        for step in 0...2 {
+            let time = start.addingTimeInterval(TimeInterval(step))
+            _ = SimulationEngine.tickSimulation(state: &moving, config: enabled, at: time, liveWeatherValueGenerator: { base, _, _, _ in base })
+            _ = SimulationEngine.tickSimulation(state: &quiet, config: disabled, at: time, liveWeatherValueGenerator: { base, _, _, _ in base })
+        }
+        #expect(quiet.vesselTruth == moving.vesselTruth)
+        #expect(quiet.vesselTruth.longitude != 28)
+        let types = SimulationEngine.activeSentenceTypes(snapshot: quiet.latestSnapshot!, config: disabled)
+        #expect(types.contains(.rmc) == false)
     }
 
     // MARK: - Log Distance

@@ -1,15 +1,15 @@
 # Session Cache
 
-Last updated: 2026-08-24
+Last updated: 2026-11-12
 
 ## Current Objective
 
-Accept GPS map/field teleports while transmitting without rewinding the 20 Hz integrator. Keep 20 Hz wire / 10 Hz UI.
+Manual console-toggle crash fix accepted. Await approval before resuming warmed navigation measurement.
 
 ## Constraints
 
-Do not put UI publish on a `Timer` for `.common`. Do not put `NSHostingView` in `MKAnnotationView`. Do not put ⌘R on both toolbar and a CommandMenu.
+Do not attribute the crash to MapKit without evidence, retain every destination, or start another latency correction without approval.
 
 ## Next
 
-Protocol fidelity / external-reader check, or stop.
+The final Instruments run and several varied user stress tests survived rapid Manual console toggling without a crash; the user accepted the fix on 2026-11-12. The zero-size MapKit warning and one post-trace layout-recursion warning remain. Next approved sequence: finish warmed navigation measurement, then Dashboard top-strip HIG consistency, then left control-row geometry.

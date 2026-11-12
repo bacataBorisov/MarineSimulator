@@ -80,6 +80,7 @@ class NMEASimulator {
 
     @ObservationIgnored let transportManager = TransportManager()
     @ObservationIgnored let simulationQueue = DispatchQueue(label: "com.marinesimulator.simulation", qos: .userInitiated)
+    static let simulationQueueMarker = DispatchSpecificKey<UInt8>()
     @ObservationIgnored var simulationTimer: DispatchSourceTimer?
 
     /// Lock-protected mirror of every property the simulation queue reads.
@@ -178,7 +179,8 @@ class NMEASimulator {
     var sentenceRateMode: SentenceRateMode = .realistic {
         didSet {
             if sentenceRateMode == .realistic, oldValue == .custom, !isApplyingHardwareProfile {
-                applyDefaultSentenceIntervals()
+                let profile: HardwareProfile = selectedProfile == .custom ? .bngTriton2 : selectedProfile
+                applyHardwareProfile(profile)
             }
             persistSettingsIfNeeded()
         }
@@ -187,6 +189,23 @@ class NMEASimulator {
         didSet { persistSettingsIfNeeded() }
     }
     var boatProfile: BoatProfile = .beneteauFirst407 {
+        didSet {
+            guard !isRestoringSettings, !isApplyingVesselSelection else { return }
+            activeVesselState = .resolved(boatProfile == .beneteauFirst407 ? BuiltInVesselID.extasy : BuiltInVesselID.nimana)
+            persistSettingsIfNeeded()
+        }
+    }
+    var activeVesselState: ActiveVesselState = .resolved(BuiltInVesselID.extasy)
+    @ObservationIgnored private(set) var vesselRepository: VesselProfileRepository!
+    private(set) var vessels: [VesselProfile] = []
+    var vesselStoreError: VesselProfileStoreError?
+    @ObservationIgnored private var isApplyingVesselSelection = false
+    var sailConfiguration = SailConfiguration()
+    var vesselObservation = VesselObservation()
+    var activeManeuver: ActiveManeuver?
+    /// Set when a maneuver command is refused. Heading is left where it was.
+    var maneuverRejectionReason: String?
+    var maneuverSettings = ManeuverOperatorSettings() {
         didSet { persistSettingsIfNeeded() }
     }
     var boatSpeedMode: BoatSpeedMode = .manual {
@@ -312,9 +331,12 @@ class NMEASimulator {
     @ObservationIgnored var transmitRuntime: SimulationState?
     @ObservationIgnored var consoleRecordBuffer: [OutputMessageRecord] = []
     @ObservationIgnored var consoleFlushWorkItem: DispatchWorkItem?
-    /// Guards `consoleRecordBuffer` and `consoleFlushWorkItem` which are accessed
-    /// from both `simulationQueue` (append) and the main thread (flush / read).
+    /// Guards `consoleRecordBuffer`, `consoleFlushWorkItem`, and `transmittedTrueHeading`.
+    /// The simulation queue appends; the main thread flushes and reads.
     @ObservationIgnored let consoleLock = NSLock()
+    /// True heading of the newest HDT in the console buffer. The map reads this while
+    /// transmitting so it matches a sentence the buffer already contains.
+    @ObservationIgnored var transmittedTrueHeading: Double?
     /// Latest runtime waiting to be mirrored onto `@Observable` fields on the main thread.
     /// Coalesced so a busy main queue never accumulates one apply per 50 ms tick.
     @ObservationIgnored var pendingRuntimeApply: SimulationState?
@@ -354,18 +376,31 @@ class NMEASimulator {
 
     init(
         userDefaults: UserDefaults = .standard,
-        weatherService: any WeatherService = GlobalFallbackWeatherService()
+        weatherService: any WeatherService = GlobalFallbackWeatherService(),
+        vesselStore: (any VesselProfileStoring)? = nil
     ) {
         isRestoringSettings = true
         self.persistenceManager = PersistenceManager(userDefaults: userDefaults)
         self.weatherService = weatherService
+        let store = vesselStore ?? Self.makeVesselStore(userDefaults: userDefaults)
+        let repository = VesselProfileRepository(store: store)
+        self.vesselRepository = repository
+        self.vesselStoreError = repository.loadError
+        self.vessels = repository.profiles
+        simulationQueue.setSpecific(key: Self.simulationQueueMarker, value: 1)
         sentenceIntervals = Self.defaultSentenceIntervals
         perSentenceTalkerID = Self.defaultTalkerIDs
         transportManager.delegate = self
         if let settings = persistenceManager.loadSettings() {
             apply(settings: settings)
+        } else if repository.loadError != nil {
+            activeVesselState = .unresolved(storedReference: FileVesselProfileStore.fileName)
+            isApplyingVesselSelection = true
+            boatProfile = .nimana
+            isApplyingVesselSelection = false
         }
         normalizeOutputEndpoints()
+        adoptHoistedSails()
         isRestoringSettings = false
         syncInputMirror()
         if weatherSourceMode == .liveWeather {
@@ -488,6 +523,10 @@ class NMEASimulator {
     }
 
     func sendAllSelectedNMEA() {
+        guard vesselAllowsSimulation else {
+            appendHistoryEvent(level: .warning, category: .lifecycle, message: "Select a vessel before transmitting.")
+            return
+        }
         if transmitRuntime != nil {
             simulationQueue.async { [weak self] in
                 self?.runSimulationCycle()
@@ -498,6 +537,10 @@ class NMEASimulator {
     }
 
     func startSimulation() {
+        guard vesselAllowsSimulation else {
+            appendHistoryEvent(level: .warning, category: .lifecycle, message: "Select a vessel before transmitting.")
+            return
+        }
         syncPrimaryOutputEndpoint()
         stopSimulation()
         resetEngineForNewRun()
@@ -538,6 +581,13 @@ class NMEASimulator {
     func stopSimulation() {
         let wasRunning = isTransmitting || simulationTimer != nil
         isTransmitting = false
+        tackAnimationTimer?.invalidate()
+        tackAnimationTimer = nil
+        tackAnimationState = nil
+        activeManeuver = nil
+        consoleLock.lock()
+        transmittedTrueHeading = nil
+        consoleLock.unlock()
         cancelDisplayPublish()
         stopSimulationTimer()
         persistenceManager.cancelPendingPersist()
@@ -621,6 +671,7 @@ class NMEASimulator {
     }
 
     func runSimulationCycle(at timestamp: Date = .now) {
+        guard vesselAllowsSimulation else { return }
         if transmitRuntime != nil {
             runTransmitSimulationCycle(at: timestamp)
             return
@@ -679,6 +730,28 @@ class NMEASimulator {
         return snapshot
     }
 
+    /// Queue-side tack install. The next tick reads this mirror instead of a stale main-thread gyro.
+    func writeTackCommandToMirror(
+        trueHeading: Double,
+        magneticHeading: Double?,
+        hasGyro: Bool,
+        hasCompass: Bool
+    ) {
+        inputMirrorLock.lock()
+        defer { inputMirrorLock.unlock() }
+        guard var mirror = inputMirror else { return }
+        mirror.tackAnimationInProgress = true
+        if hasGyro {
+            mirror.gyroHeading.value = trueHeading
+            mirror.gyroHeading.centerValue = trueHeading.clamped(to: mirror.gyroHeading.range)
+        }
+        if hasCompass, let magneticHeading {
+            mirror.heading.value = magneticHeading
+            mirror.heading.centerValue = magneticHeading.clamped(to: mirror.heading.range)
+        }
+        inputMirror = mirror
+    }
+
     func scheduleDebouncedSimulationPersist() {
         persistenceManager.scheduleDebouncedPersist(
             delay: Self.simulationValuePersistDebounceInterval
@@ -702,6 +775,237 @@ class NMEASimulator {
     }
 
 
+
+    private static func makeVesselStore(userDefaults: UserDefaults) -> any VesselProfileStoring {
+        if userDefaults === UserDefaults.standard {
+            return FileVesselProfileStore.applicationSupport()
+        }
+        return InMemoryVesselProfileStore()
+    }
+
+    var vesselAllowsSimulation: Bool {
+        vesselStoreError == nil && {
+            if case .resolved = activeVesselState { return true }
+            return false
+        }()
+    }
+
+    var activeVesselName: String {
+        switch activeVesselState {
+        case .resolved(let id):
+            return vesselRepository.profile(id: id)?.name ?? "Vessel"
+        case .unresolved:
+            return "No vessel"
+        }
+    }
+
+    var activeVesselSummary: String {
+        if let vesselStoreError {
+            return "Vessel profiles could not be read (\(vesselStoreError)). The saved file was left in place."
+        }
+        switch activeVesselState {
+        case .resolved(let id):
+            return vesselRepository.profile(id: id)?.summary ?? "Select a vessel."
+        case .unresolved(let storedReference):
+            if storedReference.isEmpty {
+                return "Select a vessel. The saved vessel was not found."
+            }
+            return "Select a vessel. Saved reference \(storedReference) was not found."
+        }
+    }
+
+    var selectedVesselID: UUID? {
+        if case .resolved(let id) = activeVesselState { return id }
+        return nil
+    }
+
+    private var persistedVesselReference: String {
+        switch activeVesselState {
+        case .resolved(let id):
+            return id.uuidString
+        case .unresolved(let storedReference):
+            return storedReference
+        }
+    }
+
+    func selectVessel(_ id: UUID) {
+        guard vesselStoreError == nil, let profile = vesselRepository.profile(id: id) else { return }
+        isApplyingVesselSelection = true
+        activeVesselState = .resolved(id)
+        boatProfile = profile.sailingKey
+        isApplyingVesselSelection = false
+        adoptHoistedSails()
+        persistSettingsIfNeeded()
+    }
+
+    @discardableResult
+    func createCustomVessel(name: String, modelName: String? = nil, constructionYear: Int? = nil) throws -> VesselProfile {
+        let profile = try vesselRepository.createCustomVessel(name: name, modelName: modelName, constructionYear: constructionYear)
+        vessels = vesselRepository.profiles
+        return profile
+    }
+
+    func renameVessel(_ id: UUID, to name: String) throws {
+        try vesselRepository.renameVessel(id, to: name)
+        vessels = vesselRepository.profiles
+    }
+
+    func updateCustomVessel(_ id: UUID, name: String, modelName: String?, constructionYear: Int?) throws {
+        try vesselRepository.updateCustomVessel(id, name: name, modelName: modelName, constructionYear: constructionYear)
+        vessels = vesselRepository.profiles
+    }
+
+    func updateCustomVessel(_ id: UUID, metadata: VesselEditableMetadata) throws {
+        try vesselRepository.updateCustomVessel(id, metadata: metadata)
+        vessels = vesselRepository.profiles
+    }
+
+    func saveProfileEdits(_ id: UUID, metadata: VesselEditableMetadata?, inventory: [SailRecord]) throws {
+        try vesselRepository.saveProfileEdits(id, metadata: metadata, inventory: inventory)
+        vessels = vesselRepository.profiles
+        if selectedVesselID == id {
+            reconcileHoistedSailsWithActiveInventory()
+        }
+    }
+
+    func replaceActiveSails(_ id: UUID, with selection: ActiveSailSelection) throws {
+        try vesselRepository.replaceActiveSails(id, with: selection)
+        vessels = vesselRepository.profiles
+    }
+
+    /// Copies the active vessel's saved sail selection into the runtime hoisted-sail record.
+    /// Called when the active vessel changes, at launch, and when the selection becomes unresolved.
+    func adoptHoistedSails() {
+        if let id = selectedVesselID, let profile = vesselRepository.profile(id: id) {
+            sailConfiguration = profile.activeSails.runtimeConfiguration
+        } else {
+            sailConfiguration = SailConfiguration()
+        }
+        publishHoistedConfiguration()
+    }
+
+    /// Session hoist. Does not write the vessel's saved selection.
+    func setHoistedSails(_ selection: ActiveSailSelection) throws {
+        guard let id = selectedVesselID, let profile = vesselRepository.profile(id: id) else {
+            throw VesselProfileStoreError.invalidProfileData("Select a vessel before changing hoisted sails.")
+        }
+        var selection = selection
+        let previousMain = sailConfiguration.mainSailID
+        if selection.mainsailID?.uuidString != previousMain {
+            selection.mainsailReef = Self.reefFitting(selection.mainsailReef, mainsail: profile.inventory.first { $0.id == selection.mainsailID })
+        }
+        if selection.mainsailID == nil {
+            selection.mainsailReef = .full
+        }
+        try VesselProfileRepository.validateActiveSails(selection, inventory: profile.inventory)
+        sailConfiguration = selection.runtimeConfiguration
+        publishHoistedConfiguration()
+    }
+
+    /// Drops hoisted sails that are no longer in the active inventory. Other hoisted slots stay.
+    func reconcileHoistedSailsWithActiveInventory() {
+        guard let id = selectedVesselID, let profile = vesselRepository.profile(id: id) else {
+            sailConfiguration = SailConfiguration()
+            publishHoistedConfiguration()
+            return
+        }
+        var selection = ActiveSailSelection(
+            mainsailID: sailConfiguration.mainSailID.flatMap(UUID.init(uuidString:)),
+            headsailID: sailConfiguration.headsailID.flatMap(UUID.init(uuidString:)),
+            downwindSailID: sailConfiguration.downwindSailID.flatMap(UUID.init(uuidString:)),
+            mainsailReef: sailConfiguration.mainsailReef
+        )
+        selection = selection.clearingSails(absentFrom: profile.inventory)
+        if let mainID = selection.mainsailID {
+            selection.mainsailReef = Self.reefFitting(selection.mainsailReef, mainsail: profile.inventory.first { $0.id == mainID })
+        }
+        sailConfiguration = selection.runtimeConfiguration
+        publishHoistedConfiguration()
+    }
+
+    private static func reefFitting(_ reef: ReefStep, mainsail: SailRecord?) -> ReefStep {
+        guard let count = mainsail?.mainsail?.reefCount else { return reef }
+        let used: Int
+        switch reef {
+        case .full: used = 0
+        case .reef1: used = 1
+        case .reef2: used = 2
+        case .reef3: used = 3
+        }
+        return used > count ? .full : reef
+    }
+
+    /// Makes the current hoist and vessel the observation snapshot, including a running transmit state.
+    func publishHoistedConfiguration() {
+        vesselObservation.sailConfiguration = sailConfiguration
+        vesselObservation.referenceProfile = boatProfile
+        syncInputMirror()
+        let sails = sailConfiguration
+        let reference = boatProfile
+        let publish = {
+            self.transmitRuntime?.sailConfiguration = sails
+            self.transmitRuntime?.vesselObservation.sailConfiguration = sails
+            self.transmitRuntime?.vesselObservation.referenceProfile = reference
+        }
+        if DispatchQueue.getSpecific(key: Self.simulationQueueMarker) != nil {
+            publish()
+        } else {
+            simulationQueue.sync(execute: publish)
+        }
+    }
+
+    @discardableResult
+    func duplicateVessel(_ id: UUID) throws -> VesselProfile {
+        let copy = try vesselRepository.duplicateVessel(id)
+        vessels = vesselRepository.profiles
+        return copy
+    }
+
+    func deleteCustomVessel(_ id: UUID) throws {
+        try vesselRepository.deleteCustomVessel(id)
+        vessels = vesselRepository.profiles
+        if case .resolved(let active) = activeVesselState, active == id {
+            isApplyingVesselSelection = true
+            activeVesselState = .unresolved(storedReference: id.uuidString)
+            boatProfile = .nimana
+            isApplyingVesselSelection = false
+            if isTransmitting || simulationTimer != nil {
+                stopSimulation()
+            }
+            adoptHoistedSails()
+            persistSettingsIfNeeded()
+        }
+    }
+
+    private func applyStoredVesselSelection(_ settings: SimulatorSettings) {
+        if vesselStoreError != nil {
+            let reference = settings.vesselSelectionWasStored ? (settings.activeVesselID ?? "") : FileVesselProfileStore.fileName
+            activeVesselState = .unresolved(storedReference: reference)
+            isApplyingVesselSelection = true
+            boatProfile = .nimana
+            isApplyingVesselSelection = false
+            return
+        }
+        guard settings.vesselSelectionWasStored else {
+            activeVesselState = .resolved(BuiltInVesselID.extasy)
+            isApplyingVesselSelection = true
+            boatProfile = .beneteauFirst407
+            isApplyingVesselSelection = false
+            return
+        }
+        let raw = settings.activeVesselID ?? ""
+        if let id = UUID(uuidString: raw), vesselRepository.profile(id: id) != nil {
+            activeVesselState = .resolved(id)
+            isApplyingVesselSelection = true
+            boatProfile = vesselRepository.profile(id: id)?.sailingKey ?? .nimana
+            isApplyingVesselSelection = false
+        } else {
+            activeVesselState = .unresolved(storedReference: raw)
+            isApplyingVesselSelection = true
+            boatProfile = .nimana
+            isApplyingVesselSelection = false
+        }
+    }
 
     private func makeSettingsSnapshot() -> SimulatorSettings {
         SimulatorSettings(
@@ -737,7 +1041,10 @@ class NMEASimulator {
             weatherSourceMode: weatherSourceMode,
             liveWeatherSettings: liveWeatherSettings,
             latestLiveWeather: latestLiveWeather,
-            waypointNavigation: waypointNavigation
+            waypointNavigation: waypointNavigation,
+            maneuverSettings: maneuverSettings,
+            activeVesselID: persistedVesselReference,
+            vesselSelectionWasStored: true
         )
     }
 
@@ -779,12 +1086,13 @@ class NMEASimulator {
         faultInjection = settings.faultInjection
         mwvReferenceMode = settings.mwvReferenceMode
         selectedPreset = settings.selectedPreset
-        boatProfile = settings.boatProfile
         boatSpeedMode = settings.boatSpeedMode
         weatherSourceMode = settings.weatherSourceMode
         liveWeatherSettings = settings.liveWeatherSettings
         latestLiveWeather = settings.latestLiveWeather
         waypointNavigation = settings.waypointNavigation
+        maneuverSettings = settings.maneuverSettings
+        applyStoredVesselSelection(settings)
         liveWeatherStatus = weatherSourceMode == .liveWeather
             ? LiveWeatherStatus(
                 state: latestLiveWeather == nil ? .idle : .ready,
@@ -916,6 +1224,9 @@ class NMEASimulator {
         if transmitRuntime != nil {
             consoleLock.lock()
             consoleRecordBuffer.append(record)
+            if let trueHeading = Self.trueHeading(inHDT: sentence) {
+                transmittedTrueHeading = trueHeading
+            }
             consoleLock.unlock()
             return
         }
@@ -946,17 +1257,29 @@ class NMEASimulator {
         return visibleCount + bufferedCount
     }
 
+    /// Heading field from `$--HDT,heading,T*hh`. Nil for every other sentence.
+    static func trueHeading(inHDT sentence: String) -> Double? {
+        guard let marker = sentence.range(of: "HDT,") else { return nil }
+        let field = sentence[marker.upperBound...].prefix { $0 != "," }
+        return Double(field)
+    }
+
 }
 
 // MARK: - Interlock Helpers
 
 extension NMEASimulator {
 
-    /// Clockwise degrees for map arrow and heading leg: matches the dashboard heading sliders — true heading from gyro when present, otherwise **magnetic** heading without applying simulated chart variation (NMEA still uses variation for true-heading sentences).
-    ///
-    /// Always reads **live** `gyroHeading` / `heading` / GPS COG, not `latestSnapshot`, so UI such as tack animation updates while idle (snapshot is only refreshed on transmit ticks).
+    /// While transmitting, this is the true heading of the newest HDT already in the
+    /// console buffer. Otherwise it is the live gyro, magnetic heading, or COG.
     var geographicBearingDegreesForMap: Double {
-        mapDashboardBearingBeforeFirstSnapshot()
+        consoleLock.lock()
+        let transmitted = transmittedTrueHeading
+        consoleLock.unlock()
+        if isTransmitting, let transmitted {
+            return transmitted
+        }
+        return mapDashboardBearingBeforeFirstSnapshot()
     }
 
     var hasAnemometer: Bool {

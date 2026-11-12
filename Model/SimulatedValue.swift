@@ -108,7 +108,10 @@ struct SimulatedValue: Codable, Equatable {
     }
 
     /// Generates a new random value within the center ± offset range
-    mutating func generateRandomValue(shouldGenerate: Bool = true) -> Double? {
+    mutating func generateRandomValue(
+        shouldGenerate: Bool = true,
+        randomUnitInterval: () -> Double = { Double.random(in: 0...1) }
+    ) -> Double? {
         guard shouldGenerate else {
             value = nil
             return nil
@@ -121,7 +124,8 @@ struct SimulatedValue: Codable, Equatable {
         let maxAllowedOffset = (range.upperBound - range.lowerBound) / 2
         offset = min(offset, maxAllowedOffset)
 
-        let generated = Double.random(in: lowerBound...upperBound)
+        let unitInterval = randomUnitInterval().clamped(to: 0...1)
+        let generated = lowerBound + (upperBound - lowerBound) * unitInterval
         value = generated
         return generated
     }

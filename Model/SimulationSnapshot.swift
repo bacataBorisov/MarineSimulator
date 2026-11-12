@@ -41,4 +41,6 @@ struct SimulationSnapshot {
     let logDistanceNm: Double
     let tripDistanceNm: Double
     let navigationTarget: NavigationTarget?
+    /// Present only for a prepared experiment. Nil keeps the operator sentence path.
+    var experimentPublication: ExperimentNavigationPublication? = nil
 }

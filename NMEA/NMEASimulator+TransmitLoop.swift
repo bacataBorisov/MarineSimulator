@@ -43,6 +43,7 @@ extension NMEASimulator {
             boatProfile: mirror.boatProfile,
             waypointNavigation: mirror.waypointNavigation,
             tackAnimationInProgress: mirror.tackAnimationInProgress,
+            maneuverSettings: mirror.maneuverSettings,
             talkerID: mirror.talkerID,
             perSentenceTalkerID: mirror.perSentenceTalkerID,
             depthOffsetMeters: mirror.depthOffsetMeters,
@@ -73,16 +74,34 @@ extension NMEASimulator {
         // keep publishing a stale `value` while only `centerValue` moved.
         runtime.twd.value = mirror.twd.value ?? mirror.twd.centerValue
         runtime.tws.value = mirror.tws.value ?? mirror.tws.centerValue
-        runtime.heading.value = mirror.heading.value
-        runtime.gyroHeading.value = mirror.gyroHeading.value
+        let settings = mirror.maneuverSettings.sanitized()
+        runtime.performance.tackSpeedRetention = settings.tackSpeedRetention
+        runtime.performance.gybeSpeedRetention = settings.gybeSpeedRetention
+        if runtime.activeManeuver?.drivesHeading != true {
+            runtime.heading.value = mirror.heading.value
+            runtime.gyroHeading.value = mirror.gyroHeading.value
+        }
         if mirror.isEditingGPSCoordinates
             || mirror.gpsCoordinateSetpointGeneration != runtime.lastAppliedGPSCoordinateGeneration {
             runtime.gpsData.latitude = mirror.gpsData.latitude
             runtime.gpsData.longitude = mirror.gpsData.longitude
+            runtime.vesselTruth.latitude = mirror.gpsData.latitude
+            runtime.vesselTruth.longitude = mirror.gpsData.longitude
+            runtime.vesselTruth.acceptedCoordinateGeneration = mirror.gpsCoordinateSetpointGeneration
             runtime.lastAppliedGPSCoordinateGeneration = mirror.gpsCoordinateSetpointGeneration
         }
         runtime.gpsData.speedOverGround = mirror.gpsData.speedOverGround
         runtime.gpsData.courseOverGround = mirror.gpsData.courseOverGround
+        runtime.sailConfiguration = mirror.sailConfiguration
+    }
+
+    /// The published observation uses the vessel and hoist already adopted on the simulator.
+    /// A tick that started before a vessel change cannot put the previous vessel's sail ids back.
+    func observationForPublication(_ runtime: SimulationState) -> VesselObservation {
+        var observation = runtime.vesselObservation
+        observation.sailConfiguration = sailConfiguration
+        observation.referenceProfile = boatProfile
+        return observation
     }
 
     func applyRuntimeToMain(_ runtime: SimulationState, flushConsoleImmediately: Bool) {
@@ -111,6 +130,14 @@ extension NMEASimulator {
         applyGeneratedOutput(runtime.barometer, to: &barometer)
         applyGeneratedOutput(runtime.heading, to: &heading)
         applyGeneratedOutput(runtime.gyroHeading, to: &gyroHeading)
+        if runtime.publishManeuverHeadingSetpoint {
+            if heading.centerValue != runtime.heading.centerValue {
+                heading.centerValue = runtime.heading.centerValue
+            }
+            if gyroHeading.centerValue != runtime.gyroHeading.centerValue {
+                gyroHeading.centerValue = runtime.gyroHeading.centerValue
+            }
+        }
         applyGeneratedGPS(
             runtime.gpsData,
             appliedCoordinateGeneration: runtime.lastAppliedGPSCoordinateGeneration
@@ -127,6 +154,9 @@ extension NMEASimulator {
         sendRelativeWind = runtime.sendRelativeWind
         totalLogDistanceNm = runtime.totalLogDistanceNm
         totalTripDistanceNm = runtime.totalTripDistanceNm
+        if adoptManeuverPublication(runtime) {
+            vesselObservation = observationForPublication(runtime)
+        }
         liveWeatherWindSpeedOffsetKt = runtime.liveWeatherWindSpeedOffsetKt
         liveWeatherWindDirectionOffsetDeg = runtime.liveWeatherWindDirectionOffsetDeg
         liveWeatherNoiseBaselineFetchDate = runtime.liveWeatherNoiseBaselineFetchDate
@@ -388,6 +418,13 @@ extension NMEASimulator {
             previousTurnReferenceHeading = runtime.previousTurnReferenceHeading
             totalLogDistanceNm = runtime.totalLogDistanceNm
             totalTripDistanceNm = runtime.totalTripDistanceNm
+            if adoptManeuverPublication(runtime) {
+                vesselObservation = observationForPublication(runtime)
+            }
+            if runtime.publishManeuverHeadingSetpoint {
+                heading.centerValue = runtime.heading.centerValue
+                gyroHeading.centerValue = runtime.gyroHeading.centerValue
+            }
             liveWeatherWindSpeedOffsetKt = runtime.liveWeatherWindSpeedOffsetKt
             liveWeatherWindDirectionOffsetDeg = runtime.liveWeatherWindDirectionOffsetDeg
             liveWeatherNoiseBaselineFetchDate = runtime.liveWeatherNoiseBaselineFetchDate
@@ -500,16 +537,23 @@ extension NMEASimulator {
                 message: message,
                 timestamp: timestamp
             )
+            return
+        }
+
+        let write: () -> Void = { [weak self] in
+            self?.appendHistoryEvent(
+                endpointID: endpointID,
+                level: level,
+                category: category,
+                message: message,
+                timestamp: timestamp
+            )
+        }
+        // The simulation queue must not block on main: stop and tack already sync this queue.
+        if DispatchQueue.getSpecific(key: Self.simulationQueueMarker) != nil {
+            DispatchQueue.main.async(execute: write)
         } else {
-            DispatchQueue.main.async { [weak self] in
-                self?.appendHistoryEvent(
-                    endpointID: endpointID,
-                    level: level,
-                    category: category,
-                    message: message,
-                    timestamp: timestamp
-                )
-            }
+            DispatchQueue.main.sync(execute: write)
         }
     }
 

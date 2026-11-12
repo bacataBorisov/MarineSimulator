@@ -99,7 +99,7 @@ struct TopControlBar: View {
                     }
 
                     if nmea.boatSpeedMode == .estimated {
-                        Text("Boat: \(nmea.boatProfile.shortName)")
+                        Text("Boat: \(nmea.activeVesselName)")
                     }
                 }
 
@@ -163,7 +163,7 @@ struct TopControlBar: View {
                 }
 
                 if nmea.boatSpeedMode == .estimated {
-                    statusBadge(title: nmea.boatProfile.shortName, systemImage: "sailboat", tint: .mint.opacity(0.75))
+                    statusBadge(title: nmea.activeVesselName, systemImage: "sailboat", tint: .mint.opacity(0.75))
                 }
             }
         }

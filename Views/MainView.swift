@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 enum SidebarItem: Hashable {
-    case gps, connection, simulation
+    case gps, connection, simulation, diagnostics
     case wind, hydro, compass, boat
     case dashboard, manual
 }
@@ -10,6 +10,9 @@ enum SidebarItem: Hashable {
 struct MainView: View {
     var nmeaManager: NMEASimulator
     @State private var sidebarNavigation = SidebarNavigation()
+    @State private var diagnostics = ExperimentDiagnosticsSession()
+    @State private var consoleDrag = ConsoleDragTracking()
+    @State private var pagePresentation = PagePresentationSession()
 
     @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
     @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
@@ -48,7 +51,10 @@ struct MainView: View {
                         Label("Simulation", systemImage: "slider.horizontal.3")
                     }
                     NavigationLink(value: SidebarItem.boat) {
-                        Label("Boat", systemImage: "sailboat")
+                        Label("Boat Profile", systemImage: "sailboat")
+                    }
+                    NavigationLink(value: SidebarItem.diagnostics) {
+                        Label("Diagnostics", systemImage: "waveform.path.ecg")
                     }
                     NavigationLink(value: SidebarItem.manual) {
                         Label("Manual", systemImage: "book.closed")
@@ -77,28 +83,52 @@ struct MainView: View {
         } detail: {
             let selected = selection.wrappedValue ?? .dashboard
             GeometryReader { geometry in
-                ZStack(alignment: .bottom) {
+                let dashboardSize = selected.retainedDashboardSize(fitting: geometry.size)
+                ZStack {
+                    // One dashboard identity stays mounted. Other pages propose it
+                    // no size, so its map is not laid out across the detail column.
                     DashboardView(isVisible: selected == .dashboard)
                         .environment(nmeaManager)
+                        .frame(width: dashboardSize.width, height: dashboardSize.height)
+                        .clipped()
                         .opacity(selected == .dashboard ? 1 : 0)
                         .allowsHitTesting(selected == .dashboard)
                         .accessibilityHidden(selected != .dashboard)
 
-                    if selected != .dashboard {
-                        setupDetail(for: selected)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                        ConsolePanelView(
-                            nmeaManager: nmeaManager,
-                            consoleHeight: consoleHeight,
-                            geometryHeight: geometry.size.height
-                        )
+                    if selected.placesConsoleInTheShell {
+                        // The dashboard keeps its console inside the map column.
+                        // Every other page gets one shell column so the console
+                        // takes height instead of covering the page.
+                        VStack(spacing: 0) {
+                            setupDetail(for: selected)
+                                .id(selected)
+                                .environment(\.pageScrollIdentity, selected)
+                                .onAppear {
+                                    #if DEBUG
+                                    ScrollRuntimeTrace.shared.noteMounted(selected.rawValue)
+                                    #endif
+                                }
+                                .onDisappear {
+                                    #if DEBUG
+                                    ScrollRuntimeTrace.shared.noteRemoved(selected.rawValue)
+                                    #endif
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            ConsolePanelView(
+                                nmeaManager: nmeaManager,
+                                consoleHeight: consoleHeight,
+                                geometryHeight: geometry.size.height
+                            )
+                        }
                     }
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                 .transaction { $0.animation = nil }
             }
         }
         .environment(nmeaManager)
+        .environment(\.consoleDragTracking, consoleDrag)
+        .environment(\.pagePresentation, pagePresentation)
         .environment(\.sidebarNavigation, sidebarNavigation)
         .onAppear {
             NSLog("[MarineSim] MainView.onAppear panel=%@", selectedPanelRawValue)
@@ -107,9 +137,20 @@ struct MainView: View {
                 selectedPanelRawValue = SidebarItem.connection.rawValue
             }
             sidebarNavigation.selectedItem = SidebarItem(rawValue: selectedPanelRawValue) ?? .dashboard
+            #if DEBUG
+            ScrollRuntimeTrace.shared.noteSelection(selectedPanelRawValue)
+            #endif
         }
         .onChange(of: sidebarNavigation.selectedItem) { _, item in
             selectedPanelRawValue = item.rawValue
+            #if DEBUG
+            ScrollRuntimeTrace.shared.noteSelection(item.rawValue)
+            #endif
+        }
+        .onChange(of: selectedPanelRawValue) { _, value in
+            #if DEBUG
+            ScrollRuntimeTrace.shared.noteSelection(value)
+            #endif
         }
         .toolbar {
             MainWindowToolbar(
@@ -141,6 +182,8 @@ struct MainView: View {
             HeadingConfig(nmeaManager: nmeaManager)
         case .boat:
             BoatSetupDetailView(nmeaManager: nmeaManager)
+        case .diagnostics:
+            ExperimentDiagnosticsView(session: diagnostics)
         }
     }
 }
@@ -247,10 +290,22 @@ extension SidebarItem: RawRepresentable {
         case "hydro": self = .hydro
         case "compass": self = .compass
         case "boat": self = .boat
+        case "diagnostics": self = .diagnostics
         case "dashboard": self = .dashboard
         case "manual": self = .manual
         default: return nil
         }
+    }
+
+    /// The dashboard draws its own console over the map. Every other page uses the shell column.
+    var placesConsoleInTheShell: Bool {
+        self != .dashboard
+    }
+
+    /// Full detail size on the dashboard. Zero on every other page so the retained
+    /// dashboard and its map stay mounted without joining that page's layout.
+    func retainedDashboardSize(fitting detail: CGSize) -> CGSize {
+        self == .dashboard ? detail : .zero
     }
 
     var rawValue: String {
@@ -262,6 +317,7 @@ extension SidebarItem: RawRepresentable {
         case .hydro: return "hydro"
         case .compass: return "compass"
         case .boat: return "boat"
+        case .diagnostics: return "diagnostics"
         case .dashboard: return "dashboard"
         case .manual: return "manual"
         }

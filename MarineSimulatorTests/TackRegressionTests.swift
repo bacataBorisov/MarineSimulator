@@ -32,7 +32,7 @@ struct TackRegressionTests {
     }
 
     @Test @MainActor
-    func beginTackTargetsOppositeCloseHauledHeading() {
+    func beginTackTargetsTheOppositeTackAtTheSameWindAngle() {
         let simulator = makeTackSimulator()
         simulator.twd = SimulatedValue(type: .windDirection, center: 0, offset: 0, value: 0)
         simulator.tws = SimulatedValue(type: .windSpeed, center: 12, offset: 0, value: 12)
@@ -46,12 +46,12 @@ struct TackRegressionTests {
         #expect(state != nil)
         #expect(simulator.isTackInProgress)
         #expect(simulator.tackAnimationInProgress)
-        #expect(simulator.tackAnimationTimer != nil)
+        #expect(simulator.tackAnimationTimer == nil)
 
-        let optimal = simulator.boatProfile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: 12)
-        let port = normalizeAngle(0 + optimal)
-        #expect(abs(calculateShortestRotation(from: state?.toTrueHeading ?? 0, to: port)) < 0.6)
+        #expect(abs(calculateShortestRotation(from: state?.toTrueHeading ?? 0, to: 35)) < 0.6)
         #expect(abs(calculateShortestRotation(from: state?.fromTrueHeading ?? 0, to: 325)) < 8)
+        #expect(simulator.activeManeuver?.side == .port)
+        #expect(simulator.activeManeuver?.turnDelta == 70)
     }
 
     @Test

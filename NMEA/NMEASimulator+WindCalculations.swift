@@ -61,7 +61,38 @@ extension NMEASimulator {
         )
     }
 
+    /// Wind angles for the anemometer while a maneuver owns heading.
+    /// Uses the live bow and wind, not the last transmitted snapshot.
+    func liveManeuverWindAngles() -> (trueAngle: Double, apparentAngle: Double)? {
+        guard isTackInProgress, sensorToggles.hasAnemometer else { return nil }
+        let heading: Double? = {
+            if sensorToggles.hasGyro, let gyro = gyroHeading.value {
+                return normalizeAngle(gyro)
+            }
+            if sensorToggles.hasCompass, let magnetic = heading.value {
+                return normalizeAngle(magnetic)
+            }
+            return normalizeAngle(gpsData.courseOverGround)
+        }()
+        guard let heading else { return nil }
+        let trueWindDirection = twd.value ?? twd.centerValue
+        let trueWindSpeed = tws.value ?? tws.centerValue
+        let trueAngle = normalizeAngle(trueWindDirection - heading)
+        let boatSpeed = sensorToggles.hasSpeedLog ? (speed.value ?? speed.centerValue) : nil
+        guard let boatSpeed, boatSpeed != 0 else {
+            return (trueAngle, trueAngle)
+        }
+        let trueAngleRadians = toRadians(trueAngle)
+        let windX = trueWindSpeed * cos(trueAngleRadians)
+        let windY = trueWindSpeed * sin(trueAngleRadians)
+        let apparentAngle = normalizeAngle(toDegrees(atan2(windY, windX + boatSpeed)))
+        return (trueAngle, apparentAngle)
+    }
+
     func computeTWA(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
+        if let publication = snapshot?.experimentPublication {
+            return publication.trueWindAngleDegrees
+        }
         guard let snapshot, let twd = snapshot.windDirectionTrue else { return nil }
 
         let heading = forInstrumentDisplay
@@ -76,6 +107,9 @@ extension NMEASimulator {
     }
 
     func computeAWS(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
+        if let publication = snapshot?.experimentPublication {
+            return publication.apparentWindSpeedKnots
+        }
         guard let snapshot, let tws = snapshot.windSpeedTrue else { return nil }
 
         if snapshot.boatSpeed == nil || snapshot.boatSpeed == 0 {
@@ -104,6 +138,9 @@ extension NMEASimulator {
     }
 
     func computeAWA(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
+        if let publication = snapshot?.experimentPublication {
+            return publication.apparentWindAngleDegrees
+        }
         guard let snapshot, let tws = snapshot.windSpeedTrue else { return nil }
 
         let heading = forInstrumentDisplay
@@ -146,15 +183,21 @@ extension NMEASimulator {
     }
 
     func computeTWS(from snapshot: SimulationSnapshot?) -> Double? {
-        snapshot?.windSpeedTrue
+        if let publication = snapshot?.experimentPublication {
+            return publication.trueWindSpeedKnots
+        }
+        return snapshot?.windSpeedTrue
     }
 
     func computeTWD(from snapshot: SimulationSnapshot?) -> Double? {
-        snapshot?.windDirectionTrue
+        if let publication = snapshot?.experimentPublication {
+            return publication.trueWindDirectionDegrees
+        }
+        return snapshot?.windDirectionTrue
     }
 
     func computeVPWKnots(from snapshot: SimulationSnapshot?, forInstrumentDisplay: Bool = false) -> Double? {
-        guard let snapshot, let tws = snapshot.windSpeedTrue, let twa = computeTWA(from: snapshot, forInstrumentDisplay: forInstrumentDisplay) else {
+        guard let snapshot, let tws = computeTWS(from: snapshot), let twa = computeTWA(from: snapshot, forInstrumentDisplay: forInstrumentDisplay) else {
             return nil
         }
         return tws * cos(toRadians(twa))

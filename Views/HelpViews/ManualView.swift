@@ -3,6 +3,8 @@ import SwiftUI
 struct ManualView: View {
     @State private var searchText = ""
     @State private var selectedTopicID: ManualTopic.ID?
+    @State private var didRestoreManualPresentation = false
+    @Environment(\.pagePresentation) private var presentation
 
     private let topics = ManualTopic.defaultTopics
 
@@ -27,7 +29,10 @@ struct ManualView: View {
     }
 
     var body: some View {
-        HSplitView {
+        // A fixed column. `HSplitView` installs `SplitViewChildController`, which
+        // republishes min/max size on every console-height pass and exceeds
+        // AppKit's Update Constraints limit.
+        HStack(spacing: 0) {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Manual")
@@ -55,15 +60,30 @@ struct ManualView: View {
                     ForEach(filteredTopics) { topic in
                         topicRow(for: topic)
                             .tag(topic.id)
+                            .tracksConsoleEdge(topic.id == filteredTopics.first?.id, slot: "topics")
                     }
                 }
-                .listStyle(.sidebar)
+                .listStyle(.inset)
             }
-            .frame(minWidth: 300, idealWidth: 320, maxWidth: 360)
+            .frame(width: 320)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .clipped()
             .onAppear {
+                if !didRestoreManualPresentation {
+                    if let saved = presentation.manualTopicID {
+                        selectedTopicID = saved
+                    }
+                    searchText = presentation.manualSearch
+                    didRestoreManualPresentation = true
+                }
                 selectedTopicID = selectedTopicID ?? topics.first?.id
+                presentation.manualTopicID = selectedTopicID
+            }
+            .onChange(of: selectedTopicID) { _, newValue in
+                presentation.manualTopicID = newValue
             }
             .onChange(of: searchText) { _, newText in
+                presentation.manualSearch = newText
                 let capturedTopics = topics
                 let capturedSelection = selectedTopicID
                 Task { @MainActor in
@@ -82,6 +102,8 @@ struct ManualView: View {
                     }
                 }
             }
+
+            Divider()
 
             if let selectedTopic {
                 ScrollView {
@@ -138,11 +160,13 @@ struct ManualView: View {
                     }
                     .padding(PageChrome.padding)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .tracksConsoleEdge(slot: "body")
                 }
                 .background(detailBackground)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ContentUnavailableView("No Matching Topic", systemImage: "doc.text.magnifyingglass", description: Text("Try a broader search term."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

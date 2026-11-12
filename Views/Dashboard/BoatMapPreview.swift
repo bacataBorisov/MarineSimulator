@@ -37,6 +37,7 @@ struct BoatMapView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: BoatMapContainerView, context: Context) {
+        nsView.syncMapAttachment()
         guard isActive else { return }
         context.coordinator.update(
             container: nsView,
@@ -258,6 +259,8 @@ final class BoatMapContainerView: NSView {
 
     private var topConstraint: NSLayoutConstraint?
     private var trailingConstraint: NSLayoutConstraint?
+    private var hierarchyConstraints: [NSLayoutConstraint] = []
+    private var isAdjustingHierarchy = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -324,27 +327,91 @@ final class BoatMapContainerView: NSView {
         controlStack.addArrangedSubview(recenterSlot)
         controlStack.addArrangedSubview(zoomSlot)
 
-        addSubview(mapView)
-        addSubview(controlStack)
-
-        NSLayoutConstraint.activate([
-            mapView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            mapView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            mapView.topAnchor.constraint(equalTo: topAnchor),
-            mapView.bottomAnchor.constraint(equalTo: bottomAnchor),
-
-            compassSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
-            compassSlot.heightAnchor.constraint(equalToConstant: MapFloatingChrome.controlDiameter),
-            recenterSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
-            recenterSlot.heightAnchor.constraint(equalToConstant: MapFloatingChrome.controlDiameter),
-            zoomSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth)
-        ])
-
+        // MapKit stays out of the window until the container is large enough.
+        // A retained 0×0 MKMapView rejects its drawable and invalidates safe area
+        // on every constraint pass, which loops when the console height changes.
         let topConstraint = controlStack.topAnchor.constraint(equalTo: topAnchor, constant: 12)
         let trailingConstraint = controlStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12)
         self.topConstraint = topConstraint
         self.trailingConstraint = trailingConstraint
-        NSLayoutConstraint.activate([topConstraint, trailingConstraint])
+        hierarchyConstraints = [
+            mapView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            mapView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            mapView.topAnchor.constraint(equalTo: topAnchor),
+            mapView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            compassSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
+            compassSlot.heightAnchor.constraint(equalToConstant: MapFloatingChrome.controlDiameter),
+            recenterSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
+            recenterSlot.heightAnchor.constraint(equalToConstant: MapFloatingChrome.controlDiameter),
+            zoomSlot.widthAnchor.constraint(equalToConstant: MapFloatingChrome.slotWidth),
+            topConstraint,
+            trailingConstraint,
+        ]
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        syncMapAttachment()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        if !isAdjustingHierarchy, newSize.width <= 1 || newSize.height <= 1 {
+            detachMapFromWindow()
+        }
+        super.setFrameSize(newSize)
+        if !isAdjustingHierarchy {
+            syncMapAttachment()
+        }
+    }
+
+    override func setBoundsSize(_ newSize: NSSize) {
+        if !isAdjustingHierarchy, newSize.width <= 1 || newSize.height <= 1 {
+            detachMapFromWindow()
+        }
+        super.setBoundsSize(newSize)
+    }
+
+    override func layout() {
+        if !isAdjustingHierarchy {
+            syncMapAttachment()
+        }
+        super.layout()
+    }
+
+    /// Inserts the same `MKMapView` only while this container can give it a real size.
+    func syncMapAttachment() {
+        if bounds.width > 1, bounds.height > 1 {
+            attachMapIfNeeded()
+        } else {
+            detachMapFromWindow()
+        }
+    }
+
+    private func attachMapIfNeeded() {
+        guard mapView.superview !== self, !isAdjustingHierarchy else { return }
+        isAdjustingHierarchy = true
+        defer { isAdjustingHierarchy = false }
+        addSubview(mapView)
+        addSubview(controlStack)
+        NSLayoutConstraint.activate(hierarchyConstraints)
+        invalidateIntrinsicContentSize()
+    }
+
+    private func detachMapFromWindow() {
+        guard mapView.superview === self, !isAdjustingHierarchy else { return }
+        isAdjustingHierarchy = true
+        defer { isAdjustingHierarchy = false }
+        NSLayoutConstraint.deactivate(hierarchyConstraints)
+        controlStack.removeFromSuperview()
+        mapView.removeFromSuperview()
+        invalidateIntrinsicContentSize()
+    }
+
+    override var intrinsicContentSize: NSSize {
+        guard mapView.superview === self else {
+            return NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+        }
+        return super.intrinsicContentSize
     }
 }
 

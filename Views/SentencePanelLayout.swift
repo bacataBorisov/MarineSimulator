@@ -8,18 +8,12 @@ struct SentencePage<Sentences: View, Preview: View>: View {
     private let sentences: Sentences
     private let preview: Preview
 
-    @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
-
     init(
         @ViewBuilder sentences: () -> Sentences,
         @ViewBuilder preview: () -> Preview
     ) {
         self.sentences = sentences()
         self.preview = preview()
-    }
-
-    private var consoleClearance: CGFloat {
-        ConsolePanelView.toolbarHeight + CGFloat(max(0, storedLogHeight)) + 8
     }
 
     var body: some View {
@@ -29,14 +23,14 @@ struct SentencePage<Sentences: View, Preview: View>: View {
                     ScrollView {
                         sentenceColumn
                             .padding(PageChrome.padding)
-                            .padding(.bottom, consoleClearance)
+                            .tracksConsoleEdge(slot: "sentences")
                     }
                     .frame(maxWidth: .infinity)
 
                     ScrollView {
                         previewColumn
                             .padding([.top, .trailing, .bottom], PageChrome.padding)
-                            .padding(.bottom, consoleClearance)
+                            .tracksConsoleEdge(slot: "preview")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -47,8 +41,8 @@ struct SentencePage<Sentences: View, Preview: View>: View {
                         preview
                     }
                     .padding(PageChrome.padding)
-                    .padding(.bottom, consoleClearance)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .tracksConsoleEdge(slot: "stacked")
                 }
             }
         }

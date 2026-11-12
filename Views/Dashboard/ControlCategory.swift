@@ -164,88 +164,235 @@ struct BoatControls: View {
 
     var body: some View {
         @Bindable var nmea = nmea
-        let tws = nmea.tws.value ?? nmea.tws.centerValue
-        let optimal = nmea.boatProfile.optimalUpwindTrueWindAngleDegrees(trueWindSpeedKnots: tws)
+        let windAngle = nmea.maneuverAbsoluteTrueWindAngle
+        let sailing = nmea.liveSailingState
+        let tackName = sailing.tack == .port ? "Port" : (sailing.tack == .starboard ? "Starboard" : "—")
+        let sailName = sailing.sailCombination?.rawValue ?? "—"
+        let sailingReadout = "\(sailing.pointOfSail.displayName) · \(tackName) · TWA \(String(format: "%.0f", sailing.absoluteTrueWindAngle))° · Sail \(sailName)"
 
         VStack(alignment: .leading, spacing: 0) {
-            LiveControlRailBlock(title: "Boat Speed Model", subtitle: "Live output", trailing: {
-                Text(nmea.boatSpeedMode.displayName)
+            LiveControlRailBlock(title: "Vessel", subtitle: "Active profile", trailing: {
+                Text(nmea.activeVesselName)
                     .font(.system(.title3, design: .rounded).weight(.semibold))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.trailing)
             }, content: {
-                Picker("Boat Speed Model", selection: $nmea.boatSpeedMode) {
-                    ForEach(BoatSpeedMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel("Boat Speed Model")
-            })
+                VStack(alignment: .leading, spacing: 8) {
+                    VesselPicker(nmea: nmea)
 
-            chromeSeparator
-
-            LiveControlRailBlock(title: "Boat Profile", subtitle: "Polar basis", trailing: {
-                Text(nmea.boatProfile.shortName)
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-            }, content: {
-                VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                    Picker("Boat Profile", selection: $nmea.boatProfile) {
-                        ForEach(BoatProfile.allCases) { profile in
-                            Text(profile.shortName).tag(profile)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel("Boat Profile")
-
-                    Text(nmea.boatProfile.summary)
+                    Text(nmea.activeVesselSummary)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if let active = nmea.vessels.first(where: { $0.id == nmea.selectedVesselID }) {
+                        ActiveSailControls(profile: active, target: .hoisted, simulator: nmea)
+                    }
+
+                    Picker("Boat Speed Model", selection: $nmea.boatSpeedMode) {
+                        ForEach(BoatSpeedMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Boat Speed Model")
                 }
             })
 
             chromeSeparator
 
-            LiveControlRailBlock(title: "Tack", subtitle: "Close-hauled", trailing: {
-                Text("±\(optimal, specifier: "%.1f")°")
+            headingSetpoint
+
+            chromeSeparator
+
+            LiveControlRailBlock(title: "Maneuver", subtitle: "Through the wind", trailing: {
+                Text(windAngle.map { "±\(String(format: "%.1f", $0))°" } ?? "—")
                     .font(.system(.title3, design: .rounded).weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }, content: {
-                VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                    Text("Target uses true wind angle ±\(optimal, specifier: "%.1f")° at \(tws, specifier: "%.1f") kn TWS for this profile.")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(sailingReadout)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .accessibilityLabel(sailingReadout)
+                        .onChange(of: sailing.pointOfSail) { _, _ in
+                            nmea.maneuverRejectionReason = nil
+                        }
+                        .onChange(of: sailing.tack) { _, _ in
+                            nmea.maneuverRejectionReason = nil
+                        }
+                    Text("Tack crosses the bow. Gybe crosses the stern.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
 
-                    Button {
-                        nmea.beginTackManeuver()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                            Text(nmea.isTackInProgress ? "Tacking…" : "Tack")
-                                .frame(maxWidth: .infinity)
+                    Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+                        GridRow {
+                            maneuverButton(.tack(.port), title: "Tack Port")
+                            maneuverButton(.tack(.starboard), title: "Tack Stbd")
                         }
-                        .frame(maxWidth: .infinity)
+                        GridRow {
+                            maneuverButton(.gybe(.port), title: "Gybe Port")
+                            maneuverButton(.gybe(.starboard), title: "Gybe Stbd")
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!nmea.canExecuteTackManeuver || nmea.isTackInProgress)
 
-                    if let reason = tackDisabledReason {
+                    Button("Cancel") {
+                        nmea.cancelManeuver()
+                    }
+                    .controlSize(.small)
+                    .disabled(nmea.vesselObservation.maneuverPhase == .idle && !nmea.isTackInProgress)
+
+                    if let reason = tackDisabledReason ?? nmea.maneuverRejectionReason ?? nmea.sailingPolicyExplanation {
                         Text(reason)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+
+                    DisclosureGroup("Duration and speed loss") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            durationRow(
+                                title: "Tack duration",
+                                enabled: $nmea.maneuverSettings.usesTackDuration,
+                                seconds: $nmea.maneuverSettings.tackDurationSeconds
+                            )
+                            durationRow(
+                                title: "Gybe duration",
+                                enabled: $nmea.maneuverSettings.usesGybeDuration,
+                                seconds: $nmea.maneuverSettings.gybeDurationSeconds
+                            )
+                            retentionRow(title: "Tack keeps", value: $nmea.maneuverSettings.tackSpeedRetention)
+                            retentionRow(title: "Gybe keeps", value: $nmea.maneuverSettings.gybeSpeedRetention)
+                            Text("Off means duration follows the turn. Recovery uses the existing speed model. The heading eases on a smooth step.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.top, 6)
+                    }
+                    .font(.caption)
+
+                    DisclosureGroup("Compass measurements") {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("These are instruments. The heading setpoint above is what the boat steers.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .padding(.bottom, 6)
+                            if nmea.sensorToggles.hasGyro {
+                                ControlSliderView(
+                                    value: $nmea.heading,
+                                    title: "Magnetic Compass",
+                                    unit: "°",
+                                    precision: 0,
+                                    sliderRange: SimulatedValueType.magneticCompass.defaultRange,
+                                    onChange: nmea.persistLiveSettings,
+                                    isDisabled: !nmea.sensorToggles.hasCompass || nmea.isTackInProgress,
+                                    disabledReason: headingDisabledReason(hasSensor: nmea.sensorToggles.hasCompass, sensorName: "Magnetic Compass"),
+                                    wrapsCircularDegrees: true
+                                )
+                            } else {
+                                ControlSliderView(
+                                    value: $nmea.gyroHeading,
+                                    title: "Gyro",
+                                    unit: "°",
+                                    precision: 0,
+                                    sliderRange: SimulatedValueType.gyroCompass.defaultRange,
+                                    onChange: nmea.persistLiveSettings,
+                                    isDisabled: true,
+                                    disabledReason: "Enable the Gyro Compass in Configuration. The heading setpoint is the magnetic compass.",
+                                    wrapsCircularDegrees: true
+                                )
+                            }
+                        }
+                        .padding(.top, 6)
+                    }
+                    .font(.caption)
                 }
             })
+        }
+    }
+
+    @ViewBuilder
+    private var headingSetpoint: some View {
+        if nmea.sensorToggles.hasGyro {
+            ControlSliderView(
+                value: $nmea.gyroHeading,
+                title: "Heading Setpoint",
+                unit: "°",
+                precision: 0,
+                sliderRange: SimulatedValueType.gyroCompass.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: nmea.isTackInProgress,
+                disabledReason: nmea.isTackInProgress ? "A maneuver owns heading. Cancel it to steer manually." : nil,
+                supportingNote: "Commands true heading. The large number is the live gyro reading, not the setpoint.",
+                wrapsCircularDegrees: true
+            )
+        } else {
+            ControlSliderView(
+                value: $nmea.heading,
+                title: "Heading Setpoint",
+                unit: "°",
+                precision: 0,
+                sliderRange: SimulatedValueType.magneticCompass.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasCompass || nmea.isTackInProgress,
+                disabledReason: headingDisabledReason(hasSensor: nmea.sensorToggles.hasCompass, sensorName: "Magnetic Compass"),
+                supportingNote: "No gyro is installed. This is magnetic heading. True heading adds variation. The large number is the live compass reading.",
+                wrapsCircularDegrees: true
+            )
+        }
+    }
+
+    private func headingDisabledReason(hasSensor: Bool, sensorName: String) -> String? {
+        if nmea.isTackInProgress {
+            return "A maneuver owns heading. Cancel it to steer manually."
+        }
+        if !hasSensor {
+            return "Enable the \(sensorName) in Configuration to control heading."
+        }
+        return nil
+    }
+
+    private func maneuverButton(_ command: ManeuverCommand, title: String) -> some View {
+        let active = nmea.isTackInProgress && nmea.activeManeuver?.kind == command.kind && nmea.activeManeuver?.side == command.side
+        return Button {
+            nmea.beginManeuver(command)
+        } label: {
+            Text(active ? "In progress" : title)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .disabled(!nmea.canExecuteTackManeuver || !nmea.maneuverCommandIsAvailable(command))
+    }
+
+    private func durationRow(title: String, enabled: Binding<Bool>, seconds: Binding<Double>) -> some View {
+        HStack {
+            Toggle(title, isOn: enabled)
+                .font(.caption)
+            Spacer(minLength: 8)
+            Stepper(value: seconds, in: 1...60, step: 1) {
+                Text(enabled.wrappedValue ? "\(Int(seconds.wrappedValue)) s" : "Auto")
+                    .font(.caption.monospacedDigit())
+                    .frame(width: 48, alignment: .trailing)
+            }
+            .disabled(!enabled.wrappedValue)
+            .controlSize(.small)
+        }
+    }
+
+    private func retentionRow(title: String, value: Binding<Double>) -> some View {
+        HStack {
+            Text(title)
+                .font(.caption)
+                .frame(width: 72, alignment: .leading)
+            Slider(value: value, in: 0...1)
+            Text("\(Int((value.wrappedValue * 100).rounded()))%")
+                .font(.caption.monospacedDigit())
+                .frame(width: 36, alignment: .trailing)
         }
     }
 
@@ -343,35 +490,36 @@ struct HydroControls: View {
 // MARK: - Heading Controls
 struct HeadingControls: View {
     @Bindable var nmea: NMEASimulator
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ControlSliderView(
-                value: $nmea.heading,
-                title: "Heading",
-                unit: "°",
-                precision: 0,
-                sliderRange: SimulatedValueType.magneticCompass.defaultRange,
-                onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasCompass,
-                disabledReason: !nmea.sensorToggles.hasCompass ? "Enable the Magnetic Compass in Configuration to control magnetic heading." : nil,
-                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the primary source while the gyro is enabled." : "Magnetic heading is the active heading source because no gyro is enabled.",
-                wrapsCircularDegrees: true
-            )
-            RailDivider()
-            ControlSliderView(
-                value: $nmea.gyroHeading,
-                title: "Gyro Heading",
-                unit: "°",
-                precision: 0,
-                sliderRange: SimulatedValueType.gyroCompass.defaultRange,
-                onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasGyro,
-                disabledReason: !nmea.sensorToggles.hasGyro ? "Enable the Gyro Compass in Configuration to control true heading." : nil,
-                supportingNote: nmea.sensorToggles.hasGyro ? "Gyro heading is the preferred heading source for derived calculations and true-heading sentences." : nil,
-                wrapsCircularDegrees: true
-            )
-        }
+        LiveControlRailBlock(title: "Compass", subtitle: "Measurements", trailing: {
+            Text(gyroText)
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }, content: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Gyro \(gyroText) · Magnetic \(magneticText)")
+                    .font(.caption)
+                    .monospacedDigit()
+                Text("The heading setpoint, vessel, and tack commands are on the Boat segment. This page does not steer the boat.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        })
+    }
+
+    private var gyroText: String {
+        guard nmea.sensorToggles.hasGyro else { return "off" }
+        let value = nmea.gyroHeading.value ?? nmea.gyroHeading.centerValue
+        return "\(Int(value.rounded()))°"
+    }
+
+    private var magneticText: String {
+        guard nmea.sensorToggles.hasCompass else { return "off" }
+        let value = nmea.heading.value ?? nmea.heading.centerValue
+        return "\(Int(value.rounded()))°"
     }
 }
 
@@ -455,25 +603,27 @@ struct EnvironmentControls: View {
 }
 
 // MARK: - Setup (sidebar) boat panel
-struct BoatSetupDetailView: View {
-    @Bindable var nmeaManager: NMEASimulator
+struct VesselPicker: View {
+    @Bindable var nmea: NMEASimulator
 
     var body: some View {
-        PageContainer {
-            VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
-                Text("Boat")
-                    .font(.largeTitle)
-                Text("Choose the polar profile, speed model, and execute a timed tack onto the opposite close-hauled heading.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                GroupBox(label: Label("Profile & maneuver", systemImage: "sailboat")) {
-                    BoatControls(nmea: nmeaManager, chrome: .setupForm)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+        Picker("Boat Profile", selection: Binding(
+            get: { nmea.selectedVesselID },
+            set: { id in
+                if let id { nmea.selectVessel(id) }
+            }
+        )) {
+            if nmea.selectedVesselID == nil {
+                Text("Select a vessel").tag(Optional<UUID>.none)
+            }
+            ForEach(nmea.vessels) { vessel in
+                Text(vessel.name).tag(Optional(vessel.id))
             }
         }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Boat Profile")
     }
 }
 

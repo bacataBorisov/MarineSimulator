@@ -23,6 +23,14 @@ struct MarineSimulatorCommands: Commands {
             .disabled(SimulatorCommandTarget.current == nil)
         }
 
+        #if DEBUG
+        CommandMenu("Debug") {
+            Button("Scroll Trace…") {
+                ScrollTraceWindow.show()
+            }
+        }
+        #endif
+
         CommandGroup(after: .importExport) {
             Button("Export Settings…") {
                 guard let sim = SimulatorCommandTarget.current else { return }

@@ -145,21 +145,38 @@ extension NMEASimulator {
     }
 
     private func buildHDGSentences(talkerID: String, snapshot: SimulationSnapshot) -> [String] {
+        if let publication = snapshot.experimentPublication {
+            guard let heading = publication.magneticCompassHeadingDegrees,
+                  let deviation = publication.compassDeviationDegrees,
+                  let variation = publication.magneticVariationDegrees else {
+                return []
+            }
+            return [hdgSentence(talkerID: talkerID, heading: heading, deviation: deviation, variation: variation)]
+        }
         guard let headingMag = snapshot.magneticHeading else {
             return []
         }
+        return [hdgSentence(
+            talkerID: talkerID,
+            heading: headingMag,
+            deviation: snapshot.compassDeviation,
+            variation: snapshot.magneticVariation
+        )]
+    }
 
-        let deviationDeg = abs(snapshot.compassDeviation)
-        let deviationHemisphere = snapshot.compassDeviation >= 0 ? "E" : "W"
-        let variationDeg = abs(snapshot.magneticVariation)
-        let variationHemisphere = snapshot.magneticVariation >= 0 ? "E" : "W"
-
-        return ["$\(talkerID)HDG,\(NMEANumericFormatting.format(headingMag, fractionDigits: 1)),\(NMEANumericFormatting.format(deviationDeg, fractionDigits: 1)),\(deviationHemisphere),\(NMEANumericFormatting.format(variationDeg, fractionDigits: 1)),\(variationHemisphere)"]
+    private func hdgSentence(talkerID: String, heading: Double, deviation: Double, variation: Double) -> String {
+        let deviationHemisphere = deviation >= 0 ? "E" : "W"
+        let variationHemisphere = variation >= 0 ? "E" : "W"
+        return "$\(talkerID)HDG,\(NMEANumericFormatting.format(heading, fractionDigits: 1)),\(NMEANumericFormatting.format(abs(deviation), fractionDigits: 1)),\(deviationHemisphere),\(NMEANumericFormatting.format(abs(variation), fractionDigits: 1)),\(variationHemisphere)"
     }
 
     private func buildGyroSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
         switch type {
         case .hdt:
+            if let publication = snapshot.experimentPublication {
+                guard let headingTrue = publication.trueHeadingDegrees else { return [] }
+                return ["$\(talkerID)HDT,\(NMEANumericFormatting.format(headingTrue, fractionDigits: 1)),T"]
+            }
             guard let headingTrue = resolvedTrueHeading(in: snapshot) else {
                 return []
             }
@@ -200,16 +217,33 @@ extension NMEASimulator {
             return ["$\(talkerID)MTW,\(NMEANumericFormatting.format(seaTemperature, fractionDigits: 1)),C"]
 
         case .vhw:
-            let headingTrue = resolvedTrueHeading(in: snapshot)
-            let headingMag = snapshot.magneticHeading ?? headingTrue.map { normalizeAngle($0 - snapshot.magneticVariation) }
-            let speedKnots = snapshot.boatSpeed
+            let headingTrue: Double?
+            let headingMag: Double?
+            let speedKnots: Double?
+            if let publication = snapshot.experimentPublication {
+                headingTrue = publication.resolvedTrueHeadingDegrees
+                headingMag = publication.magneticHeadingDegrees
+                speedKnots = publication.speedThroughWaterKnots
+            } else {
+                headingTrue = resolvedTrueHeading(in: snapshot)
+                headingMag = snapshot.magneticHeading ?? headingTrue.map { normalizeAngle($0 - snapshot.magneticVariation) }
+                speedKnots = snapshot.boatSpeed
+            }
             let speedKMH = speedKnots.map { $0 * 1.852 }
 
             return ["$\(talkerID)VHW,\(formatted(headingTrue, decimals: 1)),T,\(formatted(headingMag, decimals: 1)),M,\(formatted(speedKnots, decimals: 1)),N,\(formatted(speedKMH, decimals: 1)),K"]
 
         case .vbw:
-            let referenceHeading = resolvedTrueHeading(in: snapshot) ?? snapshot.gpsData.courseOverGround
-            let waterVector = speedComponents(speedKnots: snapshot.boatSpeed, course: referenceHeading, referenceHeading: referenceHeading)
+            let referenceHeading: Double
+            let waterSpeed: Double?
+            if let publication = snapshot.experimentPublication {
+                referenceHeading = publication.resolvedTrueHeadingDegrees ?? 0
+                waterSpeed = publication.speedThroughWaterKnots
+            } else {
+                referenceHeading = resolvedTrueHeading(in: snapshot) ?? snapshot.gpsData.courseOverGround
+                waterSpeed = snapshot.boatSpeed
+            }
+            let waterVector = speedComponents(speedKnots: waterSpeed, course: referenceHeading, referenceHeading: referenceHeading)
             let groundVector = sensorToggles.hasGPS
                 ? speedComponents(speedKnots: snapshot.gpsData.speedOverGround, course: snapshot.gpsData.courseOverGround, referenceHeading: referenceHeading)
                 : (longitudinal: Double?.none, transverse: Double?.none)

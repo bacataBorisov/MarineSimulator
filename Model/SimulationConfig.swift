@@ -15,12 +15,41 @@ struct SimulationConfig {
     let boatProfile: BoatProfile
     let waypointNavigation: WaypointNavigation
     let tackAnimationInProgress: Bool
+    let maneuverSettings: ManeuverOperatorSettings
     let talkerID: String
     let perSentenceTalkerID: [NMEASentenceType: String]
     let depthOffsetMeters: Double
     let faultInjection: FaultInjectionSettings
     let mwvReferenceMode: MWVReferenceMode
     let enabledOutputEndpoints: [OutputEndpoint]
+
+    /// A copy with the fields an in-memory experiment is allowed to select.
+    /// The original config is left unchanged.
+    func configuredForExperiment(
+        weatherSourceMode: WeatherSourceMode,
+        boatSpeedMode: BoatSpeedMode,
+        boatProfile: BoatProfile
+    ) -> SimulationConfig {
+        SimulationConfig(
+            sensorToggles: sensorToggles,
+            sentenceToggles: sentenceToggles,
+            interval: interval,
+            sentenceIntervals: sentenceIntervals,
+            weatherSourceMode: weatherSourceMode,
+            latestLiveWeather: latestLiveWeather,
+            boatSpeedMode: boatSpeedMode,
+            boatProfile: boatProfile,
+            waypointNavigation: waypointNavigation,
+            tackAnimationInProgress: tackAnimationInProgress,
+            maneuverSettings: maneuverSettings,
+            talkerID: talkerID,
+            perSentenceTalkerID: perSentenceTalkerID,
+            depthOffsetMeters: depthOffsetMeters,
+            faultInjection: faultInjection,
+            mwvReferenceMode: mwvReferenceMode,
+            enabledOutputEndpoints: enabledOutputEndpoints
+        )
+    }
 }
 
 /// Thread-safe snapshot of every `NMEASimulator` property the simulation queue reads.
@@ -59,12 +88,14 @@ struct SimulationInputMirror {
     var boatProfile: BoatProfile
     var waypointNavigation: WaypointNavigation
     var tackAnimationInProgress: Bool
+    var maneuverSettings: ManeuverOperatorSettings
     var talkerID: String
     var perSentenceTalkerID: [NMEASentenceType: String]
     var depthOffsetMeters: Double
     var faultInjection: FaultInjectionSettings
     var mwvReferenceMode: MWVReferenceMode
     var outputEndpoints: [OutputEndpoint]
+    var sailConfiguration: SailConfiguration
 
     init(from sim: NMEASimulator) {
         twd = sim.twd
@@ -90,11 +121,13 @@ struct SimulationInputMirror {
         boatProfile = sim.boatProfile
         waypointNavigation = sim.waypointNavigation
         tackAnimationInProgress = sim.tackAnimationInProgress
+        maneuverSettings = sim.maneuverSettings
         talkerID = sim.talkerID
         perSentenceTalkerID = sim.perSentenceTalkerID
         depthOffsetMeters = sim.depthOffsetMeters
         faultInjection = sim.faultInjection
         mwvReferenceMode = sim.mwvReferenceMode
         outputEndpoints = sim.outputEndpoints
+        sailConfiguration = sim.sailConfiguration
     }
 }

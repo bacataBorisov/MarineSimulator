@@ -2,7 +2,7 @@
 
 > **Date:** Aug 15, 2026  
 > **Scope:** Audit and proposals only — **no behaviour or math changes** in this pass.  
-> **Platform:** macOS 15+ (SwiftUI `NavigationSplitView`, optional macOS 15 console).  
+> **Platform:** macOS 26 and newer (`NavigationSplitView`, SwiftUI pages, AppKit console and maps).
 > **References:** [macOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/macos), [Settings](https://developer.apple.com/design/human-interface-guidelines/settings), [Toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars).
 
 ---

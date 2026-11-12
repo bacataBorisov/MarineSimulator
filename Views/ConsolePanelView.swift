@@ -6,6 +6,7 @@ struct ConsolePanelView: View {
     static let toolbarHeight: CGFloat = 36
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.consoleDragTracking) private var consoleDrag
     @Bindable var nmeaManager: NMEASimulator
     @Binding var consoleHeight: CGFloat
     let geometryHeight: CGFloat
@@ -21,6 +22,9 @@ struct ConsolePanelView: View {
     @State private var liveHeight: CGFloat?
     @State private var dragOrigin: CGFloat?
     @State private var dragMaxHeight: CGFloat?
+    @State private var dragSession = false
+    /// Height this panel just published. The binding's `onChange` must not animate it again.
+    @State private var locallyPublishedHeight: CGFloat?
     @State private var cachedSentPerSecond = 0
     @State private var cachedTotalSent = 0
     @State private var cachedHasNMEARows = false
@@ -79,9 +83,21 @@ struct ConsolePanelView: View {
                 lastExpandedHeight = Double(max(consoleHeight, expandedMinimumHeight))
             }
         }
+        .onDisappear {
+            cancelConsoleDrag()
+        }
         .onChange(of: consoleHeight) { _, newValue in
-            guard liveHeight == nil, abs(animatedHeight - newValue) > 0.5 else { return }
-            setAnimatedHeight(newValue, animated: !reduceMotion)
+            if let locallyPublishedHeight {
+                self.locallyPublishedHeight = nil
+                guard abs(locallyPublishedHeight - newValue) <= 0.5 else {
+                    adoptExternalHeight(newValue)
+                    return
+                }
+                guard liveHeight == nil, abs(animatedHeight - newValue) > 0.5 else { return }
+                publishAnimatedHeight(newValue)
+                return
+            }
+            adoptExternalHeight(newValue)
         }
         .onReceive(statsTimer) { _ in
             cachedSentPerSecond = nmeaManager.sentPerSecond()
@@ -114,7 +130,8 @@ struct ConsolePanelView: View {
                         .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.borderless)
-                .help(isCollapsed ? "Show Console" : "Hide Console")
+                .help(consoleToggleTitle)
+                .accessibilityLabel(consoleToggleTitle)
 
                 Picker("Console Mode", selection: consoleMode) {
                     ForEach(ConsoleView.Mode.allCases) { mode in
@@ -200,12 +217,22 @@ struct ConsolePanelView: View {
         }
     }
 
+    private var consoleToggleTitle: String {
+        isCollapsed ? "Show Console" : "Hide Console"
+    }
+
     private func beginResize() {
+        dragSession = true
+        consoleDrag.isDragging = true
         dragOrigin = displayedHeight
         dragMaxHeight = maxLogHeight
+        #if DEBUG
+        ScrollRuntimeTrace.shared.noteDrag(started: true, height: displayedHeight)
+        #endif
     }
 
     private func updateResize(windowDeltaY: CGFloat) {
+        guard dragSession else { return }
         let origin = dragOrigin ?? displayedHeight
         let next = min(max(origin + windowDeltaY, collapsedContentHeight), dragMaxHeight ?? maxLogHeight)
         var transaction = Transaction()
@@ -213,23 +240,39 @@ struct ConsolePanelView: View {
         withTransaction(transaction) {
             liveHeight = next
         }
+        #if DEBUG
+        ScrollRuntimeTrace.shared.noteConsoleHeight(next)
+        #endif
     }
 
     private func endResize() {
-        let finalHeight = liveHeight ?? consoleHeight
+        guard dragSession else {
+            consoleDrag.isDragging = false
+            return
+        }
+        let finalHeight = liveHeight ?? displayedHeight
         let parked = finalHeight < parkThreshold ? collapsedContentHeight : finalHeight
         if parked > parkThreshold {
             lastExpandedHeight = Double(parked)
         }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            animatedHeight = parked
-            consoleHeight = parked
-            liveHeight = nil
-            dragOrigin = nil
-            dragMaxHeight = nil
-        }
+        // Clear the drag before publishing height so this layout cannot scroll the page.
+        dragSession = false
+        liveHeight = nil
+        dragOrigin = nil
+        dragMaxHeight = nil
+        consoleDrag.isDragging = false
+        publishHeight(parked)
+        #if DEBUG
+        ScrollRuntimeTrace.shared.noteDrag(started: false, height: parked)
+        #endif
+    }
+
+    private func cancelConsoleDrag() {
+        dragSession = false
+        liveHeight = nil
+        dragOrigin = nil
+        dragMaxHeight = nil
+        consoleDrag.isDragging = false
     }
 
     private func toolbarMetric(_ title: String, _ value: String) -> some View {
@@ -249,16 +292,41 @@ struct ConsolePanelView: View {
         return String(format: "%.0f ms", nmeaManager.interval * 1000)
     }
 
+    /// One immediate height. Animating it resizes the page on every tick; a still-active
+    /// handle drag then calls `ConsoleEdgeAnchorView.apply` inside that constraint pass
+    /// until AppKit raises `NSGenericException`.
     private func toggleCollapsedState() {
+        let current = displayedHeight
         let target: CGFloat
-        if isCollapsed {
+        if current <= collapsedContentHeight {
             target = max(CGFloat(lastExpandedHeight), expandedMinimumHeight)
         } else {
-            lastExpandedHeight = Double(max(displayedHeight, expandedMinimumHeight))
+            lastExpandedHeight = Double(max(current, expandedMinimumHeight))
             target = collapsedContentHeight
         }
-        consoleHeight = target
-        setAnimatedHeight(target, animated: !reduceMotion)
+        cancelConsoleDrag()
+        publishHeight(target)
+    }
+
+    private func publishHeight(_ height: CGFloat) {
+        if abs(consoleHeight - height) > 0.5 {
+            locallyPublishedHeight = height
+        }
+        publishAnimatedHeight(height)
+        consoleHeight = height
+    }
+
+    private func publishAnimatedHeight(_ height: CGFloat) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            animatedHeight = height
+        }
+    }
+
+    private func adoptExternalHeight(_ height: CGFloat) {
+        guard liveHeight == nil, abs(animatedHeight - height) > 0.5 else { return }
+        setAnimatedHeight(height, animated: !reduceMotion)
     }
 
     private func setAnimatedHeight(_ height: CGFloat, animated: Bool) {
@@ -299,6 +367,9 @@ private final class ConsoleResizeHandleView: NSView {
     var onDragged: ((CGFloat) -> Void)?
     var onEnded: (() -> Void)?
     private var startY: CGFloat?
+    /// A click on the toolbar is the show/hide button. Beginning the drag on
+    /// mouse-down leaves the scroll anchor writing inside the toggle's layout.
+    private var armed = false
 
     override var mouseDownCanMoveWindow: Bool { false }
     override var isOpaque: Bool { false }
@@ -311,16 +382,23 @@ private final class ConsoleResizeHandleView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         startY = event.locationInWindow.y
-        onBegan?()
+        armed = false
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard let startY else { return }
+        if !armed {
+            armed = true
+            onBegan?()
+        }
         onDragged?(event.locationInWindow.y - startY)
     }
 
     override func mouseUp(with event: NSEvent) {
-        onEnded?()
+        if armed {
+            onEnded?()
+        }
         startY = nil
+        armed = false
     }
 }

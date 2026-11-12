@@ -637,8 +637,8 @@ struct NMEASimulatorEngineTests {
         // With heading 90 + variation (~9° geographic trend for lon 27.9), true heading ≈ 99°.
         // TWA ≈ |135 - 99| ≈ 36°. The polar value at TWA 36°, TWS 12 is between 6.10 and 7.01 kt.
         // Allow a reasonable band that covers variation drift (±1.8° seasonal).
-        let polarMin = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 33)
-        let polarMax = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 50)
+        let polarMin = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 33) ?? -1
+        let polarMax = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 50) ?? -1
         #expect(speed >= polarMin - 0.1, "Speed \(speed) below polar range minimum \(polarMin)")
         #expect(speed <= polarMax + 0.1, "Speed \(speed) above polar range maximum \(polarMax)")
 
@@ -648,8 +648,8 @@ struct NMEASimulatorEngineTests {
     @Test
     func estimatedBoatSpeedCollapsesWhenPinchingIntoWind() {
         let profile = BoatProfile.beneteauFirst407
-        let pinching = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 5)
-        let closeHauled = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 40)
+        let pinching = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 5) ?? -1
+        let closeHauled = profile.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 40) ?? -1
         #expect(pinching < 0.35)
         #expect(closeHauled > 5.5)
     }
