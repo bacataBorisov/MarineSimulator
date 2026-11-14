@@ -137,7 +137,7 @@ struct MainView: View {
                 .transaction { $0.animation = nil }
                 }
             }
-            .navigationTitle(PageTitlePresentation.toolbarTitle(for: selected))
+            .navigationTitle("")
         }
         .environment(nmeaManager)
         .environment(\.consoleDragTracking, consoleDrag)
@@ -171,6 +171,7 @@ struct MainView: View {
         .toolbar {
             MainWindowToolbar(
                 nmeaManager: nmeaManager,
+                selectedDestination: selection.wrappedValue ?? .dashboard,
                 sidebarNavigation: sidebarNavigation,
                 selectedPanelRawValue: $selectedPanelRawValue
             )
@@ -378,10 +379,67 @@ private struct DashboardPageHost: NSViewRepresentable {
 
 private struct MainWindowToolbar: ToolbarContent {
     var nmeaManager: NMEASimulator
+    var selectedDestination: SidebarItem
     var sidebarNavigation: SidebarNavigation
     @Binding var selectedPanelRawValue: String
 
+    @AppStorage("dashboard.show_left_dock") private var showLeftDock = true
+    @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
+    @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
+    @AppStorage("console_panel.last_expanded_height") private var lastExpandedConsoleHeight: Double = 220
+
+    private var showConsoleBinding: Binding<Bool> {
+        Binding(
+            get: { storedLogHeight > 0 },
+            set: { expanded in
+                if expanded {
+                    storedLogHeight = max(lastExpandedConsoleHeight, 140)
+                } else {
+                    if storedLogHeight > 0 {
+                        lastExpandedConsoleHeight = max(storedLogHeight, 140)
+                    }
+                    storedLogHeight = 0
+                }
+            }
+        )
+    }
+
     var body: some ToolbarContent {
+        if selectedDestination == .dashboard {
+            ToolbarItemGroup(placement: .navigation) {
+                DashboardPanelToggleButton(
+                    title: "Controls",
+                    systemImage: "slider.horizontal.below.rectangle",
+                    isOn: $showLeftDock
+                )
+                DashboardPanelToggleButton(
+                    title: "Instruments",
+                    systemImage: "gauge.with.needle",
+                    isOn: $showRightInspector
+                )
+                DashboardPanelToggleButton(
+                    title: "Console Log",
+                    systemImage: "terminal",
+                    isOn: showConsoleBinding
+                )
+            }
+        }
+
+        ToolbarItem(placement: .principal) {
+            MiddleStatusToolbarBar(
+                nmeaManager: nmeaManager,
+                openConnection: {
+                    sidebarNavigation.select(.connection)
+                    selectedPanelRawValue = SidebarItem.connection.rawValue
+                },
+                openBoat: {
+                    sidebarNavigation.select(.boat)
+                    selectedPanelRawValue = SidebarItem.boat.rawValue
+                }
+            )
+        }
+        .sharedBackgroundVisibility(.hidden)
+
         ToolbarItem(placement: .primaryAction) {
             TransmissionModeBadge(nmeaManager: nmeaManager)
         }
@@ -392,13 +450,167 @@ private struct MainWindowToolbar: ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             TransmissionToolbarButton(nmeaManager: nmeaManager)
         }
+    }
+}
 
-        ToolbarItem(placement: .status) {
-            TransportStatusToolbarButton(nmeaManager: nmeaManager) {
-                sidebarNavigation.select(.connection)
-                selectedPanelRawValue = SidebarItem.connection.rawValue
-            }
+private struct MiddleStatusToolbarBar: View {
+    @Bindable var nmeaManager: NMEASimulator
+    var openConnection: () -> Void
+    var openBoat: () -> Void
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            statusCluster(compact: false)
+            statusCluster(compact: true)
         }
+    }
+
+    private func statusCluster(compact: Bool) -> some View {
+        HStack(spacing: DesignToken.Spacing.row) {
+            ConnectionStatusPill(nmeaManager: nmeaManager, compact: compact, action: openConnection)
+            WeatherModeToolbarPill(nmeaManager: nmeaManager, compact: compact)
+            ActiveVesselToolbarPill(nmeaManager: nmeaManager, compact: compact, action: openBoat)
+        }
+    }
+}
+
+private struct ConnectionStatusPill: View {
+    @Bindable var nmeaManager: NMEASimulator
+    var compact: Bool
+    var action: () -> Void
+
+    var body: some View {
+        let activity = nmeaManager.isTransmitting ? "Transmitting" : "Idle"
+        let fullDetail = [activity, nmeaManager.latestTransportStatus?.message, PrimaryOutputSummary.label(for: nmeaManager)]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+        let displayText = compact ? activity : fullDetail
+        let systemImage = nmeaManager.isTransmitting
+            ? "antenna.radiowaves.left.and.right"
+            : "antenna.radiowaves.left.and.right.slash"
+        let tint = nmeaManager.isTransmitting ? DesignToken.Status.success : DesignToken.Status.neutral
+
+        Button(action: action) {
+            Label(displayText, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .padding(.horizontal, DesignToken.Spacing.inset)
+                .padding(.vertical, DesignToken.Spacing.stacked)
+                .background(tint.opacity(0.12), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(fullDetail)
+        .accessibilityLabel(fullDetail)
+    }
+}
+
+private struct WeatherModeToolbarPill: View {
+    @Bindable var nmeaManager: NMEASimulator
+    var compact: Bool
+
+    var body: some View {
+        let isLive = nmeaManager.weatherSourceMode == .liveWeather
+        let title: String = {
+            if !isLive { return "Manual" }
+            switch nmeaManager.liveWeatherStatus.state {
+            case .fetching: return compact ? "Live" : "Fetching…"
+            case .failed: return compact ? "Live!" : "Weather Error"
+            case .ready: return "Live Weather"
+            case .idle: return "Live Weather"
+            }
+        }()
+        let systemImage: String = {
+            if !isLive { return "slider.horizontal.3" }
+            switch nmeaManager.liveWeatherStatus.state {
+            case .idle: return "cloud.sun.fill"
+            case .fetching: return "arrow.triangle.2.circlepath"
+            case .ready: return "checkmark.circle.fill"
+            case .failed: return "exclamationmark.triangle.fill"
+            }
+        }()
+        let tint: Color = {
+            if !isLive { return DesignToken.Status.neutral }
+            switch nmeaManager.liveWeatherStatus.state {
+            case .idle: return DesignToken.Status.info
+            case .fetching: return DesignToken.Status.warning
+            case .ready: return DesignToken.Status.success
+            case .failed: return DesignToken.Status.error
+            }
+        }()
+        let helpText: String = {
+            if !isLive {
+                return "Manual weather controls active. Click to switch to Live Weather."
+            }
+            let provider = nmeaManager.latestLiveWeather?.sourceName
+            let details = [provider, nmeaManager.liveWeatherStatus.message].compactMap { $0 }.joined(separator: " — ")
+            return "\(details). Click to switch to Manual weather."
+        }()
+
+        Button {
+            nmeaManager.weatherSourceMode = isLive ? .manual : .liveWeather
+        } label: {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .padding(.horizontal, DesignToken.Spacing.inset)
+                .padding(.vertical, DesignToken.Spacing.stacked)
+                .background(tint.opacity(0.14), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(helpText)
+        .accessibilityLabel(helpText)
+    }
+}
+
+private struct ActiveVesselToolbarPill: View {
+    @Bindable var nmeaManager: NMEASimulator
+    var compact: Bool
+    var action: () -> Void
+
+    var body: some View {
+        let name = nmeaManager.activeVesselName
+        Button(action: action) {
+            Group {
+                if compact {
+                    Label(name, systemImage: "sailboat")
+                        .labelStyle(.iconOnly)
+                } else {
+                    Label(name, systemImage: "sailboat")
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+            .font(DesignToken.Typography.supporting)
+            .foregroundStyle(nmeaManager.vesselAllowsSimulation ? .primary : DesignToken.Status.warning)
+            .lineLimit(1)
+            .padding(.horizontal, DesignToken.Spacing.inset)
+            .padding(.vertical, DesignToken.Spacing.stacked)
+            .background(DesignToken.Status.neutral.opacity(0.12), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help("Active boat: \(name). Click to open Boat Profile.")
+        .accessibilityLabel("Active boat \(name)")
+    }
+}
+
+private struct DashboardPanelToggleButton: View {
+    let title: String
+    let systemImage: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .foregroundStyle(isOn ? DesignToken.accentPrimary : DesignToken.Status.neutral)
+        }
+        .help("\(isOn ? "Hide" : "Show") \(title)")
+        .accessibilityLabel("\(title) \(isOn ? "shown" : "hidden")")
     }
 }
 
@@ -445,36 +657,6 @@ private struct TransmissionToolbarButton: View {
                     : "Send single burst — Enable Timer is off in Connection (⌘R)")
         )
         .keyboardShortcut("r", modifiers: .command)
-    }
-}
-
-private struct TransportStatusToolbarButton: View {
-    @Bindable var nmeaManager: NMEASimulator
-    var openConnection: () -> Void
-
-    var body: some View {
-        let transportMessage = nmeaManager.latestTransportStatus?.message
-        let summary = PrimaryOutputSummary.label(for: nmeaManager)
-        let activity = nmeaManager.isTransmitting
-            ? "Transmitting"
-            : (nmeaManager.isTimerSelected ? "Idle" : "Timer Off · Single Burst")
-        let statusLine = [activity, transportMessage, summary].compactMap { $0 }.joined(separator: " · ")
-        let systemImage = nmeaManager.isTransmitting
-            ? "antenna.radiowaves.left.and.right"
-            : (nmeaManager.isTimerSelected ? "antenna.radiowaves.left.and.right.slash" : "timer.circle")
-        let tintColor = nmeaManager.isTransmitting
-            ? DesignToken.Status.success
-            : (nmeaManager.isTimerSelected ? DesignToken.Status.neutral : DesignToken.Status.warning)
-        Button {
-            openConnection()
-        } label: {
-            Label(statusLine, systemImage: systemImage)
-                .foregroundStyle(tintColor)
-                .lineLimit(1)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal)
-        .accessibilityLabel(statusLine)
     }
 }
 
@@ -739,5 +921,5 @@ final class RetainedDestinationHost<Content: View>: NSView, RetainedDestinationH
 
 #Preview {
     MainView(nmeaManager: NMEASimulator())
-        .frame(width: 1280, height: 800)
+        .frame(width: 1440, height: 900)
 }

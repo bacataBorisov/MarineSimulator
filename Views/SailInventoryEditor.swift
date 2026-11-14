@@ -577,6 +577,7 @@ struct ActiveSailControls: View {
     var profile: VesselProfile
     var target: Target
     @Bindable var simulator: NMEASimulator
+    var compactRail: Bool = false
     @State private var message: String?
 
     var body: some View {
@@ -623,16 +624,29 @@ struct ActiveSailControls: View {
         case .mainsail:
             slotMenu(field, selection: slot(\.mainsailID), sails: profile.inventory.filter(\.category.fitsMainsailSlot))
         case .reef:
-            FormMenuRow(
-                title: field.title,
-                accessibilityLabel: field.accessibilityLabel,
-                selection: reefBinding,
-                isEnabled: ActiveSailSelectionEdit.reefPickerIsEnabled(displayedSelection)
-            ) {
-                Text("Full").tag(ReefStep.full)
-                Text("Reef 1").tag(ReefStep.reef1)
-                Text("Reef 2").tag(ReefStep.reef2)
-                Text("Reef 3").tag(ReefStep.reef3)
+            if compactRail {
+                compactRailMenu(
+                    field,
+                    selection: reefBinding,
+                    isEnabled: ActiveSailSelectionEdit.reefPickerIsEnabled(displayedSelection)
+                ) {
+                    Text("Full").tag(ReefStep.full)
+                    Text("Reef 1").tag(ReefStep.reef1)
+                    Text("Reef 2").tag(ReefStep.reef2)
+                    Text("Reef 3").tag(ReefStep.reef3)
+                }
+            } else {
+                FormMenuRow(
+                    title: field.title,
+                    accessibilityLabel: field.accessibilityLabel,
+                    selection: reefBinding,
+                    isEnabled: ActiveSailSelectionEdit.reefPickerIsEnabled(displayedSelection)
+                ) {
+                    Text("Full").tag(ReefStep.full)
+                    Text("Reef 1").tag(ReefStep.reef1)
+                    Text("Reef 2").tag(ReefStep.reef2)
+                    Text("Reef 3").tag(ReefStep.reef3)
+                }
             }
         case .headsail:
             slotMenu(field, selection: slot(\.headsailID), sails: profile.inventory.filter(\.category.fitsHeadsailSlot))
@@ -641,12 +655,43 @@ struct ActiveSailControls: View {
         }
     }
 
+    @ViewBuilder
     private func slotMenu(_ field: ActiveSailEditorField, selection: Binding<UUID?>, sails: [SailRecord]) -> some View {
-        FormMenuRow(title: field.title, accessibilityLabel: field.accessibilityLabel, selection: selection) {
-            Text("None").tag(UUID?.none)
-            ForEach(sails) { sail in
-                Text("\(sail.name) · \(sail.category.title)").tag(Optional(sail.id))
+        if compactRail {
+            compactRailMenu(field, selection: selection) {
+                Text("None").tag(UUID?.none)
+                ForEach(sails) { sail in
+                    Text("\(sail.name) · \(sail.category.title)").tag(Optional(sail.id))
+                }
             }
+        } else {
+            FormMenuRow(title: field.title, accessibilityLabel: field.accessibilityLabel, selection: selection) {
+                Text("None").tag(UUID?.none)
+                ForEach(sails) { sail in
+                    Text("\(sail.name) · \(sail.category.title)").tag(Optional(sail.id))
+                }
+            }
+        }
+    }
+
+    private func compactRailMenu<Selection: Hashable, Content: View>(
+        _ field: ActiveSailEditorField,
+        selection: Binding<Selection>,
+        isEnabled: Bool = true,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: DesignToken.Spacing.row) {
+            Text(field.title)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: DesignToken.Spacing.related)
+            Picker(field.accessibilityLabel, selection: selection, content: content)
+                .labelsHidden()
+                .accessibilityLabel(field.accessibilityLabel)
+                .accessibilityIdentifier(field.accessibilityLabel)
+                .pickerStyle(.menu)
+                .disabled(!isEnabled)
+                .frame(width: 152, alignment: .trailing)
         }
     }
 

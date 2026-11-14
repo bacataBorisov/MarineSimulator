@@ -26,6 +26,16 @@ enum ControlCategory: String, CaseIterable {
         case .boat: "Boat"
         }
     }
+
+    var systemImage: String {
+        switch self {
+        case .wind: "wind"
+        case .environment: "cloud.sun"
+        case .hydro: "drop"
+        case .heading: "location.north.line"
+        case .boat: "sailboat"
+        }
+    }
 }
 
 // MARK: - Main Left Panel
@@ -34,19 +44,34 @@ struct LeftControlsPanel: View {
     @AppStorage("dashboard.live_control_category") private var category: ControlCategory = .wind
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppChrome.railSectionSpacing) {
-            RailSection("Live Controls", subtitle: "Adjust installed instruments directly from the dashboard. Disabled controls reflect missing sensors.") {
-                Picker("Live control category", selection: $category) {
-                    ForEach(ControlCategory.allCases, id: \.self) { cat in
-                        Text(cat.segmentTitle)
-                            .tag(cat)
-                            .accessibilityLabel(cat.rawValue)
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.inset) {
+            HStack(spacing: DesignToken.Spacing.row) {
+                ForEach(ControlCategory.allCases, id: \.self) { cat in
+                    let isSelected = category == cat
+                    Button {
+                        category = cat
+                    } label: {
+                        Image(systemName: cat.systemImage)
+                            .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
+                            .frame(width: 34, height: 30)
+                            .foregroundStyle(isSelected ? DesignToken.accentPrimary : .secondary)
+                            .background(
+                                isSelected ? DesignToken.accentPrimary.opacity(0.16) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: DesignToken.Radius.status, style: .continuous)
+                            )
+                            .contentShape(RoundedRectangle(cornerRadius: DesignToken.Radius.status, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .help(cat.rawValue)
+                    .accessibilityLabel(cat.rawValue)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    if cat != ControlCategory.allCases.last {
+                        Spacer(minLength: 0)
                     }
                 }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .frame(maxWidth: .infinity)
             }
+
+            RailDivider()
 
             ScrollView {
                 LiveControlsTabPage {
@@ -63,10 +88,13 @@ struct LeftControlsPanel: View {
                 }
             }
             .scrollIndicators(.never)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: AppChrome.liveControlScrollViewportWidth)
+            .frame(maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(AppChrome.railPadding)
+        .frame(width: AppChrome.liveControlRailOuterWidth, alignment: .top)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .clipped()
     }
 }
 
@@ -181,10 +209,22 @@ struct BoatControls: View {
                 detail: vesselSummary
             ) {
                 VStack(alignment: .leading, spacing: 8) {
-                    VesselPicker(nmea: nmea)
+                    HStack(alignment: .firstTextBaseline, spacing: DesignToken.Spacing.row) {
+                        Text("Profile")
+                            .font(DesignToken.Typography.supporting)
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: DesignToken.Spacing.related)
+                        VesselPicker(nmea: nmea)
+                            .frame(width: 152, alignment: .trailing)
+                    }
 
                     if let active = nmea.vessels.first(where: { $0.id == nmea.selectedVesselID }) {
-                        ActiveSailControls(profile: active, target: .hoisted, simulator: nmea)
+                        ActiveSailControls(
+                            profile: active,
+                            target: .hoisted,
+                            simulator: nmea,
+                            compactRail: chrome == .dashboardRail
+                        )
                     }
 
                     Picker("Boat Speed Model", selection: $nmea.boatSpeedMode) {

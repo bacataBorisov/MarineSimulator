@@ -17,14 +17,14 @@ enum AppChrome {
     static let railPadding: CGFloat = 16
     static let railSectionSpacing: CGFloat = 18
     /// Must match `DashboardView` frame on `LeftControlsPanel` so scroll content width is deterministic.
-    /// Wide enough for `ControlSliderView` (setpoint + variation stepper) without clipping; Boat tab pickers still fit.
-    static let liveControlRailOuterWidth: CGFloat = 352
+    /// Standard macOS inspector width; `ControlSliderView` puts Setpoint and Variation on separate rows so nothing clips.
+    static let liveControlRailOuterWidth: CGFloat = 280
     /// Scroll column width inside the rail (after `railPadding` only). Stops tab bodies from sizing to intrinsic width.
     static var liveControlScrollViewportWidth: CGFloat {
         liveControlRailOuterWidth - 2 * railPadding
     }
     /// Sole horizontal inset for live-controls tab scroll content (Wind / Env / … / Boat share this width model).
-    static let liveControlContentHorizontalPadding: CGFloat = 10
+    static let liveControlContentHorizontalPadding: CGFloat = 0
     static let railDivider = Color.white.opacity(0.08)
     static let subtleFill = Color.white.opacity(0.04)
     static let raisedFill = Color.white.opacity(0.06)
@@ -245,7 +245,7 @@ struct ControlSliderView: View {
             get: { nmea[keyPath: valuePath].offset },
             set: { new in
                 var value = nmea[keyPath: valuePath]
-                value.offset = new
+                value.offset = new.clamped(to: 0...180)
                 nmea.setSimulatedValue(valuePath, to: value)
                 onChange?()
             }
@@ -261,8 +261,46 @@ struct ControlSliderView: View {
         }
     }
 
+    private func nudgeOffset(by delta: Double) {
+        offsetBinding.wrappedValue = nmea[keyPath: valuePath].offset + delta
+    }
+
     private func formatted(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(precision)).grouping(.never))
+    }
+
+    private func nudgeRow(
+        label: String,
+        identifier: String,
+        binding: Binding<Double>,
+        nudge: @escaping (Double) -> Void
+    ) -> some View {
+        HStack(alignment: .center, spacing: DesignToken.Spacing.row) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: DesignToken.Spacing.related)
+
+            ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
+                nudge(-stepAmount)
+            }
+
+            TextField(
+                label,
+                value: binding,
+                format: .number.precision(.fractionLength(precision)).grouping(.never)
+            )
+            .textFieldStyle(.roundedBorder)
+            .monospacedDigit()
+            .frame(width: 72)
+            .disabled(isDisabled)
+            .accessibilityIdentifier(identifier)
+
+            ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {
+                nudge(stepAmount)
+            }
+        }
     }
 
     var body: some View {
@@ -288,57 +326,19 @@ struct ControlSliderView: View {
                 )
             }
 
-            HStack(alignment: .center, spacing: 8) {
-                ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
-                    nudgeCenter(by: -stepAmount)
-                }
+            nudgeRow(
+                label: "Setpoint",
+                identifier: "Setpoint \(title)",
+                binding: centerValueBinding,
+                nudge: nudgeCenter(by:)
+            )
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Setpoint")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    TextField(
-                        "Setpoint",
-                        value: centerValueBinding,
-                        format: .number.precision(.fractionLength(precision)).grouping(.never)
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .monospacedDigit()
-                    .frame(width: 84)
-                    .disabled(isDisabled)
-                    .accessibilityIdentifier("Setpoint \(title)")
-                }
-
-                ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {
-                    nudgeCenter(by: stepAmount)
-                }
-
-                Spacer(minLength: 4)
-
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text("Variation")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    SimulatedVariationText(
-                        nmea: nmea,
-                        valuePath: valuePath,
-                        title: title,
-                        precision: precision
-                    )
-                    Stepper(
-                        "",
-                        value: offsetBinding,
-                        in: 0...180,
-                        step: stepAmount
-                    )
-                    .accessibilityLabel("Variation")
-                    .monospacedDigit()
-                    .frame(minWidth: 96, maxWidth: 104, alignment: .trailing)
-                    .disabled(isDisabled)
-                    .accessibilityIdentifier("Variation Stepper \(title)")
-                }
-            }
+            nudgeRow(
+                label: "Variation",
+                identifier: "Variation \(title)",
+                binding: offsetBinding,
+                nudge: nudgeOffset(by:)
+            )
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -424,30 +424,6 @@ private struct SimulatedReadingText: View {
             .monospacedDigit()
             .multilineTextAlignment(.trailing)
             .accessibilityIdentifier("Reading \(title)")
-    }
-
-    private func formatted(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(precision)).grouping(.never))
-    }
-}
-
-/// Reads the same channel's offset in this body. The stepper next to it remains the editor.
-private struct SimulatedVariationText: View {
-    @Bindable var nmea: NMEASimulator
-    var valuePath: WritableKeyPath<NMEASimulator, SimulatedValue>
-    var title: String
-    var precision: Int
-
-    var body: some View {
-        let offset = nmea[keyPath: valuePath].offset
-        let label = formatted(offset)
-        #if DEBUG
-        let _ = RetainedDestinationBodyProbe.noteReading("Variation \(title)", label)
-        #endif
-        Text(label)
-            .monospacedDigit()
-            .frame(width: 44, alignment: .trailing)
-            .accessibilityIdentifier("Variation \(title)")
     }
 
     private func formatted(_ value: Double) -> String {

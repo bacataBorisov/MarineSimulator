@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active (explain plan + architectural fit first, implement directly without subagents or unrequested regression tests, user smoke-tests). Toolbar Play observation, idle console generation, and the Continuous/Burst mode indicators passed user smoke test and are committed. Remaining open items: verify/fix Dashboard live instruments if still stale during continuous transmission, fix per-page last scroll-position restoration, and then GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. Toolbar Play/Continuous/Burst indicators, unified Dashboard toolbar (removing `TopControlBar` and redundant window titles; moving panel toggles to leading `.navigation` and Connection/Weather/Boat status to `.principal`), and the 280pt left Live Controls rail (SF Symbol tabs, unified 16pt padding, Setpoint/Variation nudge rows, compact Boat pickers) passed user smoke tests and are committed. Remaining open items: per-page last scroll-position restoration, and then GPS `retainedMapResource`.
 **Last updated:** 2026-11-14
 
 ## Accepted navigation outcome
@@ -39,10 +39,9 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Verify Dashboard live instruments (`TrailingSidePanel` / `WindCompass`) during continuous transmission and fix if stale.
 - Fix per-page last scroll-position restoration.
 - Next feature item after regression cleanup: GPS `retainedMapResource`. No retained GPS map exists.
 - Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).
-- Dashboard visual work stays deferred: top strip, then left control geometry, then shared master-detail for Boat Profile and other selection-detail pages. Do not force master-detail onto single-form pages.
+- Shared master-detail for Boat Profile and other selection-detail pages stays deferred (do not force master-detail onto single-form pages).
 - One non-blocking resize glitch across the one-column/two-column threshold stays deferred.
 - Do not start M4 automatically.

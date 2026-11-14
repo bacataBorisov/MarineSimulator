@@ -42,31 +42,25 @@ struct DashboardView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 0) {
+            ZStack(alignment: .bottom) {
+                workspaceMap
+
                 if isVisible {
-                    topBarChrome
-                }
+                    VStack(spacing: 0) {
+                        workspaceDocks
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                ZStack(alignment: .bottom) {
-                    workspaceMap
-
-                    if isVisible {
-                        VStack(spacing: 0) {
-                            workspaceDocks
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                            ConsolePanelView(
-                                nmeaManager: nmeaManager,
-                                consoleHeight: consoleHeight,
-                                geometryHeight: geometry.size.height
-                            )
-                            .frame(maxWidth: .infinity)
-                        }
-                        .id(dockGeneration)
+                        ConsolePanelView(
+                            nmeaManager: nmeaManager,
+                            consoleHeight: consoleHeight,
+                            geometryHeight: geometry.size.height
+                        )
+                        .frame(maxWidth: .infinity)
                     }
+                    .id(dockGeneration)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(panelAnimation, value: showRightInspector)
             .animation(panelAnimation, value: showLeftDock)
         }
@@ -118,6 +112,7 @@ struct DashboardView: View {
                 LeftControlsPanel(nmea: nmeaManager)
                     .frame(width: leftRailWidth)
                     .frame(maxHeight: .infinity)
+                    .clipped()
                     .background(Rectangle().fill(.regularMaterial))
                     .overlay(alignment: .trailing) {
                         Rectangle()
@@ -191,40 +186,5 @@ struct DashboardView: View {
                     }
             )
             .accessibilityLabel("Resize instruments panel")
-    }
-
-    private var topBarChrome: some View {
-        TopControlBar(
-            showLeft: $showLeftDock,
-            showRight: $showRightInspector,
-            showBottom: Binding(
-                get: { consoleHeight.wrappedValue > 0 },
-                set: { expanded in
-                    let apply = {
-                        if expanded {
-                            consoleHeight.wrappedValue = max(CGFloat(lastExpandedConsoleHeight), 140)
-                        } else {
-                            if consoleHeight.wrappedValue > 0 {
-                                lastExpandedConsoleHeight = Double(max(consoleHeight.wrappedValue, 140))
-                            }
-                            consoleHeight.wrappedValue = 0
-                        }
-                    }
-                    if let panelAnimation {
-                        withAnimation(panelAnimation, apply)
-                    } else {
-                        apply()
-                    }
-                }
-            )
-        )
-        .environment(nmeaManager)
-        .frame(maxWidth: .infinity)
-        .background(Rectangle().fill(.ultraThinMaterial))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(separatorColor)
-                .frame(height: 1)
-        }
     }
 }
