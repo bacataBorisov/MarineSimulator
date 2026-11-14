@@ -103,6 +103,7 @@
 		06FCB44C2FF5E60B00F36D33 /* XTEHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FCB44B2FF5E60B00F36D33 /* XTEHelpView.swift */; };
 		06HIG0012F901001005DE47D /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0112F901001005DE47D /* ConnectionView.swift */; };
 		06HIG0022F901001005DE47D /* SimulationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0122F901001005DE47D /* SimulationView.swift */; };
+		06SEN0012F901001005DE47D /* SentenceOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SEN0112F901001005DE47D /* SentenceOverviewView.swift */; };
 		06HIG0032F901001005DE47D /* ConfigurationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0132F901001005DE47D /* ConfigurationChrome.swift */; };
 		06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0142F901001005DE47D /* SidebarNavigation.swift */; };
 		06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0152F901001005DE47D /* SentencePanelLayout.swift */; };
@@ -242,6 +243,7 @@
 		06FCB44B2FF5E60B00F36D33 /* XTEHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XTEHelpView.swift; sourceTree = "<group>"; };
 		06HIG0112F901001005DE47D /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		06HIG0122F901001005DE47D /* SimulationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationView.swift; sourceTree = "<group>"; };
+		06SEN0112F901001005DE47D /* SentenceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceOverviewView.swift; sourceTree = "<group>"; };
 		06HIG0132F901001005DE47D /* ConfigurationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationChrome.swift; sourceTree = "<group>"; };
 		06HIG0142F901001005DE47D /* SidebarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigation.swift; sourceTree = "<group>"; };
 		06HIG0152F901001005DE47D /* SentencePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePanelLayout.swift; sourceTree = "<group>"; };
@@ -565,6 +567,7 @@
 				0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */,
 				06HIG0112F901001005DE47D /* ConnectionView.swift */,
 				06HIG0122F901001005DE47D /* SimulationView.swift */,
+				06SEN0112F901001005DE47D /* SentenceOverviewView.swift */,
 				06HIG0132F901001005DE47D /* ConfigurationChrome.swift */,
 				06HIG0142F901001005DE47D /* SidebarNavigation.swift */,
 				06HIG0152F901001005DE47D /* SentencePanelLayout.swift */,
@@ -801,6 +804,7 @@
 				06212DD42E0B66FD007A4537 /* SensorToggleStates.swift in Sources */,
 				06HIG0012F901001005DE47D /* ConnectionView.swift in Sources */,
 				06HIG0022F901001005DE47D /* SimulationView.swift in Sources */,
+				06SEN0012F901001005DE47D /* SentenceOverviewView.swift in Sources */,
 				06HIG0032F901001005DE47D /* ConfigurationChrome.swift in Sources */,
 				06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */,
 				06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */,

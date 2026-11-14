@@ -10,7 +10,6 @@ struct DashboardView: View {
 
     @AppStorage("dashboard.show_left_dock") private var showLeftDock = true
     @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
-    @AppStorage("dashboard.inspector_width") private var storedInspectorWidth: Double = 340
     @AppStorage("console_panel.last_expanded_height") private var lastExpandedConsoleHeight: Double = 220
     @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
 
@@ -22,18 +21,13 @@ struct DashboardView: View {
     private static let dockSoakRefresh = Timer.publish(every: 15 * 60, on: .main, in: .default).autoconnect()
 
     private var leftRailWidth: CGFloat { AppChrome.liveControlRailOuterWidth }
-    private let inspectorMinWidth: CGFloat = 280
-    private let inspectorMaxWidth: CGFloat = 420
+    private var inspectorWidth: CGFloat { AppChrome.liveControlRailOuterWidth }
 
     private var consoleHeight: Binding<CGFloat> {
         Binding(
             get: { CGFloat(max(0, storedLogHeight)) },
             set: { storedLogHeight = Double(max(0, $0)) }
         )
-    }
-
-    private var inspectorWidth: CGFloat {
-        CGFloat(min(max(storedInspectorWidth, Double(inspectorMinWidth)), Double(inspectorMaxWidth)))
     }
 
     private var panelAnimation: Animation? {
@@ -125,17 +119,14 @@ struct DashboardView: View {
                 .allowsHitTesting(false)
 
             if showRightInspector {
-                HStack(spacing: 0) {
-                    inspectorResizeHandle
-
-                    ScrollView {
-                        TrailingSidePanel()
-                    }
-                    .scrollIndicators(.hidden)
-                    .frame(width: inspectorWidth)
-                    .frame(maxHeight: .infinity)
-                    .background(Rectangle().fill(.regularMaterial))
+                ScrollView {
+                    TrailingSidePanel()
                 }
+                .scrollIndicators(.hidden)
+                .frame(width: inspectorWidth)
+                .frame(maxHeight: .infinity)
+                .clipped()
+                .background(Rectangle().fill(.regularMaterial))
                 .overlay(alignment: .leading) {
                     Rectangle()
                         .fill(separatorColor)
@@ -164,27 +155,5 @@ struct DashboardView: View {
             startPoint: .top,
             endPoint: .bottom
         )
-    }
-
-    private var inspectorResizeHandle: some View {
-        Rectangle()
-            .fill(.clear)
-            .frame(width: 6)
-            .contentShape(Rectangle())
-            .onHover { hovering in
-                if hovering {
-                    NSCursor.resizeLeftRight.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        let proposed = storedInspectorWidth - Double(value.translation.width)
-                        storedInspectorWidth = min(max(proposed, Double(inspectorMinWidth)), Double(inspectorMaxWidth))
-                    }
-            )
-            .accessibilityLabel("Resize instruments panel")
     }
 }

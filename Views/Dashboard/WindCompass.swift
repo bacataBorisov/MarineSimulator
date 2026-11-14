@@ -55,32 +55,29 @@ struct WindCompass: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let instrumentWidth = min(geometry.size.width, 320)
-            let gaugeWidth = max(instrumentWidth - 8, 220)
-            let compassWidth = max(gaugeWidth - 22, 196)
+            let side = min(geometry.size.width, geometry.size.height)
+            let gaugeWidth = max(side - 8, 120)
+            let compassWidth = max(gaugeWidth * 0.90, 108)
 
             ZStack {
-                ZStack {
-                    AnemometerView(
-                        displayedTrueWindAngle: $displayedTrueWindAngle,
-                        displayedApparentWindAngle: $displayedApparentWindAngle,
-                        arrowRotationAnimation: windArrowAnimation
-                    )
-                    .frame(width: gaugeWidth, height: gaugeWidth)
+                AnemometerView(
+                    displayedTrueWindAngle: $displayedTrueWindAngle,
+                    displayedApparentWindAngle: $displayedApparentWindAngle,
+                    arrowRotationAnimation: windArrowAnimation
+                )
+                .frame(width: gaugeWidth, height: gaugeWidth)
 
-                    CompassView(
-                        displayedHeading: $displayedHeading,
-                        animationDelta: $compassAnimationDelta,
-                        hasValidHeading: $hasValidCompassHeading,
-                        dialRotationAnimation: compassDialAnimation
-                    )
-                    .frame(width: compassWidth, height: compassWidth)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                CompassView(
+                    displayedHeading: $displayedHeading,
+                    animationDelta: $compassAnimationDelta,
+                    hasValidHeading: $hasValidCompassHeading,
+                    dialRotationAnimation: compassDialAnimation
+                )
+                .frame(width: compassWidth, height: compassWidth)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minHeight: 296)
+        .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
         .onAppear {
             displayedTrueWindAngle = storedTrueWindAngle

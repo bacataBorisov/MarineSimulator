@@ -13,19 +13,13 @@ import MapKit
 struct TrailingSidePanel: View {
     @Environment(NMEASimulator.self) private var nmea
 
-    private let sentenceColumns = [
-        GridItem(.adaptive(minimum: 68), spacing: 8)
-    ]
-
     var body: some View {
         @Bindable var nmea = nmea
 
         VStack(alignment: .leading, spacing: AppChrome.railSectionSpacing) {
-            RailSection("Instruments", subtitle: "Live instrument state and sentence availability.") {
-                WindCompass()
-                    .padding(6)
-                    .background(AppChrome.subtleFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
+            WindCompass()
+                .padding(6)
+                .background(AppChrome.subtleFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             RailDivider()
 
@@ -81,65 +75,8 @@ struct TrailingSidePanel: View {
                     MonoLabel("Fix", text: nmea.sensorToggles.hasGPS ? "A" : "--")
                 }
             }
-
-            RailDivider()
-
-            RailSection("Sentence Output", subtitle: "Click a sentence to enable or disable it instantly. Warning state means the sentence is enabled but currently blocked by dependencies.") {
-                VStack(alignment: .leading, spacing: 12) {
-                    sentenceGroup("Wind", sentences: [
-                        sentenceControl("MWV", enabled: $nmea.sentenceToggles.shouldSendMWV, sendable: nmea.sensorToggles.hasAnemometer),
-                        sentenceControl("MWD", enabled: $nmea.sentenceToggles.shouldSendMWD, sendable: nmea.sensorToggles.hasAnemometer && nmea.hasTrueHeading && nmea.hasBoatSpeed),
-                        sentenceControl("VPW", enabled: $nmea.sentenceToggles.shouldSendVPW, sendable: nmea.sensorToggles.hasAnemometer && nmea.hasTrueHeading && nmea.hasBoatSpeed)
-                    ])
-
-                    sentenceGroup("Heading", sentences: [
-                        sentenceControl("HDG", enabled: $nmea.sentenceToggles.shouldSendHDG, sendable: nmea.sensorToggles.hasCompass),
-                        sentenceControl("HDT", enabled: $nmea.sentenceToggles.shouldSendHDT, sendable: nmea.sensorToggles.hasGyro),
-                        sentenceControl("ROT", enabled: $nmea.sentenceToggles.shouldSendROT, sendable: nmea.sensorToggles.hasGyro)
-                    ])
-
-                    sentenceGroup("GPS", sentences: [
-                        sentenceControl("RMC", enabled: $nmea.sentenceToggles.shouldSendRMC, sendable: nmea.sensorToggles.hasGPS),
-                        sentenceControl("GGA", enabled: $nmea.sentenceToggles.shouldSendGGA, sendable: nmea.sensorToggles.hasGPS),
-                        sentenceControl("VTG", enabled: $nmea.sentenceToggles.shouldSendVTG, sendable: nmea.sensorToggles.hasGPS),
-                        sentenceControl("GLL", enabled: $nmea.sentenceToggles.shouldSendGLL, sendable: nmea.sensorToggles.hasGPS),
-                        sentenceControl("GSA", enabled: $nmea.sentenceToggles.shouldSendGSA, sendable: nmea.sensorToggles.hasGPS),
-                        sentenceControl("GSV", enabled: $nmea.sentenceToggles.shouldSendGSV, sendable: nmea.sensorToggles.hasGPS),
-                        sentenceControl("ZDA", enabled: $nmea.sentenceToggles.shouldSendZDA, sendable: nmea.sensorToggles.hasGPS)
-                    ])
-
-                    sentenceGroup("Hydro", sentences: [
-                        sentenceControl("DBT", enabled: $nmea.sentenceToggles.shouldSendDBT, sendable: nmea.sensorToggles.hasEchoSounder),
-                        sentenceControl("DPT", enabled: $nmea.sentenceToggles.shouldSendDPT, sendable: nmea.sensorToggles.hasEchoSounder && abs(nmea.depthOffsetMeters) <= 99),
-                        sentenceControl("MTW", enabled: $nmea.sentenceToggles.shouldSendMTW, sendable: nmea.sensorToggles.hasWaterTempSensor),
-                        sentenceControl("VHW", enabled: $nmea.sentenceToggles.shouldSendVHW, sendable: nmea.sensorToggles.hasSpeedLog && nmea.hasTrueHeading),
-                        sentenceControl("VBW", enabled: $nmea.sentenceToggles.shouldSendVBW, sendable: nmea.sensorToggles.hasSpeedLog || nmea.sensorToggles.hasGPS),
-                        sentenceControl("VLW", enabled: $nmea.sentenceToggles.shouldSendVLW, sendable: nmea.sensorToggles.hasSpeedLog)
-                    ])
-                }
-            }
         }
         .padding(AppChrome.railPadding)
-    }
-
-    private func sentenceControl(_ label: String, enabled: Binding<Bool>, sendable: Bool) -> SentenceControl {
-        SentenceControl(label: label, isEnabled: enabled, sendable: sendable)
-    }
-
-    @ViewBuilder
-    private func sentenceGroup(_ title: String, sentences: [SentenceControl]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .tracking(0.8)
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: sentenceColumns, alignment: .leading, spacing: 8) {
-                ForEach(sentences) { status in
-                    SentencePill(control: status)
-                }
-            }
-        }
     }
 }
 
@@ -193,69 +130,6 @@ struct MonoLabel: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(AppChrome.subtleFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-private struct SentenceControl: Identifiable {
-    let label: String
-    let isEnabled: Binding<Bool>
-    let sendable: Bool
-
-    var id: String { label }
-}
-
-private struct SentencePill: View {
-    let control: SentenceControl
-
-    private var tint: Color {
-        if control.isEnabled.wrappedValue && control.sendable {
-            return AppColors.success.opacity(0.22)
-        }
-
-        if control.isEnabled.wrappedValue && !control.sendable {
-            return AppColors.warning.opacity(0.22)
-        }
-
-        return .white.opacity(0.08)
-    }
-
-    private var stroke: Color {
-        if control.isEnabled.wrappedValue && !control.sendable {
-            return AppColors.warning.opacity(0.40)
-        }
-
-        return .white.opacity(0.08)
-    }
-
-    private var helpText: String {
-        if control.isEnabled.wrappedValue && control.sendable {
-            return "\(control.label) is enabled and currently sendable. Click to disable it."
-        }
-
-        if control.isEnabled.wrappedValue {
-            return "\(control.label) is enabled in settings but blocked by missing sensor dependencies. Click to disable it."
-        }
-
-        return "\(control.label) is currently disabled. Click to enable it."
-    }
-
-    var body: some View {
-        Button {
-            control.isEnabled.wrappedValue.toggle()
-        } label: {
-            Text(control.label)
-                .font(.caption.bold())
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(tint, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(stroke)
-                )
-        }
-        .buttonStyle(.plain)
-        .help(helpText)
     }
 }
 

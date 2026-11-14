@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Toolbar Play/Continuous/Burst indicators, unified Dashboard toolbar, 280pt left Live Controls rail (symmetric tab padding, `Compass` live summary + separate `Gyro Compass (True)` & `Magnetic Compass` controls in Heading tab), and `"No Boat (Instruments Only)"` mode (`ActiveVesselState.none`) passed user smoke tests and are committed. Remaining open items: per-page last scroll-position restoration, and then GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. Dashboard unified toolbar, 280pt left Live Controls rail (separate Gyro/Magnetic controls + No Boat mode), 280pt right Instruments rail (square WindCompass, pure telemetry), and the new `Sentences -> Overview` page passed user smoke tests and are committed. Remaining open items: per-page last scroll-position restoration, GPS `retainedMapResource`, and later page polish.
 **Last updated:** 2026-11-14
 
 ## Accepted navigation outcome

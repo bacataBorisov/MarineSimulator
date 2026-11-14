@@ -3,7 +3,7 @@ import AppKit
 
 enum SidebarItem: Hashable, CaseIterable {
     case gps, connection, simulation, diagnostics
-    case wind, hydro, compass, boat
+    case sentencesOverview, wind, hydro, compass, boat
     case dashboard, manual
 
     /// Window toolbar title. Sidebar labels use the same strings.
@@ -15,6 +15,7 @@ enum SidebarItem: Hashable, CaseIterable {
         case .boat: return "Boat Profile"
         case .diagnostics: return "Diagnostics"
         case .manual: return "Manual"
+        case .sentencesOverview: return "Overview"
         case .wind: return "Wind"
         case .compass: return "Compass"
         case .hydro: return "Hydro"
@@ -82,6 +83,9 @@ struct MainView: View {
                     }
                 }
                 Section("Sentences") {
+                    NavigationLink(value: SidebarItem.sentencesOverview) {
+                        Label(SidebarItem.sentencesOverview.pageTitle, systemImage: "checklist")
+                    }
                     NavigationLink(value: SidebarItem.wind) {
                         Label(SidebarItem.wind.pageTitle, systemImage: "wind")
                     }
@@ -281,6 +285,8 @@ struct MainView: View {
             SimulationView(nmeaManager: nmeaManager)
         case .manual:
             ManualView()
+        case .sentencesOverview:
+            SentenceOverviewView(nmeaManager: nmeaManager)
         case .wind:
             WindConfig(nmeaManager: nmeaManager)
         case .hydro:
@@ -681,6 +687,7 @@ extension SidebarItem: RawRepresentable {
         case "gps": self = .gps
         case "config", "connection": self = .connection
         case "simulation": self = .simulation
+        case "sentencesOverview": self = .sentencesOverview
         case "wind": self = .wind
         case "hydro": self = .hydro
         case "compass": self = .compass
@@ -721,7 +728,7 @@ extension SidebarItem: RawRepresentable {
             return .retainedSessionView
         case .gps:
             return .retainedMapResource
-        case .diagnostics, .wind, .hydro, .compass, .manual:
+        case .diagnostics, .sentencesOverview, .wind, .hydro, .compass, .manual:
             return .ephemeral
         }
     }
@@ -737,6 +744,7 @@ extension SidebarItem: RawRepresentable {
         case .gps: return "gps"
         case .connection: return "connection"
         case .simulation: return "simulation"
+        case .sentencesOverview: return "sentencesOverview"
         case .wind: return "wind"
         case .hydro: return "hydro"
         case .compass: return "compass"
