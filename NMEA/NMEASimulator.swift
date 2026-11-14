@@ -1235,6 +1235,7 @@ class NMEASimulator {
         outputMessages.append(sentence)
         totalSentCount += 1
         pruneOutputMessageRecords(referenceTimestamp: timestamp)
+        consoleDisplayGeneration &+= 1
     }
 
     func pruneOutputMessageRecords(referenceTimestamp: Date) {

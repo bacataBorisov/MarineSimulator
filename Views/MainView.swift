@@ -138,8 +138,8 @@ struct MainView: View {
                 }
             }
             .navigationTitle(PageTitlePresentation.toolbarTitle(for: selected))
-            .environment(nmeaManager)
         }
+        .environment(nmeaManager)
         .environment(\.consoleDragTracking, consoleDrag)
         .environment(\.pagePresentation, pagePresentation)
         .environment(\.sidebarNavigation, sidebarNavigation)
@@ -333,8 +333,7 @@ private struct OpaqueSidebarColumnBackground: NSViewRepresentable {
     }
 }
 
-/// Toolbar observation of this simulator suppresses later updates in the root hosting view.
-/// The dashboard keeps its own host so reads in its body still invalidate.
+/// The dashboard keeps its own host so map layout stays independent of the shell.
 @Observable
 private final class DashboardVisibility {
     var isVisible: Bool
@@ -429,10 +428,12 @@ private struct TransportStatusToolbarButton: View {
         Button {
             openConnection()
         } label: {
-            Label(statusLine,
-                  systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash")
-                .foregroundStyle(nmeaManager.isTransmitting ? DesignToken.Status.success : DesignToken.Status.neutral)
-                .lineLimit(1)
+            Label(
+                statusLine,
+                systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash"
+            )
+            .foregroundStyle(nmeaManager.isTransmitting ? DesignToken.Status.success : DesignToken.Status.neutral)
+            .lineLimit(1)
         }
         .buttonStyle(.plain)
         .padding(.horizontal)

@@ -4,12 +4,14 @@ Last updated: 2026-11-14
 
 ## Current Objective
 
-Semantic consistency fixes are accepted after independent verification. Connection timer status stays inside the Transmission card and remains live. Legacy spacing ownership is decoupled; the dead page-title token and primitive are removed. The semantic consistency audit is Ready with bounded gaps. This checkpoint is accepted.
+Workflow reset to direct single-chat execution: explain plan and architectural fit first, wait for approval, implement directly without subagents or unrequested regression tests, and build for user smoke-testing. Piece 1 (toolbar `@Bindable` child `View`s + idle console generation bump) passed user smoke test.
 
 ## Constraints
 
-Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connection, Simulation, and Dashboard lifecycles stay unchanged. Do not restyle deferred pages. Runtime VoiceOver and full keyboard/focus traversal remain open. The resize glitch stays deferred. Dashboard visual layout and the top strip stay deferred.
+Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connection, Simulation, and Dashboard lifecycles stay unchanged. Do not restyle deferred pages. Do not add subagent handoffs or new regression tests unless explicitly asked. The user is the external verifier for runtime smoke tests.
 
 ## Next
 
-GPS `retainedMapResource` is the next implementation item. Dashboard visual and top-strip work stays deferred. VoiceOver and full keyboard/focus traversal remain open.
+1. Add clear user-facing indication when Play is pressed with `Enable Timer` disabled (single-shot mode).
+2. Fix per-page last scroll-position restoration.
+3. Return to GPS `retainedMapResource` and deferred Dashboard work.

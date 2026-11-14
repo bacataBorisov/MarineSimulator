@@ -64,7 +64,7 @@ struct ConsolePanelView: View {
         VStack(spacing: 0) {
             toolbar
 
-            ConsoleView(mode: resolvedMode, isActive: displayedHeight > 1)
+            ConsoleView(nmeaManager: nmeaManager, mode: resolvedMode, isActive: displayedHeight > 1)
                 .frame(height: displayedHeight)
                 .frame(maxWidth: .infinity)
                 .clipped()

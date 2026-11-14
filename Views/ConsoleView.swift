@@ -16,7 +16,7 @@ struct ConsoleView: View {
         var id: String { rawValue }
     }
 
-    @Environment(NMEASimulator.self) private var nmeaManager
+    @Bindable var nmeaManager: NMEASimulator
     let mode: Mode
     /// When false, skip live timers / generation observation (panel collapsed).
     var isActive: Bool = true

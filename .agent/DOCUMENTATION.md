@@ -19,18 +19,8 @@ MarineSimulator keeps two agent layers. Do not merge them.
 6. `.agent-os/context/project-memory.md`
 7. The investigation named by the current task
 
-## Roles
+## Workflow
 
-The parent chat is the Architect. It owns the roadmap, task slicing, and approval gates. User communication defaults to English; switch to Bulgarian for master-thesis writing/translation or when requested. Technical instructions and source documentation stay in English.
+The parent chat handles design explanations, direct implementation, and architecture documentation directly: explain how and why a step fits the architecture before changing code, avoid subagents and unrequested regression tests, and rely on the user to smoke-test and verify the built app before moving on. User communication defaults to English; switch to Bulgarian for master-thesis writing/translation or when requested. Technical instructions and source documentation stay in English.
 
-Repository agents live in `.cursor/agents/`:
-
-| Role | Invocation | Does | Does not |
-|---|---|---|---|
-| Architect | Parent chat | Discuss, plan, delegate, review, and maintain architecture | Implement production code directly |
-| Implementer | `/implementer <English task>` | Implement one approved slice, test, build, and report | Unrelated refactors or the next milestone |
-| Verifier | `/verifier <English review task>` | Independently review architecture, tests, state, performance, and acceptance criteria | Edit repository files or infer visual correctness from tests |
-
-Both agents return their reports to the parent chat; no prompt transfer to another chat is required. The Architect continues only after the user accepts the reviewed result.
-
-ExtasyCompleteNavigation (`.agent/`, `AGENTS.md`) supplied the pattern: canon in `.agent/`, session state in `.agent-os`, one active task, a report after the task, no automatic next task.
+ExtasyCompleteNavigation (`.agent/`, `AGENTS.md`) supplied the pattern: canon in `.agent/`, session state in `.agent-os`, one active task, user verification after each step, no automatic next task.

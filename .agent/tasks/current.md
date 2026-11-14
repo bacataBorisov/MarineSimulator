@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Accepted checkpoint. The responsive foundation, semantic tokens, endpoint edits, Dashboard live controls and readouts, heading command path, and semantic consistency fixes are accepted. Connection timer status stays inside the Transmission card and remains live. Legacy spacing ownership is decoupled; the dead page-title token and primitive are removed. The semantic consistency audit is Ready with bounded gaps. Runtime VoiceOver and full keyboard/focus traversal remain open. GPS `retainedMapResource` is the next implementation item. Dashboard visual layout and the top strip stay deferred. Lifecycle runtime UI checks and one non-blocking resize glitch remain open.
+**Status:** Direct single-chat workflow active (explain plan + architectural fit first, implement directly without subagents or unrequested regression tests, user smoke-tests). Piece 1 (toolbar Start/Stop `@Bindable` observation + single-shot console generation) passed user smoke test and is committed. Remaining open items: visible Play feedback when `Enable Timer` is disabled, per-page last scroll-position restoration, and then GPS `retainedMapResource`.
 **Last updated:** 2026-11-14
 
 ## Accepted navigation outcome
@@ -39,9 +39,10 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Next implementation item: GPS `retainedMapResource`. No retained GPS map exists.
-- Runtime VoiceOver and full keyboard/focus traversal remain open.
-- Lifecycle runtime UI validation remains outstanding.
+- Add visible Play/toolbar cue when `Enable Timer` (`isTimerSelected`) is off so single-shot bursts cannot look like a broken Play button.
+- Fix per-page last scroll-position restoration.
+- Next feature item after regression cleanup: GPS `retainedMapResource`. No retained GPS map exists.
+- Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).
 - Dashboard visual work stays deferred: top strip, then left control geometry, then shared master-detail for Boat Profile and other selection-detail pages. Do not force master-detail onto single-form pages.
 - One non-blocking resize glitch across the one-column/two-column threshold stays deferred.
 - Do not start M4 automatically.
