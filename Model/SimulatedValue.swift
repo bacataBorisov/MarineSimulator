@@ -102,9 +102,11 @@ struct SimulatedValue: Codable, Equatable {
         max(range.lowerBound, centerValue - offset)
     }
 
-    /// The upper bound used during random value generation
+    /// The upper bound used during random value generation.
+    /// A circle stored as `0...359` still has to sample `[359, 360)`.
     var upperBound: Double {
-        min(range.upperBound, centerValue + offset)
+        let limit = wrappedDegreeCenter(centerValue, range: range) == nil ? range.upperBound : 360
+        return min(limit, centerValue + offset)
     }
 
     /// Generates a new random value within the center ± offset range
@@ -117,8 +119,13 @@ struct SimulatedValue: Codable, Equatable {
             return nil
         }
 
-        // Ensure the center value is within allowed range
-        centerValue = centerValue.clamped(to: range)
+        // A normalized heading in `[359, 360)` is on the circle. Clamping it to 359
+        // shifts the next true-heading sample by the variation.
+        if let wrapped = wrappedDegreeCenter(centerValue, range: range) {
+            centerValue = wrapped
+        } else {
+            centerValue = centerValue.clamped(to: range)
+        }
 
         // Limit offset so it never exceeds half of total range
         let maxAllowedOffset = (range.upperBound - range.lowerBound) / 2
@@ -129,6 +136,17 @@ struct SimulatedValue: Codable, Equatable {
         value = generated
         return generated
     }
+}
+
+/// Full-circle ranges stop at 359 or 359.9. Values in `[upper, 360)` are still headings.
+private func wrappedDegreeCenter(_ center: Double, range: ClosedRange<Double>) -> Double? {
+    guard range.lowerBound == 0,
+          range.upperBound >= 359,
+          range.upperBound < 360,
+          center >= range.upperBound,
+          center < 360
+    else { return nil }
+    return center
 }
 
 /// Extension to safely clamp values within a range

@@ -21,7 +21,7 @@ MarineSimulator keeps two agent layers. Do not merge them.
 
 ## Roles
 
-The parent chat is the Architect. It owns the roadmap, task slicing, approval gates, and Bulgarian user communication. Technical instructions and source documentation stay in English.
+The parent chat is the Architect. It owns the roadmap, task slicing, and approval gates. User communication defaults to English; switch to Bulgarian for master-thesis writing/translation or when requested. Technical instructions and source documentation stay in English.
 
 Repository agents live in `.cursor/agents/`:
 

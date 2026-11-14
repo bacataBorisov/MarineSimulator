@@ -554,6 +554,47 @@ struct PagePresentationTests {
         page.anchor.followViewport()
         expectNear(page.offset, 670)
     }
+
+    @Test
+    func aSuspendedAnchorKeepsItsOffsetAndDoesNotFollowAnotherPage() {
+        let session = PagePresentationSession()
+        let connection = PageScrollMemoryRig(
+            session: session,
+            page: .connection,
+            contentHeight: 2400,
+            viewport: 500
+        )
+        connection.userScroll(to: 480)
+        connection.anchor.setConsoleEdgeParticipation(false)
+        #expect(connection.anchor.isBoundToConsoleEdge == false)
+
+        connection.setViewport(300, offset: 0)
+        connection.anchor.followViewport()
+        NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: connection.scroll)
+        expectNear(session.storedOffset(page: .connection, slot: "primary") ?? -1, 480)
+        expectNear(connection.offset, 0)
+
+        let simulation = PageScrollMemoryRig(
+            session: session,
+            page: .simulation,
+            contentHeight: 2400,
+            viewport: 500
+        )
+        simulation.userScroll(to: 200)
+        simulation.tracking.isDragging = true
+        simulation.setViewport(360)
+        simulation.anchor.followViewport()
+        expectNear(session.storedOffset(page: .connection, slot: "primary") ?? -1, 480)
+        expectNear(session.storedOffset(page: .simulation, slot: "primary") ?? -1, 340)
+
+        connection.anchor.setConsoleEdgeParticipation(true)
+        #expect(connection.anchor.isBoundToConsoleEdge)
+        connection.setViewport(500, offset: 0)
+        connection.anchor.followViewport()
+        expectNear(connection.offset, 480)
+        expectNear(session.storedOffset(page: .simulation, slot: "primary") ?? -1, 340)
+        #expect(connection.tracking.isDragging == false)
+    }
 }
 
 private func expectNear(_ value: CGFloat, _ expected: CGFloat) {

@@ -184,38 +184,38 @@ struct VesselHullRigTests {
     }
 
     @Test
-    func hullAndRigEditsAreDirtyAndSaveDiscardCancelKeepTypedValues() throws {
+    func hullAndRigEditsAutosaveWithoutReplacingInvalidText() throws {
         let simulator = hullSimulator()
         let session = VesselLibrarySession()
         let custom = try #require(session.createVessel(name: "Skiff", modelName: "One", constructionYear: 2020, on: simulator))
         session.show(custom.id, on: simulator)
         session.buffer.lengthOverall = "8.200"
-        #expect(session.saveBuffer(on: simulator))
+        session.persistValidEdits(on: simulator)
+        #expect(simulator.vessels.first { $0.id == custom.id }?.hull.lengthOverallMeters == 8.2)
         session.buffer.lengthOverall = " 8.200 "
         #expect(session.hasUnsavedChanges(in: simulator) == false)
         session.buffer.lengthOverall = "9.500"
         session.buffer.foretriangleBase = "3.250"
-        #expect(session.hasUnsavedChanges(in: simulator))
-        #expect(session.requestLeave(.highlight(BuiltInVesselID.nimana), on: simulator) == .needsConfirmation)
-
-        #expect(session.resolveUnsavedChanges(.cancel, on: simulator) == .stayed)
-        #expect(session.buffer.lengthOverall == "9.500")
-        #expect(session.buffer.foretriangleBase == "3.250")
-        #expect(simulator.vessels.first { $0.id == custom.id }?.hull.lengthOverallMeters == 8.2)
-
-        #expect(session.requestLeave(.highlight(BuiltInVesselID.nimana), on: simulator) == .needsConfirmation)
-        #expect(session.resolveUnsavedChanges(.discard, on: simulator) == .perform(.highlight(BuiltInVesselID.nimana)))
-        #expect(simulator.vessels.first { $0.id == custom.id }?.rig.foretriangleBaseMeters == nil)
+        session.persistValidEdits(on: simulator)
+        #expect(simulator.vessels.first { $0.id == custom.id }?.hull.lengthOverallMeters == 9.5)
+        #expect(simulator.vessels.first { $0.id == custom.id }?.rig.foretriangleBaseMeters == 3.25)
+        #expect(session.requestLeave(.highlight(BuiltInVesselID.nimana), on: simulator) == .allowed)
+        #expect(session.highlightedID == BuiltInVesselID.nimana)
         #expect(simulator.selectedVesselID == BuiltInVesselID.extasy)
 
         session.show(custom.id, on: simulator)
-        session.buffer.lengthOverall = "9.500"
+        #expect(session.buffer.lengthOverall == "9.500")
+        session.buffer.lengthOverall = "12."
+        session.persistValidEdits(on: simulator)
+        #expect(session.buffer.lengthOverall == "12.")
+        #expect(session.validationMessage?.contains("number") == true)
+        #expect(simulator.vessels.first { $0.id == custom.id }?.hull.lengthOverallMeters == 9.5)
+        session.buffer.lengthOverall = "10.000"
         session.buffer.mainsailLuff = "12.000"
-        #expect(session.requestLeave(.highlight(BuiltInVesselID.extasy), on: simulator) == .needsConfirmation)
-        #expect(session.resolveUnsavedChanges(.save, on: simulator) == .perform(.highlight(BuiltInVesselID.extasy)))
+        session.persistValidEdits(on: simulator)
         let stored = try #require(simulator.vessels.first { $0.id == custom.id })
         #expect(stored.id == custom.id)
-        #expect(stored.hull.lengthOverallMeters == 9.5)
+        #expect(stored.hull.lengthOverallMeters == 10)
         #expect(stored.rig.mainsailLuffMeters == 12)
         #expect(stored.rig.foretriangleHeightMeters == nil)
         #expect(simulator.selectedVesselID == BuiltInVesselID.extasy)

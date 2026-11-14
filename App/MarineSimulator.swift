@@ -15,14 +15,15 @@ struct MarineSimulator: App {
     var body: some Scene {
         WindowGroup {
             MainView(nmeaManager: nmeaManager)
+                .tint(DesignToken.accentPrimary)
                 .environment(nmeaManager)
                 .onAppear {
                     SimulatorCommandTarget.current = nmeaManager
                     NSLog("[MarineSim] window onAppear sim=%@", String(describing: ObjectIdentifier(nmeaManager)))
                 }
-                .frame(minWidth: 960, minHeight: 640)
+                .frame(minWidth: DesignToken.Window.minimumWidth, minHeight: DesignToken.Window.minimumHeight)
         }
-        .defaultSize(width: 1180, height: 760)
+        .defaultSize(width: DesignToken.Window.defaultWidth, height: DesignToken.Window.defaultHeight)
         .windowResizability(.contentMinSize)
         .commands {
             MarineSimulatorCommands()

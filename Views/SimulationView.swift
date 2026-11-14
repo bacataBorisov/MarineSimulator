@@ -1,17 +1,51 @@
 import SwiftUI
 
 struct SimulationView: View {
-    @AppStorage("configuration.show_advanced") private var showAdvancedControls: Bool = false
     @Bindable var nmeaManager: NMEASimulator
     @State private var rateModeNotice: String?
 
     var body: some View {
-        PageContainer {
-            Form {
-                Section("Hardware Profile") {
+        #if DEBUG
+        let _ = RetainedDestinationBodyProbe.record(.simulation)
+        #endif
+        PageContainer(maxWidth: ResponsiveLayout.adaptivePageMaxWidth) {
+            SetupColumns {
+                hardwareProfile
+                sentenceRates
+                testPresets
+                weatherSource
+                onboardSensors
+                advancedControls
+            } wide: {
+                HStack(alignment: .top, spacing: ResponsiveLayout.configurationGutter) {
+                    VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
+                        hardwareProfile
+                        sentenceRates
+                    }
+                    .frame(maxWidth: ResponsiveLayout.configurationCardMaximum, alignment: .topLeading)
+                    VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
+                        testPresets
+                        weatherSource
+                    }
+                    .frame(maxWidth: ResponsiveLayout.configurationCardMaximum, alignment: .topLeading)
+                }
+                onboardSensors
+                advancedControls
+            }
+            .background(alignment: .topLeading) {
+                RetainedDestinationMarker(page: .simulation)
+                    .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var hardwareProfile: some View {
+        SettingsCard(title: "Hardware Profile", accessibilityID: SetupSection.hardwareProfile.rawValue) {
                     Text("Match real instrument clusters for realistic NMEA timing, talker IDs, and sentence sets.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DesignToken.Typography.supporting)
+                        .foregroundStyle(DesignToken.Status.neutral)
 
                     Picker("Hardware Profile", selection: Binding(
                         get: { nmeaManager.selectedProfile },
@@ -24,14 +58,17 @@ struct SimulationView: View {
                     .pickerStyle(.menu)
 
                     Text(nmeaManager.selectedProfile.summary)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(DesignToken.Typography.help)
+                        .foregroundStyle(DesignToken.Status.neutral)
                 }
 
-                Section("Sentence Update Rates") {
+    }
+
+    private var sentenceRates: some View {
+        SettingsCard(title: "Sentence Update Rates", accessibilityID: SetupSection.sentenceUpdateRates.rawValue) {
                     Text("Realistic mode uses hardware-accurate per-sentence intervals. Custom mode enables per-sentence editing in each instrument panel.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DesignToken.Typography.supporting)
+                        .foregroundStyle(DesignToken.Status.neutral)
 
                     Picker("Rate Mode", selection: $nmeaManager.sentenceRateMode) {
                         ForEach(SentenceRateMode.allCases) { mode in
@@ -56,23 +93,26 @@ struct SimulationView: View {
 
                     if let rateModeNotice {
                         Text(rateModeNotice)
-                            .font(.caption2)
-                            .foregroundStyle(nmeaManager.sentenceRateMode == .custom ? AppColors.warning : .secondary)
+                            .font(DesignToken.Typography.help)
+                            .foregroundStyle(nmeaManager.sentenceRateMode == .custom ? DesignToken.Status.warning : DesignToken.Status.neutral)
                     } else if nmeaManager.sentenceRateMode == .realistic {
                         Text("Per-sentence intervals follow the selected hardware profile defaults.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(DesignToken.Typography.help)
+                            .foregroundStyle(DesignToken.Status.neutral)
                     } else {
                         Text("Edit intervals in Wind, Heading, Hydro, and GPS panels.")
-                            .font(.caption2)
-                            .foregroundStyle(AppColors.warning)
+                            .font(DesignToken.Typography.help)
+                            .foregroundStyle(DesignToken.Status.warning)
                     }
                 }
 
-                Section("Test Presets") {
+    }
+
+    private var testPresets: some View {
+        SettingsCard(title: "Test Presets", accessibilityID: SetupSection.testPresets.rawValue) {
                     Text("Apply a named baseline to wind, speed, heading, and GPS motion.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DesignToken.Typography.supporting)
+                        .foregroundStyle(DesignToken.Status.neutral)
 
                     Picker("Preset", selection: Binding(
                         get: { nmeaManager.selectedPreset ?? .lightWeather },
@@ -89,20 +129,23 @@ struct SimulationView: View {
                     .disabled(nmeaManager.weatherSourceMode == .liveWeather)
 
                     Text((nmeaManager.selectedPreset ?? .lightWeather).summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DesignToken.Typography.supporting)
+                        .foregroundStyle(DesignToken.Status.neutral)
 
                     if nmeaManager.weatherSourceMode == .liveWeather {
                         Text("Presets are disabled while Live Weather mode is active.")
-                            .font(.caption2)
-                            .foregroundStyle(AppColors.warning)
+                            .font(DesignToken.Typography.help)
+                            .foregroundStyle(DesignToken.Status.warning)
                     }
                 }
 
-                Section("Weather Source") {
+    }
+
+    private var weatherSource: some View {
+        SettingsCard(title: "Weather Source", accessibilityID: SetupSection.weatherSource.rawValue) {
                     Text("Use manual controls by default, or pull live wind and sea temperature from the boat's current GPS position.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DesignToken.Typography.supporting)
+                        .foregroundStyle(DesignToken.Status.neutral)
 
                     Picker("Weather Source", selection: $nmeaManager.weatherSourceMode) {
                         ForEach(WeatherSourceMode.allCases) { mode in
@@ -125,12 +168,12 @@ struct SimulationView: View {
                             }
                         }
 
-                        HStack(alignment: .top, spacing: 6) {
+                        HStack(alignment: .top, spacing: DesignToken.Spacing.related) {
                             Image(systemName: WeatherStatusStyle.systemImage(for: nmeaManager.liveWeatherStatus.state))
                             Text(nmeaManager.liveWeatherStatus.message)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .font(.caption)
+                        .font(DesignToken.Typography.supporting)
                         .foregroundStyle(WeatherStatusStyle.color(for: nmeaManager.liveWeatherStatus.state))
 
                         HStack {
@@ -143,14 +186,14 @@ struct SimulationView: View {
 
                             if !nmeaManager.sensorToggles.hasGPS {
                                 Text("Enable GPS to fetch live weather.")
-                                    .font(.caption2)
-                                    .foregroundStyle(AppColors.warning)
+                                    .font(DesignToken.Typography.help)
+                                    .foregroundStyle(DesignToken.Status.warning)
                             }
                         }
 
                         DisclosureGroup("Last fetch details") {
                             if let latestLiveWeather = nmeaManager.latestLiveWeather {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
                                     Text("Provider: \(latestLiveWeather.sourceName)")
                                     if let marineSourceName = latestLiveWeather.marineSourceName {
                                         Text("Marine: \(marineSourceName)")
@@ -162,55 +205,73 @@ struct SimulationView: View {
                                     Text("Humidity: \(WeatherStatusStyle.weatherValue(latestLiveWeather.relativeHumidityPercent, unit: "%"))")
                                     Text("Pressure: \(WeatherStatusStyle.weatherValue(latestLiveWeather.airPressureHectopascals, unit: "hPa"))")
                                 }
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.neutral)
                             } else {
                                 Text("No live weather snapshot yet.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(DesignToken.Typography.supporting)
+                                    .foregroundStyle(DesignToken.Status.neutral)
                             }
 
                             if let lastUpdated = nmeaManager.liveWeatherStatus.lastUpdated {
                                 Text("Last Update: \(lastUpdated.formatted(date: .abbreviated, time: .shortened))")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .font(DesignToken.Typography.help)
+                                    .foregroundStyle(DesignToken.Status.neutral)
                             }
                         }
                     }
                 }
+    }
 
-                Section("Onboard Sensors") {
-                    SensorToggleGrid(nmeaManager: nmeaManager)
-                }
+    private var onboardSensors: some View {
+        SettingsCard(title: "Onboard Sensors", accessibilityID: SetupSection.onboardSensors.rawValue) {
+            SensorToggleGrid(nmeaManager: nmeaManager)
+        }
+    }
 
-                Section {
-                    Toggle("Show Advanced Simulation Controls", isOn: $showAdvancedControls)
-                        .toggleStyle(.switch)
-                        .controlSize(.regular)
-                }
+    private var advancedControls: some View {
+        AdvancedSimulationControls(nmeaManager: nmeaManager)
+            .accessibilityIdentifier(SetupSection.advancedControls.rawValue)
+    }
+}
 
-                if showAdvancedControls {
-                    Section("Advanced Simulation Controls") {
-                        Text("Use these only when debugging compatibility, fault tolerance, or protocol edge cases.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+/// Owns the advanced-controls setting so a selection write cannot refresh the rest of the form.
+private struct AdvancedSimulationControls: View {
+    @AppStorage("configuration.show_advanced") private var showAdvancedControls = false
+    @Bindable var nmeaManager: NMEASimulator
 
-                        Text("GNSS Receiver and DSC Radio are saved but do not emit sentences yet.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-
-                        SensorToggleGroup(title: "Satellite & Communication", icon: "antenna.radiowaves.left.and.right.circle", toggles: [
-                            ("GNSS Receiver", $nmeaManager.sensorToggles.shouldSendGNSS),
-                            ("DSC Radio / MMSI", $nmeaManager.sensorToggles.shouldSendDSC),
-                        ])
-                        .disabled(true)
-
-                        RecentTransportEventsSection(nmeaManager: nmeaManager)
-                        FaultInjectionSection(nmeaManager: nmeaManager)
-                    }
-                }
+    var body: some View {
+        VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
+            SettingsCard {
+                Toggle("Show Advanced Simulation Controls", isOn: $showAdvancedControls)
+                    .toggleStyle(.switch)
+                    .controlSize(.regular)
             }
-            .formStyle(.grouped)
+
+            if showAdvancedControls {
+                advancedSection
+            }
+        }
+    }
+
+    private var advancedSection: some View {
+        SettingsCard(title: "Advanced Simulation Controls") {
+            Text("Use these only when debugging compatibility, fault tolerance, or protocol edge cases.")
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.neutral)
+
+            Text("GNSS Receiver and DSC Radio are saved but do not emit sentences yet.")
+                .font(DesignToken.Typography.help)
+                .foregroundStyle(DesignToken.Status.neutral)
+
+            SensorToggleGroup(title: "Satellite & Communication", icon: "antenna.radiowaves.left.and.right.circle", toggles: [
+                ("GNSS Receiver", $nmeaManager.sensorToggles.shouldSendGNSS),
+                ("DSC Radio / MMSI", $nmeaManager.sensorToggles.shouldSendDSC),
+            ])
+            .disabled(true)
+
+            RecentTransportEventsSection(nmeaManager: nmeaManager)
+            FaultInjectionSection(nmeaManager: nmeaManager)
         }
     }
 }

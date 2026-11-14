@@ -1,8 +1,8 @@
 # UI performance audit
 
-Status: **audit followed by a P0 correction and Instruments recordings, 2026-11-12.** Navigation latency remains measurable. The Manual console-toggle crash fix is accepted.
+Status: **navigation correction accepted by the user on 2026-11-12.** This is the historical performance record; current selective lifecycle classes and next work live in `ui-architecture.md` and `../tasks/current.md`.
 
-Runtime snapshot at 22:25 on 2026-11-11: macOS reported 38% system memory free. `MarineSimulator` used about 188 MB resident memory and 4.2% CPU in one sample. `HangProbe` logged one 1.5-second main-thread silence during app launch and no later threshold breach in the following 100 seconds. This does not show system memory pressure, but the probe cannot detect shorter click latency; navigation still needs an Instruments trace.
+Runtime snapshot at 22:25 on 2026-11-11: macOS reported 38% system memory free. `MarineSimulator` used about 188 MB resident memory and 4.2% CPU in one sample. `HangProbe` logged one 1.5-second main-thread silence during app launch and no later threshold breach in the following 100 seconds. This did not show system memory pressure, but the probe could not detect shorter click latency; navigation still needed an Instruments trace at that point.
 
 ## Instruments result
 
@@ -18,9 +18,42 @@ The run ended in `NSGenericException` at 22:28:22: the window exceeded the allow
 
 The focused correction makes the console toolbar toggle cancel any drag and publish one immediate, animation-disabled height. The AppKit resize handle starts a drag only after pointer movement. The authoritative second crash report then identified `SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)`; `ManualView` replaced its `HSplitView` with a fixed 320-point topics column and flexible article.
 
-A final 30-second real-app Animation Hitches run completed during rapid Manual toggling without `NSGenericException`, and the app remained running. Four potential interaction delays measured 33.67–53.95 ms; the largest render hitch was 83.33 ms. The zero-size `CAMetalLayer` warning still occurs and remains part of the unaccepted navigation P0. One layout-recursion warning appeared after the trace and should be watched for recurrence.
+A final 30-second real-app Animation Hitches run completed during rapid Manual toggling without `NSGenericException`, and the app remained running. Four potential interaction delays measured 33.67–53.95 ms; the largest render hitch was 83.33 ms. The zero-size `CAMetalLayer` warning still occurred and remained part of the navigation review at that point. One layout-recursion warning appeared after the trace and should be watched for recurrence.
 
 The user then completed several varied stress tests without another crash and accepted the correction on 2026-11-12.
+
+## Warmed Connection ↔ Simulation result
+
+A separate 30-second Animation Hitches run repeatedly switched only between already-visited Connection and Simulation. It recorded 54 main-thread brief-unresponsiveness events, so the latency is not limited to first-visit construction.
+
+- The 27 shorter, Connection-side events measured 147.43–180.02 ms, averaging 161.28 ms. Samples repeatedly include `EndpointEditorView`, `DeferredNumericField`, and the shared console.
+- The 27 longer, Simulation-side events measured 210.86–244.63 ms, averaging 226.53 ms. Samples repeatedly include `SimulationView`, `PageContainer`, sensor toggle rows, fault-injection controls, and the shared console.
+- Thirteen render hitches at or above 33 ms measured 158.33–237.50 ms, averaging 207.37 ms.
+- The first hidden-Dashboard P0 removed the full-size map from detail layout but did not remove the dominant warmed cost: rebuilding substantial destination form trees on every selection change.
+- Trace: `/tmp/MarineSimulator-warmed-connection-simulation.trace`.
+
+The bounded-retention control run improved but did not meet no-hitch acceptance:
+
+- Brief unresponsiveness fell from 54 to 44 events; average duration fell from 193.90 to 125.65 ms and maximum from 244.63 to 145.20 ms.
+- Render-hitch average fell from 207.37 to 116.67 ms, but the count at or above 33 ms increased from 13 to 19.
+- Remaining main-thread samples repeatedly include `RetainedDestinationFrame` layout and alignment, `SimulationView`/`PageContainer` body construction, retained-page focus gating, `EndpointEditorView`, and shared shell work.
+- The evidence does not identify Apple Glass as the primary cause. The retained implementation itself still propagates selection into the heavy form trees and traverses their hosted controls.
+- Trace: `/tmp/MarineSimulator-warmed-retained-navigation.trace`.
+
+## Final stable-host result and acceptance
+
+The production correction retains only Connection and Simulation in stable `NSHostingView` roots. Destination selection does not rebuild `ConnectionView`, `SimulationView`, `EndpointEditorView`, or `PageContainer`; the latest trace contains zero samples from those heavy bodies.
+
+- Stable AppKit hosts keep their SwiftUI roots unchanged. There is no synchronous `layoutSubtreeIfNeeded`; normal-size changes use AppKit layout.
+- An inactive host uses `isHidden = !active`, zero size, zero alpha, disabled hit testing and accessibility, responder resignation with observation, and console-edge anchor suspension. Reactivation reverses those gates and resumes the same anchor.
+- The shell still owns one console. No recursive per-field mutation or whole-window key-loop ownership was added.
+- The final production trace before the diagnostic recorded 20 brief events averaging 103.63 ms (107.87 ms maximum), 44 interaction delays averaging 90.26 ms, one 419.59 ms microhang, and 15 hitches at or above 33 ms averaging 79.44 ms (91.67 ms maximum). It reported no hang risks.
+- Remaining samples are predominantly native AppKit layout/default key-view recalculation and SwiftUI graph work.
+- A DEBUG A/B skipped inactive-host `isHidden`. Key-view share was unchanged and hitch rate was about 66% worse, so the experiment was rejected and removed. Production hiding remains.
+
+The user accepted the behavior on 2026-11-12 as visually almost imperceptible. Absolute zero hitches at or above 33 ms under Debug Animation Hitches is no longer the acceptance criterion once heavy body rebuilding is absent, runtime correctness checks pass, and perceived behavior is accepted.
+
+Root-cause review rejected disabling `NSWindow` automatic key-view recalculation or manually owning the entire window key loop. Either would trade a small native layout cost for keyboard-navigation and VoiceOver risk.
 
 ## What was measured
 
@@ -30,7 +63,7 @@ This session could not drive the sidebar. Computer Use refuses without Accessibi
 
 `log show` for the last three minutes returned no `[MarineSim][hang]` lines. The debug watchdog in `HangProbe` (`Utilities/AppConstants.swift`) logs a stall only when the main thread has been silent for more than 1.5 seconds. Absence of those lines is not a latency number.
 
-## Navigation path
+## Pre-correction navigation path
 
 `MainView` is a `NavigationSplitView`. The sidebar `List` writes `main_view.selection` through `@AppStorage`. The detail column is a `GeometryReader` and a `ZStack`.
 
@@ -42,7 +75,7 @@ The other child exists only when `SidebarItem.placesConsoleInTheShell` is true (
 
 Leaving Diagnostics calls `pauseIfRunning()`. If the phase is `.running`, that pauses the experiment loop. Opening the page sets `allowsWallClockLoop = true` and does not prepare a run.
 
-## What each switch creates
+## What each switch created before stable hosts
 
 | Switch | Created | Destroyed | Kept |
 |---|---|---|---|
@@ -87,7 +120,7 @@ While transmitting, `applyRuntimeToMain` runs on the main queue at `displayPubli
 
 `OpenSeaMapView` has no call site. The anemometer and compass are SwiftUI shapes, not `NSView`s. They are created with the dashboard docks.
 
-## Main-thread work on the click
+## Pre-correction main-thread work on the click
 
 Confirmed on the click path, with no duration:
 
@@ -103,7 +136,7 @@ Confirmed beside the click, only while the operator simulation is transmitting:
 
 Not on the click path: vessel-file loading for Boat Profile (the array is already on the simulator), `startSimulation`, and `prepare`.
 
-## Causes, by evidence
+## Original causes, by evidence
 
 1. **Confirmed structure.** Every non-dashboard page is laid out on top of a full-size hidden dashboard and its `MKMapView`. The page itself is also built from scratch.
 2. **Confirmed structure, boundary only.** Crossing to or from the dashboard destroys and creates a console `NSTextView`, and the return builds the docks and a compass whose marker ids change every value.
@@ -115,18 +148,18 @@ Not on the click path: vessel-file loading for Boat Profile (the array is alread
 
 No item above has a millisecond figure.
 
-## Acceptance criteria
+## Historical acceptance criteria and current policy
 
 Use Animation Hitches and the SwiftUI template, same window size, same console height, ten repeats after one warm-up click.
 
-- **Repeated navigation, simulation stopped, console either collapsed or expanded:** the sidebar click produces no animation hitch. Compare Dashboard, Connection, Simulation, Boat Profile, Diagnostics, Manual, Wind, Compass, Hydro, and GPS.
+- **Historical strict target:** repeated navigation was initially expected to produce no animation hitch. The final accepted criterion distinguishes Debug instrument events from perceived interaction: retained-page heavy body samples must remain absent, runtime correctness must remain intact, and user-visible behavior must remain acceptable.
 - **First visit:** GPS may create a map, and Diagnostics may create the sentence formatter. The main thread must not go silent long enough for `HangProbe` to log `STALL` (its existing threshold is 1.5 s). The click must not wait for a simulation tick.
-- **Simulation running:** the same no-hitch bar. Record the 10 Hz `apply` and `console.sync` counts from `[MarineSim][hang] beat` so a hitch can be matched to those scopes.
+- **Simulation running:** preserve the runtime checks and record the 10 Hz `apply` and `console.sync` counts from `[MarineSim][hang] beat` when diagnosing a regression.
 - **Console drag:** the page height follows `liveHeight` on the drag, with no added animation. That is a separate check from navigation.
 
 Do not hide a stall with a transition. `MainView` already sets the detail transaction’s animation to nil.
 
-## Ownership changes worth making later
+## Ownership candidates recorded during the audit
 
 | Area | Today | Extra dependency | Later | Fewer updates | Risk |
 |---|---|---|---|---|---|
@@ -138,13 +171,13 @@ Do not hide a stall with a transition. `MainView` already sets the detail transa
 
 Do not split `NMEASimulator` into a new observation system on this evidence. The 10 Hz path already avoids writing an unchanged `SimulatedValue`.
 
-## Smallest later changes
+## Corrections and remaining candidates
 
-These are not implemented.
+**P0 — Hidden dashboard layout. Accepted.** `MainView` retains one `DashboardView` and map host but proposes zero size when another page is selected. The historical zero-size `CAMetalLayer` warning did not establish MapKit as the crash cause; the accepted Manual crash correction is separate.
 
-**P0 — Hidden dashboard stays in the layout. Implemented, not accepted.** `MainView` retains one `DashboardView` and map host but proposes zero size when another page is selected. Focused tests passed. The run logged a zero-size `CAMetalLayer`, so camera, tile, and layer behavior still need review; the later crash occurred during repeated console toggling and does not establish MapKit as its cause.
+**P0 — Warmed Connection and Simulation were rebuilt. Accepted.** `MainView` retains only those two destination trees after first visit. Each uses one unchanged `NSHostingView` root; activity, layout, focus, accessibility, responder handling, and anchor suspend/resume live outside the heavy form. Hosted tests preserve root, scroll, control, focus-policy, and anchor identity. The final trace contains zero heavy-body samples, and the user accepted the perceived result.
 
-**P0 — Pages are rebuilt, and GPS builds a map each time.** Evidence: `setupDetail` switch; `MapWithRightClick.makeNSView`. Files: `Views/MainView.swift`, `Views/GPS/GPSConfig.swift`, `Views/GPS/MapWithRightClick.swift`. Correction: only if the trace shows GPS or Boat is slower on a repeat visit than Connection. Keep that host alive. Benefit: repeat visits skip map creation. Risk: two map views if the dashboard map is also visible. Check: Time Profiler on the second GPS visit.
+**P0 candidate — GPS still builds a map each time.** Evidence: `setupDetail` switch; `MapWithRightClick.makeNSView`. Files: `Views/MainView.swift`, `Views/GPS/GPSConfig.swift`, `Views/GPS/MapWithRightClick.swift`. Consider only if a later trace shows repeat GPS visits remain slow. Risk: two map views if the dashboard map is also visible. Check: Time Profiler on the second GPS visit.
 
 **P1 — Diagnostics formats sentences in the view getter, and the first call builds a simulator.** Evidence: `readout` and `makeSentenceBuilder()`. Files: `Model/ExperimentDiagnosticsSession.swift`, `Views/ExperimentDiagnosticsView.swift`. Correction: format when the snapshot changes, not when the body reads. Benefit: opening and refreshing Diagnostics does less main-thread work. Risk: stale lines. Check: one prepare, then SwiftUI instrument while the page is idle and while it is running.
 
@@ -152,7 +185,7 @@ These are not implemented.
 
 **P2 — A new console text view rebuilds the log, and the sidebar flattener writes material in `layout()`.** Evidence: `ConsoleLogHost.syncRecords` resets when the last id is missing; `SidebarMaterialFlattener.layout`. Files: `Views/ConsoleView.swift`, `Views/MainView.swift`. Correction: wait for a hitch at the dashboard boundary before changing the text view. Move the material write out of `layout()` only if Time Profiler shows that walk. Risk: a console that misses the tail, or a sidebar that flashes material. Check: hang beats around one dashboard to Connection click with an expanded log.
 
-**P3 — None until a hitch remains after the items above.** Do not add a navigation animation.
+**Later selective lifecycle work.** Boat Profile is now lazy `retainedSessionView`; Manual remains ephemeral because parking its scrolled topics list reproducibly traps in SwiftUI preference/list removal; GPS `retainedMapResource` is metadata only and remains the next lifecycle slice. Do not add a navigation animation. The first Responsive UI Foundation slice is implemented separately and does not change these lifecycle classes.
 
 ## Regression check after any later fix
 

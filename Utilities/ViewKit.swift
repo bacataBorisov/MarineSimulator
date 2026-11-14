@@ -171,16 +171,19 @@ extension View {
     }
 }
 
-/// Draft stays local while focused. The last committed value keeps driving the
-/// simulator until Return or click-outside.
+/// Draft stays local while focused, including invalid intermediate text.
+/// An unfocused field shows `displayed` when the caller has one, otherwise `value`.
+/// Commit runs on Return or when focus ends, and never writes a value that did not parse.
 struct DeferredNumericField: View {
     @Binding var value: Double
+    var displayed: Double?
     var fractionDigits: Int
     var width: CGFloat? = 84
     var onEditingChange: ((Bool) -> Void)?
 
-    init(value: Binding<Double>, fractionDigits: Int, width: CGFloat? = 84, onEditingChange: ((Bool) -> Void)? = nil) {
+    init(value: Binding<Double>, displayed: Double? = nil, fractionDigits: Int, width: CGFloat? = 84, onEditingChange: ((Bool) -> Void)? = nil) {
         self._value = value
+        self.displayed = displayed
         self.fractionDigits = fractionDigits
         self.width = width
         self.onEditingChange = onEditingChange
@@ -200,16 +203,26 @@ struct DeferredNumericField: View {
     @FocusState private var focused: Bool
     @State private var draft = ""
 
+    private var shownText: Binding<String> {
+        Binding(
+            get: { focused ? draft : formatted(displayed ?? value) },
+            set: { draft = $0 }
+        )
+    }
+
     var body: some View {
-        TextField("", text: $draft)
+        TextField("", text: shownText)
             .textFieldStyle(.roundedBorder)
             .monospacedDigit()
             .frame(width: width)
             .focused($focused)
             .background(ResignFirstResponderOnOutsideClick(isActive: focused))
-            .onAppear { draft = formatted(value) }
+            .onAppear { draft = formatted(displayed ?? value) }
+            .onChange(of: displayed) { _, newValue in
+                if !focused, let newValue { draft = formatted(newValue) }
+            }
             .onChange(of: value) { _, newValue in
-                if !focused { draft = formatted(newValue) }
+                if !focused, displayed == nil { draft = formatted(newValue) }
             }
             .onChange(of: focused) { _, isFocused in
                 onEditingChange?(isFocused)

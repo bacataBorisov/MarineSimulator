@@ -1,40 +1,47 @@
 # Current task
 
-**Status:** Crash fix accepted by the user on 2026-11-12 after varied stress testing.
-**Last updated:** 2026-11-11
+**Status:** Accepted checkpoint. The responsive foundation, semantic tokens, endpoint edits, Dashboard live controls and readouts, heading command path, and semantic consistency fixes are accepted. Connection timer status stays inside the Transmission card and remains live. Legacy spacing ownership is decoupled; the dead page-title token and primitive are removed. The semantic consistency audit is Ready with bounded gaps. Runtime VoiceOver and full keyboard/focus traversal remain open. GPS `retainedMapResource` is the next implementation item. Dashboard visual layout and the top strip stay deferred. Lifecycle runtime UI checks and one non-blocking resize glitch remain open.
+**Last updated:** 2026-11-14
 
-## Contract
+## Accepted navigation outcome
 
-- Remove the full-size hidden Dashboard and its `MKMapView` from non-dashboard page layout.
-- Preserve Dashboard state across navigation without adding a second map or console.
-- Keep the Dashboard full-bleed and keep exactly one console in the active interface.
-- Do not retain every setup page or change operator/experiment runtime ownership.
-- Keep navigation transitions unanimated.
+- Connection and Simulation use stable retained AppKit hosts. Their unchanged `NSHostingView` roots no longer rebuild `ConnectionView`, `SimulationView`, `EndpointEditorView`, or `PageContainer` bodies during navigation.
+- The user judged the current behavior visually almost imperceptible. The final production trace recorded 20 brief events averaging 103.63 ms (107.87 ms maximum), 44 interaction delays averaging 90.26 ms, one 419.59 ms microhang, and 15 hitches at or above 33 ms averaging 79.44 ms (91.67 ms maximum), with no hang risks.
+- Remaining samples are predominantly native AppKit layout/default key-view recalculation and SwiftUI graph work. Strict zero events at or above 33 ms under Debug Animation Hitches is no longer the acceptance criterion after heavy body reconstruction was removed and perception was accepted.
+- A DEBUG A/B that skipped inactive-host `isHidden` did not change key-view share and worsened hitch rate by about 66%. The diagnostic was removed; production hiding remains.
+- Do not disable `NSWindow` automatic key-view recalculation or manually own the whole window key loop. Preserve keyboard, VoiceOver, and runtime correctness checks.
+- The Manual console-toggle crash correction remains accepted.
 
-## Acceptance
+Historical traces and measurements remain in `../architecture/ui-performance-audit.md`.
 
-- Non-dashboard navigation no longer lays out a full-size Dashboard or Dashboard map.
-- Returning to Dashboard preserves its local controls and map host.
-- Dashboard and detail pages still show one console in the correct ownership boundary.
-- Existing scroll, navigation, simulator, and diagnostics tests remain green.
-- Focused layout, scroll, and diagnostics tests passed; the Debug build succeeded.
-- Animation Hitches recorded 124.78–273.01 ms main-thread unresponsiveness and 133.33–366.67 ms render hitches while destinations changed.
-- The trace implicates fresh SwiftUI destination construction across multiple pages, not system memory pressure alone.
-- At 22:28:22, AppKit raised `NSGenericException`: the window exceeded its Update Constraints passes while the user repeatedly opened and closed the console on Manual.
-- Crash-window samples contain `ConsolePanelView.toolbar` and `ConsoleEdgeAnchorView.apply`; they do not contain Dashboard or MapKit frames.
-- A zero-size `CAMetalLayer` warning occurred earlier and remains a separate risk, but it is not proven to have caused this crash.
-- The console's own show/hide button now cancels drag state and publishes one immediate, animation-disabled height. The AppKit handle arms only after pointer movement.
-- `ManualView` no longer uses the crashing SwiftUI `HSplitView`; it uses a fixed 320-point topics column, divider, and flexible article.
-- Hosted burst tests, focused layout/scroll suites, and the Debug build passed.
-- A 30-second real-app Animation Hitches run with rapid toggling completed without `NSGenericException`; the app remained running. Potential interaction delays were 33.67–53.95 ms and the largest render hitch was 83.33 ms.
-- Independent verifier verdict: **Met**, with no blocking findings.
-- The user completed several varied stress tests without another crash and accepted the correction.
-- The zero-size `CAMetalLayer` warning still occurs and belongs to the unaccepted navigation P0. One post-trace layout-recursion warning remains a separate risk.
-- Do not retain every page or choose another Dashboard ownership model without user approval.
+## Selective lifecycle outcome
 
-## Agreed sequence after the crash fix
+- Connection and Simulation remain unchanged as lazy `retainedForm` destinations.
+- Boat Profile is lazy `retainedSessionView`. After first visit, one destination root and one `VesselLibrarySession` persist. Valid Boat Profile edits autosave. Selection and the latest persisted profile survive navigation. Invalid intermediate text is not persisted.
+- Manual remains `ephemeral`. Keep its accepted 320-point `HStack`, native `List`, and original anchors. Parking a scrolled topics list reproducibly traps in SwiftUI `DynamicContainerInfo.tryRemovingItem` with `DynamicPreferenceCombiner`; do not retain it or inject an AppKit anchor without a separately reviewed design.
+- Diagnostics, Wind, Hydro, and Compass remain `ephemeral`. Do not add inactive 10 Hz observation for low-cost sentence pages.
+- GPS is metadata-only `retainedMapResource` future work. No retained GPS map exists yet; page recreation still resets its camera.
+- Keep Dashboard's specialized retained-map lifecycle, one-console ownership, automatic key-view handling, scroll anchors, keyboard, VoiceOver, and operator/experiment isolation.
+- Runtime UI validation of the lifecycle slice remains outstanding; do not claim it complete from hosted tests alone.
+- Runtime VoiceOver and full keyboard/focus traversal remain open. Automated tests do not traverse focus.
 
-1. Finish warmed sidebar-latency measurement and the navigation-performance task.
-2. Stabilize the Dashboard top strip against HIG and consistency findings.
-3. Stabilize the left Dashboard control-row geometry.
-4. Return to the remaining UI plan; do not start M4 automatically.
+## Responsive UI Foundation
+
+Implemented, including the semantic-token follow-up. The window minimum stays 960×640 and does not guarantee a 720×600 content area. Width classes classify available page content after the inset: Compact below 720, Regular from 720 until two 440-point cards fit (900), and Wide at 900 and above. There is no fallback content size. Sidebar, toolbar, and console can shrink the page, and pages scroll.
+
+- Boat and sail rows use a 152/14/280–360 grid and stack below 446 points. The 320-point library is unchanged.
+- Connection and Simulation use ordinary stacks chosen by content width. Below 900 points the cards are one column. At 900 and above, paired cards sit in a top-aligned horizontal stack and full-width sections stay outside that pair. Page max for those two pages is 1120. Other pages stay at 920.
+- The toolbar title is the sidebar destination name. In-content copies of that title are gone. One shell separator sits under the toolbar.
+- Dashboard compact panels, the Dashboard top strip, and shared master-detail are not started. Functional live controls, readouts, and heading behavior are corrected.
+- Runtime correction: Onboard Sensors is an ordinary card in both stacks. Boat detail reads the highlighted vessel in its own view. Retained pages are not type-erased, so endpoint add and delete appear without navigation. The toolbar's simulator subscription suppresses later updates in the root host, so the dashboard keeps its own host. Live controls read the simulator in `ControlSliderView`. `TimerStatusText` is a direct child of the Transmission card and reads the timer mode in its own body. `SendIntervalText` reads the interval the same way.
+- Heading: the Boat field is the command. With a gyro, that command is stored as the magnetic sample the tick steers from, and the large number is the gyro measurement published by the tick. Without a gyro, the field is magnetic heading and the large number is the live compass. The Heading segment reads those measurements and does not steer.
+- Runtime acceptance: the user accepted first-visit Simulation sensors, repeated Boat selection, endpoint add and delete, Dashboard live controls and readouts, and the heading command-versus-measurement behavior. Independent verification accepted the semantic consistency fixes. VoiceOver was not run. Full keyboard and focus traversal remain open. A small transient visual glitch remains when resizing across the one-column/two-column threshold; it is deferred as non-blocking and must not be hidden by custom layout or forced invalidation.
+
+## Still outstanding
+
+- Next implementation item: GPS `retainedMapResource`. No retained GPS map exists.
+- Runtime VoiceOver and full keyboard/focus traversal remain open.
+- Lifecycle runtime UI validation remains outstanding.
+- Dashboard visual work stays deferred: top strip, then left control geometry, then shared master-detail for Boat Profile and other selection-detail pages. Do not force master-detail onto single-form pages.
+- One non-blocking resize glitch across the one-column/two-column threshold stays deferred.
+- Do not start M4 automatically.

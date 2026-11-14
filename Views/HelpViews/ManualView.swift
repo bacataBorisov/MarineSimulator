@@ -35,9 +35,6 @@ struct ManualView: View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Manual")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-
                     Text("Terminology, workflows, transport guidance, and troubleshooting in one place.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

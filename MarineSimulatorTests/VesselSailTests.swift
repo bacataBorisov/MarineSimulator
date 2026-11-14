@@ -200,28 +200,30 @@ struct VesselSailTests {
     }
 
     @Test
-    func sailEditsSaveDiscardAndCancel() throws {
+    func sailEditsAutosaveAndInvalidMeasurementsStayUnstored() throws {
         let simulator = sailSimulator()
         let session = VesselLibrarySession()
         let custom = try #require(session.createVessel(name: "Skiff", modelName: "One", constructionYear: 2020, on: simulator))
         session.show(custom.id, on: simulator)
-        session.buffer.sails = [SailDraft(id: UUID(), name: "Main", category: .mainsail)]
-        let sailID = session.buffer.sails[0].id
-        #expect(session.hasUnsavedChanges(in: simulator))
-        #expect(session.requestLeave(.highlight(BuiltInVesselID.nimana), on: simulator) == .needsConfirmation)
-        #expect(session.resolveUnsavedChanges(.cancel, on: simulator) == .stayed)
-        #expect(session.buffer.sails.first?.name == "Main")
-        #expect(simulator.vessels.first { $0.id == custom.id }?.inventory.isEmpty == true)
-
-        #expect(session.requestLeave(.highlight(BuiltInVesselID.nimana), on: simulator) == .needsConfirmation)
-        #expect(session.resolveUnsavedChanges(.discard, on: simulator) == .perform(.highlight(BuiltInVesselID.nimana)))
-        #expect(simulator.vessels.first { $0.id == custom.id }?.inventory.isEmpty == true)
+        let sailID = UUID()
+        session.buffer.sails = [SailDraft(id: sailID, name: "Main", category: .mainsail)]
+        session.persistValidEdits(on: simulator)
+        #expect(session.hasUnsavedChanges(in: simulator) == false)
+        let created = try #require(simulator.vessels.first { $0.id == custom.id }?.inventory.first)
+        #expect(created.id == sailID)
+        #expect(created.name == "Main")
+        #expect(session.requestLeave(.highlight(BuiltInVesselID.nimana), on: simulator) == .allowed)
+        #expect(session.highlightedID == BuiltInVesselID.nimana)
+        #expect(simulator.selectedVesselID == BuiltInVesselID.extasy)
 
         session.show(custom.id, on: simulator)
-        session.buffer.sails = [SailDraft(id: sailID, name: "Main", category: .mainsail)]
+        session.buffer.sails[0].area = "20."
+        session.persistValidEdits(on: simulator)
+        #expect(session.buffer.sails[0].area == "20.")
+        #expect(session.validationMessage?.contains("number") == true)
+        #expect(simulator.vessels.first { $0.id == custom.id }?.inventory.first?.mainsail?.areaSquareMeters == nil)
         session.buffer.sails[0].area = "20"
-        #expect(session.requestLeave(.highlight(BuiltInVesselID.extasy), on: simulator) == .needsConfirmation)
-        #expect(session.resolveUnsavedChanges(.save, on: simulator) == .perform(.highlight(BuiltInVesselID.extasy)))
+        session.persistValidEdits(on: simulator)
         let stored = try #require(simulator.vessels.first { $0.id == custom.id }?.inventory.first)
         #expect(stored.id == sailID)
         #expect(stored.mainsail?.areaSquareMeters == 20)

@@ -4,7 +4,7 @@ import AppKit
 struct DashboardView: View {
     var isVisible: Bool = true
 
-    @Environment(NMEASimulator.self) private var nmeaManager
+    @Bindable var nmeaManager: NMEASimulator
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

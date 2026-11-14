@@ -18,7 +18,6 @@ struct ExperimentDiagnosticsView: View {
                 nmeaSection(readout)
             }
         }
-        .navigationTitle("Experiment Diagnostics")
         .onAppear { session.allowsWallClockLoop = true }
         .onDisappear { session.pauseIfRunning() }
     }

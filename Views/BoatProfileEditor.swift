@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Setup inspection state. Highlighting a row does not change the active simulation vessel.
@@ -6,9 +7,14 @@ final class VesselLibrarySession {
     var highlightedID: UUID?
     var editingSailID: UUID?
     var buffer = VesselEditBuffer()
-    var isConfirmingUnsavedChanges = false
     private(set) var lastResult: VesselLibraryResult = .idle
-    private var pendingLeave: VesselLeaveIntent?
+    /// Shown while typed text is not yet valid. It does not mean the last persisted profile changed.
+    private(set) var validationMessage: String?
+    /// Profile loads replace the buffer. Those assignments are not user edits.
+    private var reloadDepth = 0
+    /// Stops a successful autosave from re-entering through a published library update.
+    private var isPersistingEdits = false
+    private var isReloadingProfile: Bool { reloadDepth > 0 }
 
     enum VesselLibraryResult: Equatable {
         case idle
@@ -36,7 +42,10 @@ final class VesselLibrarySession {
     }
 
     func show(_ id: UUID, on simulator: NMEASimulator) {
+        reloadDepth += 1
+        defer { reloadDepth -= 1 }
         highlightedID = id
+        validationMessage = nil
         if let profile = highlightedProfile(in: simulator) {
             buffer = VesselEditBuffer(profile: profile)
             if editingSailID == nil || !buffer.sails.contains(where: { $0.id == editingSailID }) {
@@ -52,66 +61,99 @@ final class VesselLibrarySession {
     func requestLeave(_ intent: VesselLeaveIntent, on simulator: NMEASimulator) -> VesselLeaveGate {
         if case .highlight(let id) = intent, id == highlightedID { return .allowed }
         if case .activate(let id) = intent, id == highlightedID { return .allowed }
-        guard hasUnsavedChanges(in: simulator) else {
-            reveal(intent, on: simulator)
-            return .allowed
+        if hasUnsavedChanges(in: simulator) {
+            switch commitEdits(on: simulator, refreshingDisplay: false) {
+            case .saved:
+                validationMessage = nil
+            case .invalid:
+                // Intermediate text never became a profile change. Leave reloads the last persisted profile.
+                validationMessage = nil
+            case .failed:
+                return .blocked
+            }
         }
-        pendingLeave = intent
-        isConfirmingUnsavedChanges = true
-        return .needsConfirmation
+        reveal(intent, on: simulator)
+        return .allowed
     }
 
-    func resolveUnsavedChanges(_ choice: UnsavedEditChoice, on simulator: NMEASimulator) -> UnsavedResolution {
-        let intent = pendingLeave
-        pendingLeave = nil
-        isConfirmingUnsavedChanges = false
-        switch choice {
-        case .cancel:
-            return .stayed
-        case .discard:
-            restoreBuffer(from: simulator)
-            if let intent {
-                reveal(intent, on: simulator)
-                return .perform(intent)
-            }
-            return .stayed
-        case .save:
-            guard saveBuffer(on: simulator) else { return .stayed }
-            if let intent {
-                reveal(intent, on: simulator)
-                return .perform(intent)
-            }
-            return .stayed
+    /// Writes the current buffer when it is valid. Invalid text stays on screen and does not replace the stored profile.
+    func persistValidEdits(on simulator: NMEASimulator) {
+        guard isReloadingProfile == false, isPersistingEdits == false else { return }
+        guard hasUnsavedChanges(in: simulator) else { return }
+        isPersistingEdits = true
+        defer { isPersistingEdits = false }
+        switch commitEdits(on: simulator, refreshingDisplay: false) {
+        case .saved:
+            validationMessage = nil
+        case .invalid(let message):
+            validationMessage = message
+            lastResult = .idle
+        case .failed:
+            validationMessage = nil
         }
     }
 
     @discardableResult
     func saveBuffer(on simulator: NMEASimulator) -> Bool {
+        switch commitEdits(on: simulator, refreshingDisplay: true) {
+        case .saved:
+            validationMessage = nil
+            return true
+        case .invalid(let message):
+            validationMessage = message
+            lastResult = .failed(.invalidProfileData(message))
+            return false
+        case .failed:
+            return false
+        }
+    }
+
+    @discardableResult
+    func createDefaultVessel(on simulator: NMEASimulator) -> VesselProfile? {
+        let names = Set(simulator.vessels.map(\.name))
+        var name = "Custom Vessel"
+        var suffix = 2
+        while names.contains(name) {
+            name = "Custom Vessel \(suffix)"
+            suffix += 1
+        }
+        reloadDepth += 1
+        defer { reloadDepth -= 1 }
+        guard let profile = createVessel(name: name, modelName: nil, constructionYear: nil, on: simulator) else {
+            return nil
+        }
+        show(profile.id, on: simulator)
+        return profile
+    }
+
+    private enum EditCommit {
+        case saved
+        case invalid(String)
+        case failed
+    }
+
+    private func commitEdits(on simulator: NMEASimulator, refreshingDisplay: Bool) -> EditCommit {
         guard let profile = highlightedProfile(in: simulator) else {
             lastResult = .failed(.invalidProfileData("Select a vessel in the library first."))
-            return false
+            return .failed
         }
         let metadata: VesselEditableMetadata?
         if profile.origin == .custom {
             let trimmed = buffer.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
-                lastResult = .failed(.invalidProfileData("A vessel name is required."))
-                return false
+                return .invalid("A vessel name is required.")
             }
             guard case .value(let year) = buffer.parsedYear else {
-                lastResult = .failed(.invalidProfileData("Construction year must be a whole number."))
-                return false
+                return .invalid("Construction year must be a whole number.")
             }
             if let year, !(1800...2100).contains(year) {
-                lastResult = .failed(.invalidProfileData("Construction year must be from 1800 through 2100."))
-                return false
+                return .invalid("Construction year must be from 1800 through 2100.")
             }
             switch buffer.editableMetadata(name: trimmed, year: year) {
             case .success(let value):
                 metadata = value
             case .failure(let error):
-                lastResult = .failed(error)
-                return false
+                return .invalid(error.message)
             }
         } else {
             metadata = nil
@@ -122,13 +164,13 @@ final class VesselLibrarySession {
                 try simulator.saveProfileEdits(profile.id, metadata: metadata, inventory: sails)
                 return true
             } != nil
-            if saved, let stored = highlightedProfile(in: simulator) {
+            guard saved else { return .failed }
+            if refreshingDisplay, let stored = highlightedProfile(in: simulator) {
                 buffer = VesselEditBuffer(profile: stored)
             }
-            return saved
+            return .saved
         case .failure(let error):
-            lastResult = .failed(error)
-            return false
+            return .invalid(error.message)
         }
     }
 
@@ -246,15 +288,6 @@ final class VesselLibrarySession {
         return simulator.vessels.first { $0.id == highlightedID }
     }
 
-    private func restoreBuffer(from simulator: NMEASimulator) {
-        if let profile = highlightedProfile(in: simulator) {
-            buffer = VesselEditBuffer(profile: profile)
-            if editingSailID == nil || !buffer.sails.contains(where: { $0.id == editingSailID }) {
-                editingSailID = buffer.sails.first?.id
-            }
-        }
-    }
-
     private func reveal(_ intent: VesselLeaveIntent, on simulator: NMEASimulator) {
         switch intent {
         case .highlight(let id), .activate(let id), .duplicate(let id), .delete(let id), .rename(let id):
@@ -278,18 +311,7 @@ enum VesselLeaveIntent: Equatable {
 
 enum VesselLeaveGate: Equatable {
     case allowed
-    case needsConfirmation
-}
-
-enum UnsavedEditChoice: Equatable {
-    case save
-    case discard
-    case cancel
-}
-
-enum UnsavedResolution: Equatable {
-    case stayed
-    case perform(VesselLeaveIntent)
+    case blocked
 }
 
 struct VesselEditBuffer: Equatable {
@@ -428,8 +450,13 @@ struct VesselEditBuffer: Equatable {
     static func token(_ text: String) -> MeasurementToken {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return .empty }
+        if isIncompleteDecimal(trimmed) { return .invalid(trimmed) }
         guard let value = parse(trimmed), value.isFinite else { return .invalid(trimmed) }
         return .value((value * 1_000_000).rounded() / 1_000_000)
+    }
+
+    static func isIncompleteDecimal(_ text: String) -> Bool {
+        text.hasSuffix(".") || text.hasSuffix("e") || text.hasSuffix("E") || text.hasSuffix("+") || text.hasSuffix("-")
     }
 
     private func measurement(_ text: String, _ label: String, unit: String) throws -> Double? {
@@ -491,83 +518,68 @@ struct EditSignature: Equatable {
     var sails: [SailDraft.Signature]
 }
 
+/// Boat Profile layout. Shared spacing comes from `DesignToken`.
+/// `libraryWidth` stays 320 points; it is not a shared token.
+enum BoatProfileLayout {
+    static let libraryWidth: CGFloat = 320
+    static let outerPadding = DesignToken.Spacing.page
+    static let headerStackSpacing = DesignToken.Spacing.header
+    static let headerToCard = DesignToken.Spacing.inset
+    static let cardPadding = DesignToken.Spacing.profileCard
+    static let sectionSpacing = DesignToken.Spacing.section
+    static let rowSpacing = DesignToken.Spacing.row
+    static let commandSpacing = DesignToken.Spacing.row
+    static let cardCornerRadius = DesignToken.Radius.compactCard
+}
+
 struct BoatSetupDetailView: View {
     @Bindable var nmeaManager: NMEASimulator
     @State private var session = VesselLibrarySession()
-    @State private var isCreating = false
-    @State private var newName = ""
-    @State private var newModel = ""
-    @State private var newYear = ""
     @State private var isRenaming = false
     @State private var renameText = ""
-    @State private var isConfirmingDelete = false
 
     var body: some View {
-        @Bindable var session = session
-        return VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
-            Text("Boat Profile")
-                .font(.largeTitle)
-            Text("Inspect a vessel here. Set as Active Vessel is what the dashboard and the simulation use. Maneuvers stay on the Dashboard Boat segment.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if nmeaManager.selectedVesselID == nil || nmeaManager.vesselStoreError != nil {
-                Label(nmeaManager.activeVesselSummary, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("Vessel selection required")
-            }
-
-            HSplitView {
-                library
-                    .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
-                detail
-                    .frame(minWidth: 340, maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if DEBUG
+        let _ = RetainedDestinationBodyProbe.record(.boat)
+        #endif
+        // Fixed column. `HSplitView` installs `SplitViewChildController`, which
+        // republishes min/max size on every console-height pass and exceeds
+        // AppKit's Update Constraints limit.
+        // The detail is a child that reads the session itself. A local `@Bindable`
+        // shadow in this body does not subscribe that child, so a library click
+        // can move the row without refreshing the captured profile.
+        HStack(spacing: 0) {
+            library
+                .frame(width: BoatProfileLayout.libraryWidth)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .clipped()
+            Divider()
+            VesselLibraryDetail(session: session, nmeaManager: nmeaManager)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .padding(PageChrome.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(alignment: .topLeading) {
+            VesselLibrarySessionMarker(session: session)
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            RetainedDestinationMarker(page: .boat)
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         .onAppear {
             if session.highlightedID == nil, let active = nmeaManager.selectedVesselID {
                 session.show(active, on: nmeaManager)
             }
         }
-        .alert("New Vessel", isPresented: $isCreating) {
-            TextField("Name", text: $newName)
-            TextField("Model", text: $newModel)
-            TextField("Construction year", text: $newYear)
-            Button("Create") { createVessel() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("A name is required. The new vessel has no polar until a later milestone adds one.")
+        .onChange(of: session.buffer) {
+            session.persistValidEdits(on: nmeaManager)
         }
         .alert("Rename Vessel", isPresented: $isRenaming) {
             TextField("Name", text: $renameText)
             Button("Rename") { renameVessel() }
             Button("Cancel", role: .cancel) {}
-        }
-        .confirmationDialog("Delete this vessel?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
-                session.deleteHighlighted(on: nmeaManager)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("The vessel is removed from the library. If it is the active vessel, simulation waits until you choose another.")
-        }
-        .confirmationDialog("Save changes to this vessel?", isPresented: $session.isConfirmingUnsavedChanges, titleVisibility: .visible) {
-            Button("Save Changes") {
-                finish(session.resolveUnsavedChanges(.save, on: nmeaManager))
-            }
-            Button("Discard Changes", role: .destructive) {
-                finish(session.resolveUnsavedChanges(.discard, on: nmeaManager))
-            }
-            Button("Cancel", role: .cancel) {
-                finish(session.resolveUnsavedChanges(.cancel, on: nmeaManager))
-            }
-        } message: {
-            Text("This profile has unsaved name, model, or year changes.")
         }
         .alert("Vessel Library", isPresented: failurePresented) {
             Button("OK", role: .cancel) {
@@ -579,26 +591,54 @@ struct BoatSetupDetailView: View {
     }
 
     private var library: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Vessel Library")
-                    .font(.headline)
-                Spacer()
-                Button("New") { leave(.create) { beginCreate() } }
-                    .disabled(nmeaManager.vesselStoreError != nil)
-                Button("Duplicate") {
-                    if let id = session.highlightedID {
-                        leave(.duplicate(id)) { duplicate() }
+        let _ = session.highlightedID
+        return VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: BoatProfileLayout.headerStackSpacing) {
+                Text("Inspect a vessel here. Set as Active Vessel is what the dashboard and the simulation use. Maneuvers stay on the Dashboard Boat segment.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if nmeaManager.selectedVesselID == nil || nmeaManager.vesselStoreError != nil {
+                    Label(nmeaManager.activeVesselSummary, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(DesignToken.Status.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("Vessel selection required")
+                }
+                VStack(alignment: .leading, spacing: BoatProfileLayout.headerToCard) {
+                    Text("Vessel Library")
+                        .font(.headline)
+                    HStack(spacing: BoatProfileLayout.commandSpacing) {
+                        LibraryCommandButton(
+                            title: "New",
+                            isEnabled: nmeaManager.vesselStoreError == nil,
+                            action: { _ in leave(.create) { _ = session.createDefaultVessel(on: nmeaManager) } }
+                        )
+                        .frame(minWidth: 56, minHeight: 24)
+                        LibraryCommandButton(
+                            title: "Duplicate",
+                            isEnabled: session.highlightedID != nil && nmeaManager.vesselStoreError == nil,
+                            action: { _ in
+                                if let id = session.highlightedID {
+                                    leave(.duplicate(id)) { duplicate() }
+                                }
+                            }
+                        )
+                        .frame(minWidth: 72, minHeight: 24)
+                        LibraryCommandButton(
+                            title: "Delete",
+                            isEnabled: canDeleteHighlighted,
+                            action: { window in
+                                guard canDeleteHighlighted, let id = session.highlightedID else { return }
+                                leave(.delete(id)) { presentDelete(id: id, window: window) }
+                            }
+                        )
+                        .frame(minWidth: 64, minHeight: 24)
                     }
                 }
-                    .disabled(session.highlightedID == nil || nmeaManager.vesselStoreError != nil)
-                Button("Delete") {
-                    if let id = session.highlightedID {
-                        leave(.delete(id)) { isConfirmingDelete = true }
-                    }
-                }
-                    .disabled(!canDeleteHighlighted)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(BoatProfileLayout.outerPadding)
+
             List(selection: highlightedBinding) {
                 ForEach(nmeaManager.vessels) { vessel in
                     vesselRow(vessel)
@@ -626,7 +666,7 @@ struct BoatSetupDetailView: View {
                                     }
                                 }
                                 Button("Delete", role: .destructive) {
-                                    leave(.delete(vessel.id)) { isConfirmingDelete = true }
+                                    leave(.delete(vessel.id)) { presentDelete(id: vessel.id, window: nil) }
                                 }
                             }
                         }
@@ -634,48 +674,7 @@ struct BoatSetupDetailView: View {
             }
             .accessibilityLabel("Vessel library")
         }
-    }
-
-    private var detail: some View {
-        @Bindable var session = session
-        return Group {
-            if let profile = highlightedProfile {
-                Form {
-                    identitySection(profile, session: session)
-                        .tracksConsoleEdge(slot: "form")
-                    hullSection(profile, session: session)
-                    rigSection(profile, session: session)
-                    SailInventorySection(profile: profile, session: session, simulator: nmeaManager)
-                    ActiveSailControls(profile: profile, target: .savedSelection, simulator: nmeaManager)
-                    LabeledContent("UUID") {
-                        Text(profile.id.uuidString)
-                            .font(.body.monospaced())
-                            .textSelection(.enabled)
-                    }
-                    LabeledContent("Origin", value: profile.origin == .builtIn ? "Built-in" : "Custom")
-                    LabeledContent("Performance", value: performanceLabel(profile))
-                    LabeledContent("Simulation", value: nmeaManager.selectedVesselID == profile.id ? "Active" : "Not active")
-                    Button("Save") { session.saveBuffer(on: nmeaManager) }
-                        .disabled(nmeaManager.vesselStoreError != nil)
-                    if profile.origin == .builtIn {
-                        Text("Built-in identity, hull, and rig stay as seeded. Sails on this vessel can be edited.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Button("Set as Active Vessel") {
-                        session.activateHighlighted(on: nmeaManager)
-                    }
-                    .disabled(nmeaManager.vesselStoreError != nil || nmeaManager.selectedVesselID == profile.id)
-                }
-                .formStyle(.grouped)
-            } else {
-                ContentUnavailableView(
-                    "No Vessel Selected",
-                    systemImage: "sailboat",
-                    description: Text("Choose a vessel in the library to inspect it. That does not change the active simulation vessel.")
-                )
-            }
-        }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var highlightedBinding: Binding<UUID?> {
@@ -715,7 +714,7 @@ struct BoatSetupDetailView: View {
                 if nmeaManager.selectedVesselID == vessel.id {
                     Text("Active")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.mint)
+                        .foregroundStyle(DesignToken.Status.success)
                 }
             }
             Text(vessel.modelName ?? "Model not recorded")
@@ -736,45 +735,21 @@ struct BoatSetupDetailView: View {
         return "\(vessel.name), \(vessel.modelName ?? "model not recorded"), \(origin), \(active)"
     }
 
-    private func beginCreate() {
-        newName = ""
-        newModel = ""
-        newYear = ""
-        isCreating = true
-    }
-
     private func leave(_ intent: VesselLeaveIntent, whenAllowed: () -> Void) {
         switch session.requestLeave(intent, on: nmeaManager) {
         case .allowed:
             whenAllowed()
-        case .needsConfirmation:
+        case .blocked:
             break
         }
     }
 
-    private func finish(_ resolution: UnsavedResolution) {
-        guard case .perform(let intent) = resolution else { return }
-        switch intent {
-        case .highlight:
-            break
-        case .create:
-            beginCreate()
-        case .duplicate:
-            duplicate()
-        case .delete:
-            isConfirmingDelete = true
-        case .rename:
-            renameText = session.buffer.name
-            isRenaming = true
-        case .activate:
-            session.activateHighlighted(on: nmeaManager)
-        }
-    }
-
-    private func createVessel() {
-        guard let year = parsedYear(newYear) else { return }
-        if let created = session.createVessel(name: newName, modelName: newModel, constructionYear: year, on: nmeaManager) {
-            session.show(created.id, on: nmeaManager)
+    /// Confirmation is not SwiftUI state. A missing window drops the request.
+    private func presentDelete(id: UUID, window: NSWindow?) {
+        guard session.highlightedID == id, highlightedProfile?.origin == .custom, nmeaManager.vesselStoreError == nil else { return }
+        VesselDeletePrompt.present(vesselID: id, window: window ?? NSApp.keyWindow) {
+            guard session.highlightedID == id, highlightedProfile?.origin == .custom else { return }
+            session.deleteHighlighted(on: nmeaManager)
         }
     }
 
@@ -797,21 +772,103 @@ struct BoatSetupDetailView: View {
             session.show(copy.id, on: nmeaManager)
         }
     }
+}
 
-    private func parsedYear(_ text: String) -> Int?? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return Optional(nil) }
-        guard let year = Int(trimmed) else {
-            session.report(VesselProfileStoreError.invalidProfileData("Construction year must be a whole number."))
-            return nil
+/// Detail values for the retained boat session.
+/// Reads the highlight, buffer, and library in this body, so a list selection refreshes
+/// the form without recreating the host. The form identity is the vessel id.
+private struct VesselLibraryDetail: View {
+    @Bindable var session: VesselLibrarySession
+    @Bindable var nmeaManager: NMEASimulator
+
+    var body: some View {
+        let highlightedID = session.highlightedID
+        let _ = session.buffer
+        let _ = nmeaManager.vessels
+        if let highlightedID, let profile = nmeaManager.vessels.first(where: { $0.id == highlightedID }) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: BoatProfileLayout.sectionSpacing) {
+                    identitySection(profile)
+                    hullSection(profile)
+                    rigSection(profile)
+                    profileBlock("Sail inventory") {
+                        SailInventorySection(profile: profile, session: session, simulator: nmeaManager)
+                    }
+                    ActiveSailControls(profile: profile, target: .savedSelection, simulator: nmeaManager)
+                    profileCard {
+                        CompactFormRow(title: "UUID") {
+                            Text(profile.id.uuidString)
+                                .font(.body.monospaced())
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        CompactFormRow(title: "Origin") {
+                            Text(profile.origin == .builtIn ? "Built-in" : "Custom")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        CompactFormRow(title: "Performance") {
+                            Text(performanceLabel(profile))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityLabel(performanceLabel(profile))
+                        }
+                        CompactFormRow(title: "Simulation") {
+                            Text(nmeaManager.selectedVesselID == profile.id ? "Active" : "Not active")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        editorStatus
+                        if profile.origin == .builtIn {
+                            Text("Built-in identity, hull, and rig stay as seeded. Sails on this vessel can be edited.")
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.neutral)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Button("Set as Active Vessel") {
+                        session.activateHighlighted(on: nmeaManager)
+                    }
+                    .disabled(nmeaManager.vesselStoreError != nil || nmeaManager.selectedVesselID == profile.id)
+                }
+                .id(profile.id)
+                .padding(BoatProfileLayout.outerPadding)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .tracksConsoleEdge(slot: "form")
+            }
+            .contentMargins(.all, 0, for: .scrollContent)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else {
+            ContentUnavailableView(
+                "No Vessel Selected",
+                systemImage: "sailboat",
+                description: Text("Choose a vessel in the library to inspect it. That does not change the active simulation vessel.")
+            )
         }
-        return Optional(year)
     }
 
-    private func identitySection(_ profile: VesselProfile, session: VesselLibrarySession) -> some View {
-        @Bindable var session = session
+    private var editorStatus: some View {
+        Group {
+            if let message = session.validationMessage {
+                Text(message)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.error)
+                    .accessibilityIdentifier("Vessel editor status")
+            } else if let message = session.failureMessage {
+                Text(message)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.error)
+                    .accessibilityIdentifier("Vessel editor status")
+            } else if session.lastChangeSucceeded {
+                Text("Saved")
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.neutral)
+                    .accessibilityIdentifier("Vessel editor status")
+            }
+        }
+    }
+
+    private func identitySection(_ profile: VesselProfile) -> some View {
         let editable = profile.origin == .custom
-        return Section("Identity") {
+        return profileBlock("Identity") {
             field("Name", text: $session.buffer.name, editable: editable, stored: profile.name)
             field("Builder", text: $session.buffer.manufacturer, editable: editable, stored: profile.manufacturer ?? "Not recorded")
             field("Model", text: $session.buffer.modelName, editable: editable, stored: profile.modelName ?? "Not recorded")
@@ -821,10 +878,9 @@ struct BoatSetupDetailView: View {
         }
     }
 
-    private func hullSection(_ profile: VesselProfile, session: VesselLibrarySession) -> some View {
-        @Bindable var session = session
+    private func hullSection(_ profile: VesselProfile) -> some View {
         let editable = profile.origin == .custom
-        return Section("Hull") {
+        return profileBlock("Hull") {
             measure("LOA", text: $session.buffer.lengthOverall, unit: "m", editable: editable, stored: profile.hull.lengthOverallMeters)
             measure("LWL", text: $session.buffer.waterlineLength, unit: "m", editable: editable, stored: profile.hull.waterlineLengthMeters)
             measure("Beam", text: $session.buffer.beam, unit: "m", editable: editable, stored: profile.hull.beamMeters)
@@ -833,43 +889,77 @@ struct BoatSetupDetailView: View {
         }
     }
 
-    private func rigSection(_ profile: VesselProfile, session: VesselLibrarySession) -> some View {
-        @Bindable var session = session
+    private func rigSection(_ profile: VesselProfile) -> some View {
         let editable = profile.origin == .custom
-        return Section("Rig") {
+        return profileBlock("Rig") {
             measure("I", text: $session.buffer.foretriangleHeight, unit: "m", editable: editable, stored: profile.rig.foretriangleHeightMeters)
             measure("J", text: $session.buffer.foretriangleBase, unit: "m", editable: editable, stored: profile.rig.foretriangleBaseMeters)
             measure("P", text: $session.buffer.mainsailLuff, unit: "m", editable: editable, stored: profile.rig.mainsailLuffMeters)
             measure("E", text: $session.buffer.mainsailFoot, unit: "m", editable: editable, stored: profile.rig.mainsailFootMeters)
             Text("I is foretriangle height. J is foretriangle base. P is mainsail luff. E is mainsail foot. A blank value is unknown.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.neutral)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    private func profileBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: BoatProfileLayout.headerToCard) {
+            Text(title)
+                .font(DesignToken.Typography.section)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityHeading(.h2)
+            profileCard(content: content)
+        }
+    }
+
+    private func profileCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: BoatProfileLayout.rowSpacing) {
+            content()
+        }
+        .padding(BoatProfileLayout.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: BoatProfileLayout.cardCornerRadius, style: .continuous)
+                .fill(DesignToken.Surface.card)
+        }
+    }
+
+    @ViewBuilder
     private func field(_ title: String, text: Binding<String>, editable: Bool, stored: String) -> some View {
-        LabeledContent(title) {
-            if editable {
-                TextField(title, text: text)
-            } else {
+        if editable {
+            FormTextRow(title: title, text: text)
+        } else {
+            CompactFormRow(title: title) {
                 Text(stored)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier(title)
+                    .accessibilityLabel(stored)
             }
         }
     }
 
+    @ViewBuilder
     private func measure(_ title: String, text: Binding<String>, unit: String, editable: Bool, stored: Double?) -> some View {
-        LabeledContent(title) {
-            if editable {
-                HStack(spacing: 6) {
-                    TextField(title, text: text)
-                        .multilineTextAlignment(.trailing)
-                    Text(unit)
-                        .foregroundStyle(.secondary)
+        if editable {
+            FormTextRow(title: title, text: text, unit: unit)
+        } else {
+            CompactFormRow(title: title) {
+                if let stored {
+                    let shown = "\(unit == "kg" ? VesselEditBuffer.displayKilograms(stored) : VesselEditBuffer.displayMetres(stored)) \(unit)"
+                    Text(shown)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier(title)
+                        .accessibilityLabel(shown)
+                } else {
+                    Text("Not recorded")
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier(title)
+                        .accessibilityLabel("Not recorded")
                 }
-            } else if let stored {
-                Text("\(unit == "kg" ? VesselEditBuffer.displayKilograms(stored) : VesselEditBuffer.displayMetres(stored)) \(unit)")
-            } else {
-                Text("Not recorded")
             }
         }
     }
@@ -888,6 +978,122 @@ struct BoatSetupDetailView: View {
     }
 }
 
+/// AppKit button. SwiftUI `Button` controls inside the retained boat host are not hit-test or accessibility targets.
+private struct LibraryCommandButton: NSViewRepresentable {
+    var title: String
+    var isEnabled: Bool
+    var action: (NSWindow?) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(action)
+    }
+
+    func makeNSView(context: Context) -> NSButton {
+        let button = NSButton(title: title, target: context.coordinator, action: #selector(Coordinator.invoke(_:)))
+        button.bezelStyle = .rounded
+        button.controlSize = .regular
+        apply(title, enabled: isEnabled, to: button, coordinator: context.coordinator)
+        return button
+    }
+
+    func updateNSView(_ button: NSButton, context: Context) {
+        context.coordinator.action = action
+        apply(title, enabled: isEnabled, to: button, coordinator: context.coordinator)
+    }
+
+    private func apply(_ title: String, enabled: Bool, to button: NSButton, coordinator: Coordinator) {
+        button.title = title
+        button.isEnabled = enabled
+        button.target = coordinator
+        button.action = #selector(Coordinator.invoke(_:))
+        button.setAccessibilityLabel(title)
+        button.setAccessibilityIdentifier(title)
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSButton, context: Context) -> CGSize? {
+        let size = nsView.intrinsicContentSize
+        guard size.width > 1, size.height > 1 else { return nil }
+        return size
+    }
+
+    final class Coordinator: NSObject {
+        var action: (NSWindow?) -> Void
+        init(_ action: @escaping (NSWindow?) -> Void) { self.action = action }
+        @objc func invoke(_ sender: Any?) {
+            action((sender as? NSView)?.window)
+        }
+    }
+}
+
+/// Immediate delete confirmation for the retained Boat Profile host.
+///
+/// Library Delete is an AppKit button because SwiftUI buttons in that host are not hit targets.
+/// `.confirmationDialog` stored its flag from that action, but the sheet is presented by SwiftUI
+/// only when the retained host lays out again. Navigation is what performs that layout, so the
+/// prompt appeared after leaving the page. This sheet is ordered on the click. No window means
+/// no stored prompt for a later navigation pass to reveal.
+@MainActor
+enum VesselDeletePrompt {
+    private(set) static var presentedVesselID: UUID?
+    /// Clicks that reached `present` with a window. A layout pass does not increment it.
+    private(set) static var requestCount = 0
+    private static var confirmAction: (() -> Void)?
+    private static var alert: NSAlert?
+
+    static func present(vesselID: UUID, window: NSWindow?, onConfirm: @escaping () -> Void) {
+        guard presentedVesselID == nil, let window else { return }
+        requestCount += 1
+        presentedVesselID = vesselID
+        confirmAction = onConfirm
+        let alert = NSAlert()
+        alert.messageText = "Delete this vessel?"
+        alert.informativeText = "The vessel is removed from the library. If it is the active vessel, simulation waits until you choose another."
+        alert.alertStyle = .warning
+        let deleteButton = alert.addButton(withTitle: "Delete")
+        deleteButton.hasDestructiveAction = true
+        deleteButton.keyEquivalent = ""
+        alert.addButton(withTitle: "Cancel").keyEquivalent = "\r"
+        self.alert = alert
+        alert.beginSheetModal(for: window) { response in
+            resolve(delete: response == .alertFirstButtonReturn)
+        }
+    }
+
+    static func cancel() {
+        _ = takeDown()
+    }
+
+    static func confirm() {
+        takeDown()?()
+    }
+
+    private static func takeDown() -> (() -> Void)? {
+        let action = confirmAction
+        let sheet = alert?.window
+        let parent = sheet?.sheetParent
+        confirmAction = nil
+        presentedVesselID = nil
+        alert = nil
+        if let sheet, let parent {
+            parent.endSheet(sheet, returnCode: .cancel)
+        }
+        return action
+    }
+
+    private static func resolve(delete: Bool) {
+        guard presentedVesselID != nil || confirmAction != nil else { return }
+        let action = confirmAction
+        confirmAction = nil
+        presentedVesselID = nil
+        alert = nil
+        if delete {
+            action?()
+        }
+    }
+}
+
 extension VesselLibrarySession {
     func dismissFailure() {
         if case .failed = lastResult {
@@ -898,4 +1104,32 @@ extension VesselLibrarySession {
     func report(_ error: VesselProfileStoreError) {
         lastResult = .failed(error)
     }
+}
+
+/// Zero-size identity for the one editor session owned by the retained boat root.
+struct VesselLibrarySessionMarker: NSViewRepresentable {
+    var session: VesselLibrarySession
+
+    func makeNSView(context: Context) -> VesselLibrarySessionMarkerView {
+        VesselLibrarySessionMarkerView(session: session)
+    }
+
+    func updateNSView(_ nsView: VesselLibrarySessionMarkerView, context: Context) {
+        nsView.session = session
+    }
+}
+
+final class VesselLibrarySessionMarkerView: NSView {
+    weak var session: VesselLibrarySession?
+
+    init(session: VesselLibrarySession) {
+        self.session = session
+        super.init(frame: .zero)
+        setAccessibilityElement(false)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

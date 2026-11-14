@@ -148,6 +148,7 @@ enum ConsoleScrollTracking {
 /// Places an anchor inside the scrolling content. The anchor’s enclosing scroll view is the one that moves.
 private struct ConsoleEdgeScrollTracking: ViewModifier {
     var isEnabled: Bool
+    var participates: Bool
     var slot: String
     @Environment(\.consoleDragTracking) private var dragTracking
     @Environment(\.pagePresentation) private var presentation
@@ -157,6 +158,7 @@ private struct ConsoleEdgeScrollTracking: ViewModifier {
         if isEnabled {
             content.overlay(alignment: .topLeading) {
                 ConsoleEdgeScrollBridge(
+                    participates: participates,
                     dragTracking: dragTracking,
                     presentation: presentation,
                     page: page,
@@ -174,24 +176,28 @@ private struct ConsoleEdgeScrollTracking: ViewModifier {
 
 /// Writes the page clip view. `ScrollPosition` did not move this scroller, so restoration uses the same clip view.
 private struct ConsoleEdgeScrollBridge: NSViewRepresentable {
+    var participates: Bool
     var dragTracking: ConsoleDragTracking
     var presentation: PagePresentationSession
     var page: SidebarItem?
     var slot: String
 
     func makeNSView(context: Context) -> ConsoleEdgeAnchorView {
-        ConsoleEdgeAnchorView(
+        let view = ConsoleEdgeAnchorView(
             dragTracking: dragTracking,
             presentation: presentation,
             page: page,
             slot: slot
         )
+        view.setConsoleEdgeParticipation(participates)
+        return view
     }
 
     func updateNSView(_ view: ConsoleEdgeAnchorView, context: Context) {
         view.dragTracking = dragTracking
         view.presentation = presentation
         view.noteEnvironmentIdentity(page: page, slot: slot)
+        view.setConsoleEdgeParticipation(participates)
     }
 
     static func dismantleNSView(_ nsView: ConsoleEdgeAnchorView, coordinator: ()) {
@@ -223,6 +229,8 @@ final class ConsoleEdgeAnchorView: NSView {
     private var didRestore = false
     private var isDetaching = false
     private var retired = false
+    private var participates = true
+    private var observersInstalled = false
     private var committedOffset: CGFloat?
     #if DEBUG
     var scrollTrace = ScrollRuntimeTrace.shared
@@ -271,6 +279,7 @@ final class ConsoleEdgeAnchorView: NSView {
 
     override func layout() {
         super.layout()
+        guard participates, retainedPageIsActive else { return }
         bindIfNeeded()
         followViewport()
     }
@@ -279,8 +288,44 @@ final class ConsoleEdgeAnchorView: NSView {
         NotificationCenter.default.removeObserver(self)
     }
 
+    /// False once participation is suspended. The anchor view can stay in a retained page
+    /// without remaining bound to that page's clip view.
+    var isBoundToConsoleEdge: Bool { scrollView != nil }
+
+    /// Binds while this page is the shell destination. Suspending captures the current
+    /// document offset, then ignores later viewport and console-drag callbacks.
+    func setConsoleEdgeParticipation(_ enabled: Bool) {
+        let resolved = enabled && retainedPageIsActive
+        guard resolved != participates else { return }
+        if resolved {
+            guard !retired else { return }
+            participates = true
+            isDetaching = false
+            didRestore = false
+            previous = nil
+            dragBaseline = nil
+            echoViewport = nil
+            echoOrigin = nil
+            lastProgrammaticOrigin = nil
+            lastProgrammaticViewport = nil
+            bindIfNeeded()
+        } else {
+            rememberVisibleOffset()
+            participates = false
+            unregisterConsoleEdgeObservers()
+            #if DEBUG
+            scrollTrace.unbindAnchor(self)
+            #endif
+            scrollView = nil
+            dragBaseline = nil
+            previous = nil
+            echoViewport = nil
+            echoOrigin = nil
+        }
+    }
+
     func bindIfNeeded() {
-        guard scrollView == nil, let found = enclosingScrollView else { return }
+        guard participates, scrollView == nil, let found = enclosingScrollView else { return }
         scrollView = found
         found.contentView.postsBoundsChangedNotifications = true
         found.postsFrameChangedNotifications = true
@@ -288,6 +333,7 @@ final class ConsoleEdgeAnchorView: NSView {
         center.addObserver(self, selector: #selector(viewportChanged), name: NSView.boundsDidChangeNotification, object: found.contentView)
         center.addObserver(self, selector: #selector(viewportChanged), name: NSView.frameDidChangeNotification, object: found)
         center.addObserver(self, selector: #selector(userDidLiveScroll), name: NSScrollView.didLiveScrollNotification, object: found)
+        observersInstalled = true
         #if DEBUG
         scrollTrace.bindAnchor(
             self,
@@ -304,6 +350,7 @@ final class ConsoleEdgeAnchorView: NSView {
     }
 
     @objc private func viewportChanged() {
+        guard participates else { return }
         followViewport()
     }
 
@@ -311,7 +358,7 @@ final class ConsoleEdgeAnchorView: NSView {
     /// `willStart`/`didEnd` pair. Those session notifications also stay active for a whole trackpad
     /// gesture, so a layout callback in between must not use them.
     @objc private func userDidLiveScroll(_ notification: Notification) {
-        guard dragTracking.isDragging, !isApplying, !retired, !isDetaching else { return }
+        guard participates, dragTracking.isDragging, !isApplying, !retired, !isDetaching else { return }
         guard let scrollView, (notification.object as AnyObject?) === scrollView else { return }
         guard let document = scrollView.documentView else { return }
         let clip = scrollView.contentView
@@ -372,6 +419,7 @@ final class ConsoleEdgeAnchorView: NSView {
 
     func followViewport() {
         guard !isApplying else { return }
+        guard participates else { return }
         if isDetaching || retired {
             #if DEBUG
             trace("lateCallback", note: retired ? "retired" : "detaching")
@@ -577,6 +625,16 @@ final class ConsoleEdgeAnchorView: NSView {
         #endif
         guard !isDetaching else { return }
         isDetaching = true
+        rememberVisibleOffset()
+    }
+
+    private func unregisterConsoleEdgeObservers() {
+        guard observersInstalled else { return }
+        NotificationCenter.default.removeObserver(self)
+        observersInstalled = false
+    }
+
+    private func rememberVisibleOffset() {
         guard let clip = scrollView?.contentView else { return }
         let visible = clip.bounds.origin.y
         if visible > 1 {
@@ -668,6 +726,18 @@ final class ConsoleEdgeAnchorView: NSView {
         )
     }
     #endif
+
+    /// A retained host owns activity. Pages without one stay active.
+    private var retainedPageIsActive: Bool {
+        var current: NSView? = superview
+        while let node = current {
+            if let host = node as? any RetainedDestinationHosting {
+                return host.isPageActive
+            }
+            current = node.superview
+        }
+        return true
+    }
 }
 
 extension View {
@@ -675,10 +745,58 @@ extension View {
     /// Do not use it on the dashboard map.
     /// Pass `false` for every row except one, so a list does not adjust the same drag twice.
     /// `slot` distinguishes nested scrollers on one sidebar page. The page itself comes from the environment.
-    func tracksConsoleEdge(_ enabled: Bool = true, slot: String = "primary") -> some View {
-        modifier(ConsoleEdgeScrollTracking(isEnabled: enabled, slot: slot))
+    func tracksConsoleEdge(_ enabled: Bool = true, participates: Bool = true, slot: String = "primary") -> some View {
+        modifier(ConsoleEdgeScrollTracking(isEnabled: enabled, participates: participates && enabled, slot: slot))
     }
 }
+
+#if DEBUG
+/// Counts evaluations of a retained page body. Selection must not increment it.
+enum RetainedDestinationBodyProbe {
+    static var connectionEvaluations = 0
+    static var simulationEvaluations = 0
+    static var boatEvaluations = 0
+    static var timerStatusEvaluations = 0
+    static var timerStatus = ""
+    static var timerStatusCard: String?
+    static var intervalLabel = ""
+    static var readings: [String: String] = [:]
+
+    static func record(_ page: SidebarItem) {
+        switch page {
+        case .connection: connectionEvaluations += 1
+        case .simulation: simulationEvaluations += 1
+        case .boat: boatEvaluations += 1
+        default: break
+        }
+    }
+
+    static func noteTimerStatus(_ status: String, card: String?) {
+        timerStatusEvaluations += 1
+        timerStatus = status
+        timerStatusCard = card
+    }
+
+    static func noteInterval(_ label: String) {
+        intervalLabel = label
+    }
+
+    static func noteReading(_ title: String, _ label: String) {
+        readings[title] = label
+    }
+}
+private struct SettingsCardIdentityKey: EnvironmentKey {
+    static let defaultValue: String? = nil
+}
+
+extension EnvironmentValues {
+    /// Debug-only identity of the enclosing `SettingsCard`, used to prove which card contains a child.
+    var settingsCardIdentity: String? {
+        get { self[SettingsCardIdentityKey.self] }
+        set { self[SettingsCardIdentityKey.self] = newValue }
+    }
+}
+#endif
 
 /// Scrollable page shell used by Connection and the other sidebar panels.
 struct PageContainer<Content: View>: View {
@@ -691,7 +809,34 @@ struct PageContainer<Content: View>: View {
                 .pageContentFrame(maxWidth: maxWidth)
                 .tracksConsoleEdge()
         }
+        .background(DesignToken.Surface.page)
     }
+}
+
+/// Zero-size identity token for a destination whose SwiftUI tree stays mounted.
+struct RetainedDestinationMarker: NSViewRepresentable {
+    var page: SidebarItem
+
+    func makeNSView(context: Context) -> RetainedDestinationMarkerView {
+        RetainedDestinationMarkerView(page: page)
+    }
+
+    func updateNSView(_ nsView: RetainedDestinationMarkerView, context: Context) {}
+}
+
+final class RetainedDestinationMarkerView: NSView {
+    let page: SidebarItem
+
+    init(page: SidebarItem) {
+        self.page = page
+        super.init(frame: .zero)
+        setAccessibilityElement(false)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 extension View {
@@ -703,15 +848,287 @@ extension View {
     }
 }
 
+// MARK: - Responsive layout
+
+/// Content-width classes for setup pages.
+/// `contentWidth` is the width proposed to the page body after the page inset.
+/// Sidebar, toolbar, and console can make that width smaller than the 960×640 window.
+/// These classes do not promise a content height. Pages scroll.
+enum ContentWidthClass: Equatable {
+    /// Available content below 720 points.
+    case compact
+    /// From 720 up to, but not including, two minimum configuration cards.
+    case regular
+    /// 900 points and above: 440 + 20 + 440.
+    case wide
+}
+
+/// Layout names for `DesignToken`. Width class uses available page content, not the window.
+enum ResponsiveLayout {
+    static let targetMinimumContentWidth = DesignToken.Breakpoint.regular
+
+    static let configurationGutter = DesignToken.Spacing.section
+    static let configurationCardMinimum = DesignToken.Width.configurationCardMinimum
+    static let configurationCardMaximum = DesignToken.Width.configurationCardMaximum
+    /// Page column maximum for Connection and Simulation, including the page inset.
+    static let adaptivePageMaxWidth = DesignToken.Width.adaptivePage
+
+    static let formLabelWidth = DesignToken.Form.labelWidth
+    static let formColumnGap = DesignToken.Spacing.field
+    static let formValueMinimum = DesignToken.Form.valueMinimum
+    static let formValueIdeal = DesignToken.Form.valueIdeal
+    static let formValueMaximum = DesignToken.Form.valueMaximum
+    static let formStackedSpacing = DesignToken.Spacing.stacked
+
+    static var twoColumnContentWidth: CGFloat {
+        configurationCardMinimum * 2 + configurationGutter
+    }
+
+    static var formRowCompactWidth: CGFloat {
+        formLabelWidth + formColumnGap + formValueMinimum
+    }
+
+    /// Inner width of an adaptive page at `adaptivePageMaxWidth`.
+    static var adaptiveContentWidth: CGFloat {
+        adaptivePageMaxWidth - PageChrome.padding * 2
+    }
+
+    static func widthClass(for contentWidth: CGFloat) -> ContentWidthClass {
+        if contentWidth < targetMinimumContentWidth { return .compact }
+        if contentWidth < twoColumnContentWidth { return .regular }
+        return .wide
+    }
+
+    static func formRowStyle(for availableWidth: CGFloat) -> FormRowStyle {
+        availableWidth >= formRowCompactWidth ? .compactGrid : .stacked
+    }
+
+    static func formValueColumnWidth(for rowWidth: CGFloat) -> CGFloat {
+        guard formRowStyle(for: rowWidth) == .compactGrid else {
+            return min(formValueMaximum, max(0, rowWidth))
+        }
+        let remaining = rowWidth - formLabelWidth - formColumnGap
+        return min(formValueMaximum, max(formValueMinimum, remaining))
+    }
+}
+
+enum FormRowStyle: Equatable {
+    /// Trailing label column, gap, leading value column.
+    case compactGrid
+    /// Label above the value. Used when the row cannot hold the compact grid.
+    case stacked
+}
+
+/// Accessibility contract for a boat or sail measurement row.
+enum FormRowAccessibility {
+    static func editorLabel(_ title: String) -> String { title }
+    /// A read-only row keeps its visible title. An editor hides that title from accessibility
+    /// and puts the same string on the field, so the label is not announced twice.
+    static let readOnlyKeepsVisibleTitle = true
+    /// A measurement unit is placed in the value column, beside the editor.
+    static let unitStaysBesideValue = true
+
+    static func layoutStyle(for availableWidth: CGFloat) -> FormRowStyle {
+        ResponsiveLayout.formRowStyle(for: availableWidth)
+    }
+}
+
+/// Accessibility identifiers for Connection and Simulation cards.
+enum SetupSection: String, Equatable {
+    case connectionHealth
+    case connectionWarning
+    case primaryOutput
+    case transmission
+    case additionalOutputs
+    case hardwareProfile
+    case sentenceUpdateRates
+    case testPresets
+    case weatherSource
+    case onboardSensors
+    case advancedControls
+}
+
+/// Toolbar title and the decision not to repeat it in the page body.
+enum PageTitlePresentation {
+    static func toolbarTitle(for item: SidebarItem) -> String {
+        item.pageTitle
+    }
+
+    /// Sidebar pages take their title from the toolbar. Section headings stay in the page.
+    static func inContentPageTitle(for item: SidebarItem) -> String? {
+        _ = item
+        return nil
+    }
+
+    static let shellOwnsTopSeparator = true
+}
+
+/// The shell detail column owns the single separator under the toolbar.
+enum ShellChrome {
+    static let topSeparatorHeight: CGFloat = 1
+    static let pagesAddTopSeparator = false
+}
+
+struct ShellContentTopSeparator: View {
+    var body: some View {
+        Rectangle()
+            .fill(DesignToken.Separator.standard)
+            .frame(height: ShellChrome.topSeparatorHeight)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+    }
+}
+
+/// One label and one value. Narrow rows stack. Wider rows keep the label column.
+/// Only the fitting branch is built, so an editor is not created twice.
+struct CompactFormRow<Value: View>: View {
+    var title: String
+    var editor: Bool = false
+    @ViewBuilder var value: () -> Value
+    @State private var rowWidth: CGFloat = 0
+
+    var body: some View {
+        let stacked = rowWidth > 0 && FormRowAccessibility.layoutStyle(for: rowWidth) == .stacked
+        Group {
+            if stacked {
+                VStack(alignment: .leading, spacing: ResponsiveLayout.formStackedSpacing) {
+                    rowLabel
+                    value()
+                        .frame(maxWidth: ResponsiveLayout.formValueMaximum, alignment: .leading)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: ResponsiveLayout.formColumnGap) {
+                    rowLabel
+                        .frame(width: ResponsiveLayout.formLabelWidth, alignment: .trailing)
+                    value()
+                        .frame(
+                            minWidth: ResponsiveLayout.formValueMinimum,
+                            maxWidth: ResponsiveLayout.formValueMaximum,
+                            alignment: .leading
+                        )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: CGFloat.self, of: \.size.width) { newWidth in
+            let nextStacked = newWidth > 0 && FormRowAccessibility.layoutStyle(for: newWidth) == .stacked
+            let currentStacked = rowWidth > 0 && FormRowAccessibility.layoutStyle(for: rowWidth) == .stacked
+            if rowWidth == 0 || nextStacked != currentStacked {
+                rowWidth = newWidth
+            }
+        }
+    }
+
+    private var rowLabel: some View {
+        Text(title)
+            .font(DesignToken.Typography.field)
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(editor)
+    }
+}
+
+/// Compact and Regular are one column. Wide is two columns plus full-width bands.
+/// The unused branch is not built. State stays in the observable model and the retained root.
+struct SetupColumns<Compact: View, Wide: View>: View {
+    @State private var contentWidth: CGFloat = 0
+    @ViewBuilder var compact: () -> Compact
+    @ViewBuilder var wide: () -> Wide
+
+    private var isWide: Bool {
+        contentWidth >= ResponsiveLayout.twoColumnContentWidth
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
+            if isWide {
+                wide()
+            } else {
+                compact()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: CGFloat.self, of: \.size.width) { newWidth in
+            guard newWidth > 1 else { return }
+            let nextWide = newWidth >= ResponsiveLayout.twoColumnContentWidth
+            let currentWide = contentWidth >= ResponsiveLayout.twoColumnContentWidth
+            if contentWidth == 0 || nextWide != currentWide {
+                contentWidth = newWidth
+            }
+        }
+    }
+}
+
+/// Text field with one persistent external label. An optional unit stays beside the value.
+struct FormTextRow: View {
+    var title: String
+    @Binding var text: String
+    var accessibilityLabel: String?
+    var unit: String?
+
+    private var label: String { accessibilityLabel ?? FormRowAccessibility.editorLabel(title) }
+
+    var body: some View {
+        CompactFormRow(title: title, editor: true) {
+            if let unit {
+                HStack(spacing: DesignToken.Spacing.related) {
+                    field
+                        .frame(minWidth: DesignToken.Form.editorMinimum, alignment: .leading)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Text(unit)
+                        .font(DesignToken.Typography.field)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+            } else {
+                field
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var field: some View {
+        TextField("", text: $text)
+            .textFieldStyle(.plain)
+            .font(DesignToken.Typography.field)
+            .labelsHidden()
+            .accessibilityLabel(label)
+            .accessibilityIdentifier(label)
+            .multilineTextAlignment(.leading)
+    }
+}
+
+/// Menu picker with one persistent external label and the same label on the control.
+struct FormMenuRow<Selection: Hashable, Content: View>: View {
+    var title: String
+    var accessibilityLabel: String?
+    @Binding var selection: Selection
+    var isEnabled: Bool = true
+    @ViewBuilder var content: () -> Content
+
+    private var label: String { accessibilityLabel ?? FormRowAccessibility.editorLabel(title) }
+
+    var body: some View {
+        CompactFormRow(title: title, editor: true) {
+            Picker(label, selection: $selection, content: content)
+                .labelsHidden()
+                .accessibilityLabel(label)
+                .accessibilityIdentifier(label)
+                .pickerStyle(.menu)
+                .disabled(!isEnabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 // MARK: - Transport styling
 
 extension TransportStatusLevel {
     var color: Color {
         switch self {
-        case .idle: return .secondary
-        case .connected: return .green
-        case .warning: return .orange
-        case .error: return .red
+        case .idle: return DesignToken.Status.neutral
+        case .connected: return DesignToken.Status.success
+        case .warning: return DesignToken.Status.warning
+        case .error: return DesignToken.Status.error
         }
     }
 
@@ -755,20 +1172,21 @@ struct ConnectionHealthBanner: View {
                         .foregroundStyle(status.level.color)
                 } else {
                     Label("Transmitting", systemImage: "antenna.radiowaves.left.and.right")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(DesignToken.Status.success)
                 }
             } else if let status = nmeaManager.latestTransportStatus, status.level != .idle {
                 Label(status.message, systemImage: status.level.systemImage)
                     .foregroundStyle(status.level.color)
             } else {
                 Label("Not sending — press Start (⌘R)", systemImage: "info.circle")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DesignToken.Status.neutral)
             }
         }
-        .font(.callout)
+        .font(DesignToken.Typography.status)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+        .padding(DesignToken.Spacing.inset)
+        .background(DesignToken.Surface.subtle, in: RoundedRectangle(cornerRadius: DesignToken.Radius.status))
+        .accessibilityIdentifier(SetupSection.connectionHealth.rawValue)
     }
 }
 
@@ -776,19 +1194,93 @@ struct ConnectionHealthBanner: View {
 
 struct SettingsCard<Content: View>: View {
     var title: String?
+    var accessibilityID: String?
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.field) {
             if let title {
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(DesignToken.Typography.section)
+                    .textSelection(.enabled)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityHeading(SettingsCardContract.heading)
             }
             content()
         }
-        .padding(16)
+        .padding(DesignToken.Spacing.card)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(
+            DesignToken.Surface.subtle,
+            in: RoundedRectangle(cornerRadius: DesignToken.Radius.card, style: .continuous)
+        )
+        .modifier(SettingsCardAccessibility(title: title, accessibilityID: accessibilityID))
+        #if DEBUG
+        .environment(\.settingsCardIdentity, accessibilityID ?? title)
+        #endif
+    }
+}
+
+/// Heading and group contract applied by `SettingsCard`.
+/// The synchronous AppKit tree does not expose SwiftUI heading traits.
+enum SettingsCardContract {
+    static let headingLevel = 2
+    /// Child controls stay separate elements inside the card group.
+    static let containsChildControls = true
+
+    struct Semantics: Equatable {
+        var title: String
+        var headingLevel: Int
+        var containsChildControls: Bool
+        var groupLabel: String
+    }
+
+    static func semantics(title: String) -> Semantics {
+        Semantics(
+            title: title,
+            headingLevel: headingLevel,
+            containsChildControls: containsChildControls,
+            groupLabel: title
+        )
+    }
+
+    static var heading: AccessibilityHeadingLevel {
+        switch headingLevel {
+        case 1: .h1
+        case 2: .h2
+        case 3: .h3
+        case 4: .h4
+        case 5: .h5
+        case 6: .h6
+        default: .unspecified
+        }
+    }
+}
+
+/// Groups a titled card without combining its controls into one element.
+private struct SettingsCardAccessibility: ViewModifier {
+    var title: String?
+    var accessibilityID: String?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        switch (title, accessibilityID) {
+        case let (title?, id?) where SettingsCardContract.containsChildControls:
+            content
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(SettingsCardContract.semantics(title: title).groupLabel)
+                .accessibilityIdentifier(id)
+        case let (title?, nil) where SettingsCardContract.containsChildControls:
+            content
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(SettingsCardContract.semantics(title: title).groupLabel)
+        case let (nil, id?):
+            content.accessibilityIdentifier(id)
+        case (nil, nil):
+            content
+        default:
+            content
+        }
     }
 }
 
@@ -800,8 +1292,8 @@ struct EndpointEditorView: View {
     var body: some View {
         let status = nmeaManager.transportStatus(for: endpoint.id)
 
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.field) {
+            HStack(spacing: DesignToken.Spacing.header) {
                 Text(endpoint.name.isEmpty ? (isPrimary ? "Primary Output" : "Untitled") : endpoint.name)
                     .font(.headline)
                 Spacer()
@@ -820,16 +1312,16 @@ struct EndpointEditorView: View {
 
             if !endpoint.isEnabled {
                 Label("Disabled — not sending", systemImage: "pause.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.neutral)
             } else if let status {
                 Label(status.message, systemImage: status.level.systemImage)
-                    .font(.caption)
+                    .font(DesignToken.Typography.supporting)
                     .foregroundStyle(status.level.color)
             } else {
                 Label("No transport activity yet", systemImage: "questionmark.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.neutral)
             }
 
             fieldRow("Name") {
@@ -881,17 +1373,18 @@ struct EndpointEditorView: View {
                 }
 
                 Text("3 characters, e.g. II or GP. Per-sentence talkers follow the hardware profile unless Custom.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(DesignToken.Typography.help)
+                    .foregroundStyle(DesignToken.Status.neutral)
             }
         }
     }
 
     @ViewBuilder
     private func fieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: DesignToken.Spacing.card) {
             Text(title)
-                .foregroundStyle(.secondary)
+                .font(DesignToken.Typography.field)
+                .foregroundStyle(DesignToken.Status.neutral)
                 .frame(width: 100, alignment: .leading)
             content()
             Spacer(minLength: 0)
@@ -905,11 +1398,7 @@ struct SensorToggleGrid: View {
     @Bindable var nmeaManager: NMEASimulator
 
     var body: some View {
-        // Adaptive columns avoid ViewThatFits clipping inside Form scroll content.
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 220), spacing: 12)],
-            spacing: 12
-        ) {
+        VStack(alignment: .leading, spacing: 12) {
             SensorToggleGroup(title: "Navigation Instruments", icon: "safari", toggles: [
                 ("Anemometer", $nmeaManager.sensorToggles.hasAnemometer),
                 ("Magnetic Compass", $nmeaManager.sensorToggles.hasCompass),
@@ -941,7 +1430,17 @@ struct SensorToggleGroup: View {
         GroupBox(label: Label(title, systemImage: icon)) {
             VStack(spacing: 12) {
                 ForEach(toggles.indices, id: \.self) { i in
-                    ViewKit.ToggleRowWithInfo(toggles[i].0, isOn: toggles[i].1)
+                    HStack {
+                        Text(toggles[i].0)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier(toggles[i].0)
+                        Spacer()
+                        Toggle("", isOn: toggles[i].1)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.regular)
+                            .accessibilityLabel(toggles[i].0)
+                    }
                 }
             }
             .padding(6)
@@ -954,10 +1453,10 @@ struct SensorToggleGroup: View {
 enum WeatherStatusStyle {
     static func color(for state: LiveWeatherStatusState) -> Color {
         switch state {
-        case .idle: return .secondary
-        case .fetching: return .blue
-        case .ready: return .green
-        case .failed: return .orange
+        case .idle: return DesignToken.Status.neutral
+        case .fetching: return DesignToken.Status.info
+        case .ready: return DesignToken.Status.success
+        case .failed: return DesignToken.Status.warning
         }
     }
 

@@ -58,6 +58,7 @@ Thumbs.db
 /Temp/
 /Output/
 /DebugFiles/
+/.agent-scratch/
 
 # Optional: exclude local JSON or configuration files
 *.local.json

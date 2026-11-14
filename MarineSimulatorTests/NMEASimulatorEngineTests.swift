@@ -1,6 +1,11 @@
 import Foundation
+import Observation
 import Testing
 @testable import MarineSimulator
+
+private final class ObservationCount: @unchecked Sendable {
+    var value = 0
+}
 
 struct NMEASimulatorEngineTests {
     @Test
@@ -1338,6 +1343,31 @@ struct NMEASimulatorEngineTests {
 
         simulator.isTimerSelected = false
 
+        #expect(simulator.isTransmitting == false)
+        #expect(simulator.transportHistory.contains { $0.category == .lifecycle && $0.message == "Timer disabled; continuous transmission stopped" })
+    }
+
+    @Test
+    func timerSelectionNotifiesObserversWithoutInvertingARepeatedAssignment() {
+        let simulator = configuredSimulatorForDeterministicOutput()
+        simulator.outputEndpoints[0].isEnabled = false
+        simulator.isTimerSelected = true
+        simulator.startSimulation()
+        #expect(simulator.isTransmitting == true)
+
+        simulator.isTimerSelected = true
+        #expect(simulator.isTransmitting == true)
+
+        let notifications = ObservationCount()
+        withObservationTracking {
+            _ = simulator.isTimerSelected
+        } onChange: {
+            notifications.value += 1
+        }
+        simulator.isTimerSelected = false
+
+        #expect(notifications.value == 1)
+        #expect(simulator.isTimerSelected == false)
         #expect(simulator.isTransmitting == false)
         #expect(simulator.transportHistory.contains { $0.category == .lifecycle && $0.message == "Timer disabled; continuous transmission stopped" })
     }

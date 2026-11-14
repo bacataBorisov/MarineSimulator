@@ -104,11 +104,36 @@ struct LiveControlsTabPage<Content: View>: View {
 }
 
 /// Shared “headline + subtitle + value” stack and vertical padding used by slider stripes and boat stripes.
-struct LiveControlRailBlock<Trailing: View, Content: View>: View {
+/// Live strings are stored values rendered here. A trailing closure captured the first number and did not refresh.
+struct LiveControlRailBlock<Content: View>: View {
     let title: String
     let subtitle: String
-    @ViewBuilder var trailing: () -> Trailing
-    @ViewBuilder var content: () -> Content
+    var trailing: String
+    var trailingMonospaced: Bool
+    var detail: String?
+    var detailMonospaced: Bool
+    var detailIdentifier: String?
+    var content: Content
+
+    init(
+        title: String,
+        subtitle: String,
+        trailing: String,
+        trailingMonospaced: Bool = true,
+        detail: String? = nil,
+        detailMonospaced: Bool = false,
+        detailIdentifier: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.trailing = trailing
+        self.trailingMonospaced = trailingMonospaced
+        self.detail = detail
+        self.detailMonospaced = detailMonospaced
+        self.detailIdentifier = detailIdentifier
+        self.content = content()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: UIConstants.spacing) {
@@ -126,20 +151,55 @@ struct LiveControlRailBlock<Trailing: View, Content: View>: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                trailing()
-                    .multilineTextAlignment(.trailing)
+                Group {
+                    if trailingMonospaced {
+                        Text(trailing)
+                            .monospacedDigit()
+                    } else {
+                        Text(trailing)
+                    }
+                }
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
             }
 
-            content()
+            if let detail {
+                detailText(detail)
+            }
+
+            content
         }
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    @ViewBuilder
+    private func detailText(_ detail: String) -> some View {
+        let text = Group {
+            if detailMonospaced {
+                Text(detail)
+                    .font(.caption)
+                    .monospacedDigit()
+            } else {
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+
+        if let detailIdentifier {
+            text.accessibilityIdentifier(detailIdentifier)
+        } else {
+            text
+        }
+    }
 }
 
 struct ControlSliderView: View {
-
-    @Binding var value: SimulatedValue
+    @Bindable var nmea: NMEASimulator
+    var valuePath: WritableKeyPath<NMEASimulator, SimulatedValue>
 
     var title: String = "Heading"
     var unit: String = "°"
@@ -164,118 +224,234 @@ struct ControlSliderView: View {
         }
     }
 
-    private var displayValue: Double {
-        value.value ?? value.centerValue
-    }
-
     private var centerValueBinding: Binding<Double> {
         Binding(
-            get: { value.centerValue },
+            get: { nmea[keyPath: valuePath].centerValue },
             set: { new in
+                var value = nmea[keyPath: valuePath]
                 if wrapsCircularDegrees {
                     value.centerValue = wrappedCircularSetpoint(new, range: sliderRange)
                 } else {
                     value.centerValue = new.clamped(to: sliderRange)
                 }
-                notifyPersist()
+                nmea.setSimulatedValue(valuePath, to: value)
+                onChange?()
             }
         )
     }
 
     private var offsetBinding: Binding<Double> {
         Binding(
-            get: { value.offset },
+            get: { nmea[keyPath: valuePath].offset },
             set: { new in
+                var value = nmea[keyPath: valuePath]
                 value.offset = new
-                notifyPersist()
+                nmea.setSimulatedValue(valuePath, to: value)
+                onChange?()
             }
         )
     }
 
-    private func notifyPersist() {
-        onChange?()
+    private func nudgeCenter(by delta: Double) {
+        let current = nmea[keyPath: valuePath].centerValue
+        if wrapsCircularDegrees {
+            centerValueBinding.wrappedValue = wrappedCircularSetpoint(current + delta, range: sliderRange)
+        } else {
+            centerValueBinding.wrappedValue = current + delta
+        }
     }
 
-    private func nudgeCenter(by delta: Double) {
-        if wrapsCircularDegrees {
-            value.centerValue = wrappedCircularSetpoint(value.centerValue + delta, range: sliderRange)
-        } else {
-            value.centerValue = (value.centerValue + delta).clamped(to: sliderRange)
-        }
-        notifyPersist()
+    private func formatted(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(precision)).grouping(.never))
     }
 
     var body: some View {
-        LiveControlRailBlock(title: title, subtitle: "Live output", trailing: {
-            Text("\(displayValue.formatted(.number.precision(.fractionLength(precision)))) \(unit)")
-                .font(.system(.title3, design: .rounded).weight(.semibold))
-                .monospacedDigit()
-        }, content: {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                HStack(alignment: .center, spacing: 8) {
-                    ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
-                        nudgeCenter(by: -stepAmount)
-                    }
+        VStack(alignment: .leading, spacing: UIConstants.spacing) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .multilineTextAlignment(.leading)
+                    Text("Live output")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Setpoint")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                SimulatedReadingText(
+                    nmea: nmea,
+                    valuePath: valuePath,
+                    title: title,
+                    unit: unit,
+                    precision: precision
+                )
+            }
 
-                        DeferredNumericField(
-                            value: centerValueBinding,
-                            fractionDigits: precision,
-                            width: 84
-                        )
-                        .disabled(isDisabled)
-                    }
-
-                    ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {
-                        nudgeCenter(by: stepAmount)
-                    }
-
-                    Spacer(minLength: 4)
-
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text("Variation")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Stepper(
-                            "\(value.offset.formatted(.number.precision(.fractionLength(precision))))",
-                            value: offsetBinding,
-                            in: 0...180,
-                            step: stepAmount
-                        )
-                        .monospacedDigit()
-                        .frame(minWidth: 96, maxWidth: 104, alignment: .trailing)
-                        .disabled(isDisabled)
-                    }
+            HStack(alignment: .center, spacing: 8) {
+                ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
+                    nudgeCenter(by: -stepAmount)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Sweep")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(sliderRange.lowerBound.formatted(.number.precision(.fractionLength(precision)))) - \(sliderRange.upperBound.formatted(.number.precision(.fractionLength(precision)))) \(unit)")
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Setpoint")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                    Slider(value: centerValueBinding, in: sliderRange)
-                        .disabled(isDisabled)
+                    TextField(
+                        "Setpoint",
+                        value: centerValueBinding,
+                        format: .number.precision(.fractionLength(precision)).grouping(.never)
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .monospacedDigit()
+                    .frame(width: 84)
+                    .disabled(isDisabled)
+                    .accessibilityIdentifier("Setpoint \(title)")
                 }
-                .disabled(isDisabled)
 
-                if let message = disabledReason ?? supportingNote {
-                    Text(message)
-                        .font(.caption2)
-                        .foregroundStyle(disabledReason == nil ? .secondary : AppColors.warning)
+                ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {
+                    nudgeCenter(by: stepAmount)
+                }
+
+                Spacer(minLength: 4)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text("Variation")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    SimulatedVariationText(
+                        nmea: nmea,
+                        valuePath: valuePath,
+                        title: title,
+                        precision: precision
+                    )
+                    Stepper(
+                        "",
+                        value: offsetBinding,
+                        in: 0...180,
+                        step: stepAmount
+                    )
+                    .accessibilityLabel("Variation")
+                    .monospacedDigit()
+                    .frame(minWidth: 96, maxWidth: 104, alignment: .trailing)
+                    .disabled(isDisabled)
+                    .accessibilityIdentifier("Variation Stepper \(title)")
                 }
             }
-        })
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Sweep")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("\(formatted(sliderRange.lowerBound)) - \(formatted(sliderRange.upperBound)) \(unit)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+
+                Slider(value: centerValueBinding, in: sliderRange)
+                    .disabled(isDisabled)
+            }
+            .disabled(isDisabled)
+
+            if let message = disabledReason ?? supportingNote {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(disabledReason == nil ? .secondary : AppColors.warning)
+            }
+        }
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .opacity(isDisabled ? 0.55 : 1)
+    }
+}
+
+extension NMEASimulator {
+    func setSimulatedValue(_ keyPath: WritableKeyPath<NMEASimulator, SimulatedValue>, to value: SimulatedValue) {
+        if keyPath == \.twd { twd = value }
+        else if keyPath == \.tws { tws = value }
+        else if keyPath == \.speed { speed = value }
+        else if keyPath == \.depth { depth = value }
+        else if keyPath == \.seaTemp { seaTemp = value }
+        else if keyPath == \.airTemp { airTemp = value }
+        else if keyPath == \.humidity { humidity = value }
+        else if keyPath == \.barometer { barometer = value }
+        else if keyPath == \.heading { heading = value }
+        else if keyPath == \.gyroHeading {
+            // The gyro setpoint commands true heading. The tick still samples the magnetic
+            // center and publishes the gyro as a copy of that true heading, so the command
+            // has to be stored there. The gyro value stays the live measurement.
+            adoptTrueHeadingCommand(value)
+            gyroHeading = value
+        }
+    }
+
+    /// Converts an operator true-heading command into the magnetic sample the tick steers from.
+    /// Sensor switches do not choose the sample; this runs only for the heading-setpoint editor.
+    private func adoptTrueHeadingCommand(_ commanded: SimulatedValue) {
+        guard sensorToggles.hasGyro, isApplyingSimulationTick == false, isTackInProgress == false else { return }
+        guard activeManeuver?.drivesHeading != true else { return }
+        let variation = simulatedMagneticVariation(for: gpsData, at: .now)
+        let magneticCenter = normalizeAngle(commanded.centerValue - variation)
+        guard magneticCenter != heading.centerValue || commanded.offset != heading.offset else { return }
+        var magnetic = heading
+        magnetic.centerValue = magneticCenter
+        magnetic.offset = commanded.offset
+        heading = magnetic
+    }
+}
+
+/// Reads one simulated channel in this body and draws it as static text.
+/// The key-path read stays here so the readout subscribes on its own, apart from the editable setpoint field.
+private struct SimulatedReadingText: View {
+    @Bindable var nmea: NMEASimulator
+    var valuePath: WritableKeyPath<NMEASimulator, SimulatedValue>
+    var title: String
+    var unit: String
+    var precision: Int
+
+    var body: some View {
+        let current = nmea[keyPath: valuePath]
+        let reading = current.value ?? current.centerValue
+        let label = "\(formatted(reading)) \(unit)"
+        #if DEBUG
+        let _ = RetainedDestinationBodyProbe.noteReading(title, label)
+        #endif
+        Text(label)
+            .font(.system(.title3, design: .rounded).weight(.semibold))
+            .monospacedDigit()
+            .multilineTextAlignment(.trailing)
+            .accessibilityIdentifier("Reading \(title)")
+    }
+
+    private func formatted(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(precision)).grouping(.never))
+    }
+}
+
+/// Reads the same channel's offset in this body. The stepper next to it remains the editor.
+private struct SimulatedVariationText: View {
+    @Bindable var nmea: NMEASimulator
+    var valuePath: WritableKeyPath<NMEASimulator, SimulatedValue>
+    var title: String
+    var precision: Int
+
+    var body: some View {
+        let offset = nmea[keyPath: valuePath].offset
+        let label = formatted(offset)
+        #if DEBUG
+        let _ = RetainedDestinationBodyProbe.noteReading("Variation \(title)", label)
+        #endif
+        Text(label)
+            .monospacedDigit()
+            .frame(width: 44, alignment: .trailing)
+            .accessibilityIdentifier("Variation \(title)")
+    }
+
+    private func formatted(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(precision)).grouping(.never))
     }
 }
 

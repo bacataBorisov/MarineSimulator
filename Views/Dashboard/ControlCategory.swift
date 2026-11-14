@@ -109,10 +109,10 @@ struct CompactControlRow: View {
 struct WindControls: View {
     @Bindable var nmea: NMEASimulator
     var body: some View {
-        @Bindable var nmea = nmea
         VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
-                value: $nmea.twd,
+                nmea: nmea,
+                valuePath: \.twd,
                 title: "True Wind Direction",
                 unit: "°",
                 precision: 0,
@@ -124,7 +124,8 @@ struct WindControls: View {
             )
             RailDivider()
             ControlSliderView(
-                value: $nmea.tws,
+                nmea: nmea,
+                valuePath: \.tws,
                 title: "True Wind Speed",
                 unit: "kn",
                 precision: 1,
@@ -163,27 +164,24 @@ struct BoatControls: View {
     var chrome: BoatControlsChrome = .dashboardRail
 
     var body: some View {
-        @Bindable var nmea = nmea
         let windAngle = nmea.maneuverAbsoluteTrueWindAngle
         let sailing = nmea.liveSailingState
         let tackName = sailing.tack == .port ? "Port" : (sailing.tack == .starboard ? "Starboard" : "—")
         let sailName = sailing.sailCombination?.rawValue ?? "—"
         let sailingReadout = "\(sailing.pointOfSail.displayName) · \(tackName) · TWA \(String(format: "%.0f", sailing.absoluteTrueWindAngle))° · Sail \(sailName)"
+        let vesselName = nmea.activeVesselName
+        let vesselSummary = nmea.activeVesselSummary
 
         VStack(alignment: .leading, spacing: 0) {
-            LiveControlRailBlock(title: "Vessel", subtitle: "Active profile", trailing: {
-                Text(nmea.activeVesselName)
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-            }, content: {
+            LiveControlRailBlock(
+                title: "Vessel",
+                subtitle: "Active profile",
+                trailing: vesselName,
+                trailingMonospaced: false,
+                detail: vesselSummary
+            ) {
                 VStack(alignment: .leading, spacing: 8) {
                     VesselPicker(nmea: nmea)
-
-                    Text(nmea.activeVesselSummary)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
 
                     if let active = nmea.vessels.first(where: { $0.id == nmea.selectedVesselID }) {
                         ActiveSailControls(profile: active, target: .hoisted, simulator: nmea)
@@ -199,7 +197,7 @@ struct BoatControls: View {
                     .frame(maxWidth: .infinity)
                     .accessibilityLabel("Boat Speed Model")
                 }
-            })
+            }
 
             chromeSeparator
 
@@ -207,23 +205,14 @@ struct BoatControls: View {
 
             chromeSeparator
 
-            LiveControlRailBlock(title: "Maneuver", subtitle: "Through the wind", trailing: {
-                Text(windAngle.map { "±\(String(format: "%.1f", $0))°" } ?? "—")
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }, content: {
+            LiveControlRailBlock(
+                title: "Maneuver",
+                subtitle: "Through the wind",
+                trailing: windAngle.map { "±\(String(format: "%.1f", $0))°" } ?? "—",
+                detail: sailingReadout,
+                detailMonospaced: true
+            ) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(sailingReadout)
-                        .font(.caption)
-                        .monospacedDigit()
-                        .accessibilityLabel(sailingReadout)
-                        .onChange(of: sailing.pointOfSail) { _, _ in
-                            nmea.maneuverRejectionReason = nil
-                        }
-                        .onChange(of: sailing.tack) { _, _ in
-                            nmea.maneuverRejectionReason = nil
-                        }
                     Text("Tack crosses the bow. Gybe crosses the stern.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -283,7 +272,8 @@ struct BoatControls: View {
                                 .padding(.bottom, 6)
                             if nmea.sensorToggles.hasGyro {
                                 ControlSliderView(
-                                    value: $nmea.heading,
+                                    nmea: nmea,
+                                    valuePath: \.heading,
                                     title: "Magnetic Compass",
                                     unit: "°",
                                     precision: 0,
@@ -295,7 +285,8 @@ struct BoatControls: View {
                                 )
                             } else {
                                 ControlSliderView(
-                                    value: $nmea.gyroHeading,
+                                    nmea: nmea,
+                                    valuePath: \.gyroHeading,
                                     title: "Gyro",
                                     unit: "°",
                                     precision: 0,
@@ -311,7 +302,13 @@ struct BoatControls: View {
                     }
                     .font(.caption)
                 }
-            })
+            }
+        }
+        .onChange(of: sailing.pointOfSail) { _, _ in
+            nmea.maneuverRejectionReason = nil
+        }
+        .onChange(of: sailing.tack) { _, _ in
+            nmea.maneuverRejectionReason = nil
         }
     }
 
@@ -319,7 +316,8 @@ struct BoatControls: View {
     private var headingSetpoint: some View {
         if nmea.sensorToggles.hasGyro {
             ControlSliderView(
-                value: $nmea.gyroHeading,
+                nmea: nmea,
+                valuePath: \.gyroHeading,
                 title: "Heading Setpoint",
                 unit: "°",
                 precision: 0,
@@ -332,7 +330,8 @@ struct BoatControls: View {
             )
         } else {
             ControlSliderView(
-                value: $nmea.heading,
+                nmea: nmea,
+                valuePath: \.heading,
                 title: "Heading Setpoint",
                 unit: "°",
                 precision: 0,
@@ -425,10 +424,10 @@ struct BoatControls: View {
 struct HydroControls: View {
     @Bindable var nmea: NMEASimulator
     var body: some View {
-        @Bindable var nmea = nmea
         VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
-                value: $nmea.speed,
+                nmea: nmea,
+                valuePath: \.speed,
                 title: "Speed Through Water",
                 unit: "kn",
                 precision: 1,
@@ -439,7 +438,8 @@ struct HydroControls: View {
             )
             RailDivider()
             ControlSliderView(
-                value: $nmea.depth,
+                nmea: nmea,
+                valuePath: \.depth,
                 title: "Depth",
                 unit: "m",
                 precision: 1,
@@ -450,7 +450,8 @@ struct HydroControls: View {
             )
             RailDivider()
             ControlSliderView(
-                value: $nmea.seaTemp,
+                nmea: nmea,
+                valuePath: \.seaTemp,
                 title: "Sea Water Temperature",
                 unit: "°C",
                 precision: 1,
@@ -492,22 +493,34 @@ struct HeadingControls: View {
     @Bindable var nmea: NMEASimulator
 
     var body: some View {
-        LiveControlRailBlock(title: "Compass", subtitle: "Measurements", trailing: {
-            Text(gyroText)
-                .font(.system(.title3, design: .rounded).weight(.semibold))
-                .monospacedDigit()
+        HeadingStatusText(nmea: nmea)
+    }
+}
+
+/// Reads gyro and magnetic heading in this body and renders them as static text.
+private struct HeadingStatusText: View {
+    @Bindable var nmea: NMEASimulator
+
+    var body: some View {
+        let gyro = gyroText
+        let magnetic = magneticText
+        let readout = "Gyro \(gyro) · Magnetic \(magnetic)"
+        #if DEBUG
+        let _ = RetainedDestinationBodyProbe.noteReading("Heading Status", readout)
+        #endif
+        LiveControlRailBlock(
+            title: "Compass",
+            subtitle: "Measurements",
+            trailing: gyro,
+            detail: readout,
+            detailMonospaced: true,
+            detailIdentifier: "Heading Status"
+        ) {
+            Text("The heading setpoint, vessel, and tack commands are on the Boat segment. This page does not steer the boat.")
+                .font(.caption2)
                 .foregroundStyle(.secondary)
-        }, content: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Gyro \(gyroText) · Magnetic \(magneticText)")
-                    .font(.caption)
-                    .monospacedDigit()
-                Text("The heading setpoint, vessel, and tack commands are on the Boat segment. This page does not steer the boat.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        })
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var gyroText: String {
@@ -527,11 +540,10 @@ struct EnvironmentControls: View {
     @Bindable var nmea: NMEASimulator
 
     var body: some View {
-        @Bindable var nmea = nmea
-
         VStack(alignment: .leading, spacing: 0) {
             ControlSliderView(
-                value: $nmea.airTemp,
+                nmea: nmea,
+                valuePath: \.airTemp,
                 title: "Air Temperature",
                 unit: "°C",
                 precision: 1,
@@ -542,7 +554,8 @@ struct EnvironmentControls: View {
             )
             RailDivider()
             ControlSliderView(
-                value: $nmea.humidity,
+                nmea: nmea,
+                valuePath: \.humidity,
                 title: "Relative Humidity",
                 unit: "%",
                 precision: 0,
@@ -553,7 +566,8 @@ struct EnvironmentControls: View {
             )
             RailDivider()
             ControlSliderView(
-                value: $nmea.barometer,
+                nmea: nmea,
+                valuePath: \.barometer,
                 title: "Barometer",
                 unit: "hPa",
                 precision: 1,

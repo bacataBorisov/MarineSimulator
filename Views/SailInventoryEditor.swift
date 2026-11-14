@@ -25,6 +25,11 @@ struct SailDraft: Identifiable, Equatable {
         self.category = category
     }
 
+    /// Category picker write. The inventory rows are `SailEditorSchema.inventoryFields(for:)` of this value.
+    mutating func selectCategory(_ category: SailCategory) {
+        self.category = category
+    }
+
     init(record: SailRecord) {
         id = record.id
         name = record.name
@@ -214,6 +219,7 @@ struct SailDraft: Identifiable, Equatable {
     private static func token(_ text: String) -> Token {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return .empty }
+        if VesselEditBuffer.isIncompleteDecimal(trimmed) { return .invalid(trimmed) }
         guard let value = parse(trimmed), value.isFinite else { return .invalid(trimmed) }
         return .value((value * 1_000_000).rounded() / 1_000_000)
     }
@@ -235,28 +241,205 @@ private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
+enum SailEditorControl: Equatable {
+    case text
+    case menu
+    case measurement(unit: String)
+    case reefCount
+
+    /// Unit rendered beside the value. Nil means the row has no unit.
+    var adjacentUnit: String? {
+        if case .measurement(let unit) = self { return unit }
+        return nil
+    }
+}
+
+/// Slot and reef writes used by the active-sail menus.
+enum ActiveSailSelectionEdit {
+    static func assignSlot(
+        _ selection: inout ActiveSailSelection,
+        _ keyPath: WritableKeyPath<ActiveSailSelection, UUID?>,
+        to newValue: UUID?
+    ) {
+        selection[keyPath: keyPath] = newValue
+        if selection.mainsailID == nil {
+            selection.mainsailReef = .full
+        }
+    }
+
+    static func assignReef(_ selection: inout ActiveSailSelection, to step: ReefStep) {
+        selection.mainsailReef = step
+    }
+
+    static func reefPickerIsEnabled(_ selection: ActiveSailSelection) -> Bool {
+        selection.mainsailID != nil
+    }
+}
+
+struct SailEditorField: Equatable, Identifiable {
+    enum ID: String, Equatable {
+        case name
+        case category
+        case identification
+        case manufacturer
+        case model
+        case year
+        case notes
+        case source
+        case sourceStatus
+        case luff
+        case leech
+        case foot
+        case area
+        case lp
+        case halfWidth
+        case reefCount
+    }
+
+    var id: ID
+    var title: String
+    var control: SailEditorControl
+    var accessibilityLabel: String
+}
+
+struct ActiveSailEditorField: Equatable, Identifiable {
+    enum ID: String, Equatable {
+        case mainsail
+        case reef
+        case headsail
+        case downwind
+    }
+
+    var id: ID
+    var title: String
+    var control: SailEditorControl
+    var accessibilityLabel: String
+}
+
+/// Labels and controls for the sail editor. The inventory and active-sail views render this list.
+enum SailEditorSchema {
+    static func inventoryFields(for category: SailCategory) -> [SailEditorField] {
+        identityFields + measurements(for: category) + provenanceFields
+    }
+
+    static func activeSelectionFields() -> [ActiveSailEditorField] {
+        [
+            active(.mainsail, "Mainsail", .menu),
+            active(.reef, "Reef", .menu),
+            active(.headsail, "Headsail", .menu),
+            active(.downwind, "Downwind", .menu),
+        ]
+    }
+
+    private static var identityFields: [SailEditorField] {
+        [
+            field(.name, "Name", .text),
+            field(.category, "Category", .menu),
+            field(.identification, "Identification", .text),
+            field(.manufacturer, "Manufacturer", .text),
+            field(.model, "Model", .text),
+            field(.year, "Construction year", .text),
+        ]
+    }
+
+    private static var provenanceFields: [SailEditorField] {
+        [
+            field(.notes, "Notes", .text),
+            field(.source, "Source", .text),
+            field(.sourceStatus, "Source status", .menu),
+        ]
+    }
+
+    private static func measurements(for category: SailCategory) -> [SailEditorField] {
+        switch category {
+        case .mainsail:
+            return [
+                measure(.luff, "Luff"),
+                measure(.leech, "Leech"),
+                measure(.foot, "Foot"),
+                measure(.area, "Area", unit: "m²"),
+                field(.reefCount, "Reefs available", .reefCount),
+            ]
+        case .headsail:
+            return [
+                measure(.luff, "Luff"),
+                measure(.leech, "Leech"),
+                measure(.foot, "Foot"),
+                measure(.lp, "LP"),
+                measure(.area, "Area", unit: "m²"),
+            ]
+        case .symmetricSpinnaker, .asymmetricSpinnaker:
+            return [
+                measure(.luff, "SLU"),
+                measure(.leech, "SLE"),
+                measure(.foot, "SF"),
+                measure(.halfWidth, "SHW"),
+                measure(.area, "Area", unit: "m²"),
+            ]
+        case .codeSail, .other:
+            return [
+                measure(.luff, "Luff"),
+                measure(.leech, "Leech"),
+                measure(.foot, "Foot"),
+                measure(.area, "Area", unit: "m²"),
+            ]
+        }
+    }
+
+    private static func field(_ id: SailEditorField.ID, _ title: String, _ control: SailEditorControl) -> SailEditorField {
+        SailEditorField(
+            id: id,
+            title: title,
+            control: control,
+            accessibilityLabel: FormRowAccessibility.editorLabel(title)
+        )
+    }
+
+    private static func measure(_ id: SailEditorField.ID, _ title: String, unit: String = "m") -> SailEditorField {
+        field(id, title, .measurement(unit: unit))
+    }
+
+    private static func active(_ id: ActiveSailEditorField.ID, _ title: String, _ control: SailEditorControl) -> ActiveSailEditorField {
+        ActiveSailEditorField(
+            id: id,
+            title: title,
+            control: control,
+            accessibilityLabel: FormRowAccessibility.editorLabel(title)
+        )
+    }
+}
+
 struct SailInventorySection: View {
     var profile: VesselProfile
     @Bindable var session: VesselLibrarySession
     var simulator: NMEASimulator
 
     var body: some View {
-        Section("Sail inventory") {
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
             if session.buffer.sails.isEmpty {
                 Text("No sails recorded.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(DesignToken.Status.neutral)
             }
             ForEach(session.buffer.sails) { sail in
+                let isSelected = session.editingSailID == sail.id
                 Button {
                     session.editingSailID = sail.id
                 } label: {
                     HStack {
-                        Image(systemName: session.editingSailID == sail.id ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(.secondary)
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isSelected ? DesignToken.Status.success : DesignToken.Status.neutral)
                         Text(sail.name.isEmpty ? "Unnamed sail" : sail.name)
                         Spacer()
                         Text(sail.category.title)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DesignToken.Status.neutral)
+                    }
+                    .padding(.horizontal, DesignToken.Spacing.stacked)
+                    .padding(.vertical, DesignToken.Spacing.stacked)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: DesignToken.Radius.compactCard, style: .continuous)
+                                .fill(DesignToken.Surface.selection)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
@@ -273,8 +456,11 @@ struct SailInventorySection: View {
                 SailDraftFields(draft: $session.buffer.sails[selectedIndex])
             }
             Text("Inventory for \(profile.name). Blank measurements stay unknown. A failed save keeps the typed values.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.neutral)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("Vessel inventory summary")
+                .accessibilityLabel("Inventory for \(profile.name)")
         }
     }
 
@@ -305,69 +491,80 @@ struct SailInventorySection: View {
     }
 }
 
-private struct SailDraftFields: View {
+struct SailDraftFields: View {
     @Binding var draft: SailDraft
 
     var body: some View {
-        TextField("Name", text: $draft.name)
-        Picker("Category", selection: $draft.category) {
-            ForEach(SailCategory.allCases) { category in
-                Text(category.title).tag(category)
-            }
-        }
-        TextField("Identification", text: $draft.identification)
-        TextField("Manufacturer", text: $draft.manufacturer)
-        TextField("Model", text: $draft.model)
-        TextField("Construction year", text: $draft.yearText)
-        measurementFields
-        TextField("Notes", text: $draft.notes)
-        TextField("Source", text: $draft.provenanceSource)
-        Picker("Source status", selection: $draft.provenanceStatus) {
-            Text("Not recorded").tag(SailSourceStatus?.none)
-            ForEach(SailSourceStatus.allCases) { status in
-                Text(status.title).tag(Optional(status))
-            }
+        ForEach(SailEditorSchema.inventoryFields(for: draft.category)) { field in
+            editor(field)
         }
     }
 
     @ViewBuilder
-    private var measurementFields: some View {
-        switch draft.category {
-        case .mainsail:
-            measure("Luff", text: $draft.luff, unit: "m")
-            measure("Leech", text: $draft.leech, unit: "m")
-            measure("Foot", text: $draft.foot, unit: "m")
-            measure("Area", text: $draft.area, unit: "m²")
-            TextField("Reefs available", text: $draft.reefCountText)
-        case .headsail:
-            measure("Luff", text: $draft.luff, unit: "m")
-            measure("Leech", text: $draft.leech, unit: "m")
-            measure("Foot", text: $draft.foot, unit: "m")
-            measure("LP", text: $draft.lp, unit: "m")
-            measure("Area", text: $draft.area, unit: "m²")
-        case .symmetricSpinnaker, .asymmetricSpinnaker:
-            measure("SLU", text: $draft.luff, unit: "m")
-            measure("SLE", text: $draft.leech, unit: "m")
-            measure("SF", text: $draft.foot, unit: "m")
-            measure("SHW", text: $draft.halfWidth, unit: "m")
-            measure("Area", text: $draft.area, unit: "m²")
-        case .codeSail, .other:
-            measure("Luff", text: $draft.luff, unit: "m")
-            measure("Leech", text: $draft.leech, unit: "m")
-            measure("Foot", text: $draft.foot, unit: "m")
-            measure("Area", text: $draft.area, unit: "m²")
+    private func editor(_ field: SailEditorField) -> some View {
+        switch field.id {
+        case .name:
+            text(field, text: $draft.name)
+        case .category:
+            FormMenuRow(title: field.title, accessibilityLabel: field.accessibilityLabel, selection: categorySelection) {
+                ForEach(SailCategory.allCases) { category in
+                    Text(category.title).tag(category)
+                }
+            }
+        case .identification:
+            text(field, text: $draft.identification)
+        case .manufacturer:
+            text(field, text: $draft.manufacturer)
+        case .model:
+            text(field, text: $draft.model)
+        case .year:
+            text(field, text: $draft.yearText)
+        case .notes:
+            text(field, text: $draft.notes)
+        case .source:
+            text(field, text: $draft.provenanceSource)
+        case .sourceStatus:
+            FormMenuRow(title: field.title, accessibilityLabel: field.accessibilityLabel, selection: $draft.provenanceStatus) {
+                Text("Not recorded").tag(SailSourceStatus?.none)
+                ForEach(SailSourceStatus.allCases) { status in
+                    Text(status.title).tag(Optional(status))
+                }
+            }
+        case .luff:
+            measurement(field, text: $draft.luff)
+        case .leech:
+            measurement(field, text: $draft.leech)
+        case .foot:
+            measurement(field, text: $draft.foot)
+        case .area:
+            measurement(field, text: $draft.area)
+        case .lp:
+            measurement(field, text: $draft.lp)
+        case .halfWidth:
+            measurement(field, text: $draft.halfWidth)
+        case .reefCount:
+            text(field, text: $draft.reefCountText)
         }
     }
 
-    private func measure(_ title: String, text: Binding<String>, unit: String) -> some View {
-        LabeledContent(title) {
-            HStack(spacing: 6) {
-                TextField(title, text: text)
-                    .multilineTextAlignment(.trailing)
-                Text(unit)
-                    .foregroundStyle(.secondary)
-            }
-        }
+    private func text(_ field: SailEditorField, text: Binding<String>) -> some View {
+        FormTextRow(title: field.title, text: text, accessibilityLabel: field.accessibilityLabel)
+    }
+
+    private var categorySelection: Binding<SailCategory> {
+        Binding(
+            get: { draft.category },
+            set: { draft.selectCategory($0) }
+        )
+    }
+
+    private func measurement(_ field: SailEditorField, text: Binding<String>) -> some View {
+        FormTextRow(
+            title: field.title,
+            text: text,
+            accessibilityLabel: field.accessibilityLabel,
+            unit: field.control.adjacentUnit
+        )
     }
 }
 
@@ -383,28 +580,23 @@ struct ActiveSailControls: View {
     @State private var message: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
             Text(target == .hoisted ? "Hoisted sails" : "Saved sail selection")
-                .font(.headline)
-            slotPicker("Mainsail", selection: slot(\.mainsailID), sails: profile.inventory.filter(\.category.fitsMainsailSlot))
-            Picker("Reef", selection: reefBinding) {
-                Text("Full").tag(ReefStep.full)
-                Text("Reef 1").tag(ReefStep.reef1)
-                Text("Reef 2").tag(ReefStep.reef2)
-                Text("Reef 3").tag(ReefStep.reef3)
+                .font(DesignToken.Typography.section)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityHeading(.h2)
+            ForEach(SailEditorSchema.activeSelectionFields()) { field in
+                activeRow(field)
             }
-            .disabled(displayedSelection.mainsailID == nil)
-            slotPicker("Headsail", selection: slot(\.headsailID), sails: profile.inventory.filter(\.category.fitsHeadsailSlot))
-            slotPicker("Downwind", selection: slot(\.downwindSailID), sails: profile.inventory.filter(\.category.fitsDownwindSlot))
             Text(target == .hoisted
                  ? "This changes the sails hoisted for the current session. The saved selection stays unchanged."
                  : "This is the selection adopted when the vessel becomes active. None leaves a slot empty.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.neutral)
             if let message {
                 Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.error)
             }
         }
         .accessibilityElement(children: .contain)
@@ -425,8 +617,32 @@ struct ActiveSailControls: View {
         }
     }
 
-    private func slotPicker(_ title: String, selection: Binding<UUID?>, sails: [SailRecord]) -> some View {
-        Picker(title, selection: selection) {
+    @ViewBuilder
+    private func activeRow(_ field: ActiveSailEditorField) -> some View {
+        switch field.id {
+        case .mainsail:
+            slotMenu(field, selection: slot(\.mainsailID), sails: profile.inventory.filter(\.category.fitsMainsailSlot))
+        case .reef:
+            FormMenuRow(
+                title: field.title,
+                accessibilityLabel: field.accessibilityLabel,
+                selection: reefBinding,
+                isEnabled: ActiveSailSelectionEdit.reefPickerIsEnabled(displayedSelection)
+            ) {
+                Text("Full").tag(ReefStep.full)
+                Text("Reef 1").tag(ReefStep.reef1)
+                Text("Reef 2").tag(ReefStep.reef2)
+                Text("Reef 3").tag(ReefStep.reef3)
+            }
+        case .headsail:
+            slotMenu(field, selection: slot(\.headsailID), sails: profile.inventory.filter(\.category.fitsHeadsailSlot))
+        case .downwind:
+            slotMenu(field, selection: slot(\.downwindSailID), sails: profile.inventory.filter(\.category.fitsDownwindSlot))
+        }
+    }
+
+    private func slotMenu(_ field: ActiveSailEditorField, selection: Binding<UUID?>, sails: [SailRecord]) -> some View {
+        FormMenuRow(title: field.title, accessibilityLabel: field.accessibilityLabel, selection: selection) {
             Text("None").tag(UUID?.none)
             ForEach(sails) { sail in
                 Text("\(sail.name) · \(sail.category.title)").tag(Optional(sail.id))
@@ -439,10 +655,7 @@ struct ActiveSailControls: View {
             get: { displayedSelection[keyPath: keyPath] },
             set: { newValue in
                 var selection = displayedSelection
-                selection[keyPath: keyPath] = newValue
-                if selection.mainsailID == nil {
-                    selection.mainsailReef = .full
-                }
+                ActiveSailSelectionEdit.assignSlot(&selection, keyPath, to: newValue)
                 apply(selection)
             }
         )
@@ -453,7 +666,7 @@ struct ActiveSailControls: View {
             get: { displayedSelection.mainsailReef },
             set: { newValue in
                 var selection = displayedSelection
-                selection.mainsailReef = newValue
+                ActiveSailSelectionEdit.assignReef(&selection, to: newValue)
                 apply(selection)
             }
         )

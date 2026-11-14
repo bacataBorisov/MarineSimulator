@@ -28,8 +28,113 @@ enum DistanceUnit {
     case boatLength
 }
 
+/// Semantic tokens for the migrated setup and form UI.
+/// Typography uses SwiftUI text styles. Surfaces and status colors use system colors.
+/// `AppColors` keeps the console palette and the tinted status colors of pages that are not migrated.
+enum DesignToken {
+    enum Spacing {
+        /// Label above a value when a form row stacks.
+        static let stacked: CGFloat = 4
+        /// A value and its unit, or other immediately related items.
+        static let related: CGFloat = 6
+        /// Rows inside a card, and neighboring commands.
+        static let row: CGFloat = 8
+        /// Status-wash padding, and the gap from a heading to its card.
+        static let inset: CGFloat = 10
+        /// Stacked headings, and the inset of a card nested in another card.
+        static let header: CGFloat = 12
+        /// Fields inside a settings card, and the compact form label-to-value gap.
+        static let field: CGFloat = 14
+        /// Inset of a setup settings card.
+        static let card: CGFloat = 16
+        /// Inset of a boat-profile section card.
+        static let profileCard: CGFloat = 18
+        /// Space between setup cards, and between two configuration columns.
+        static let section: CGFloat = 20
+        /// Inset of a sidebar page.
+        static let page: CGFloat = 24
+    }
+
+    enum Radius {
+        /// Setup settings card.
+        static let card: CGFloat = 12
+        /// Boat profile card and a card nested inside a settings card.
+        static let compactCard: CGFloat = 10
+        /// Status and warning washes.
+        static let status: CGFloat = 8
+    }
+
+    enum Typography {
+        static let supporting = Font.caption
+        static let section = Font.title3.weight(.semibold)
+        static let field = Font.body
+        static let help = Font.caption2
+        static let status = Font.callout
+    }
+
+    enum Surface {
+        static let page = AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+        static let card = AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
+        static let subtle = AnyShapeStyle(HierarchicalShapeStyle.quaternary.opacity(0.28))
+        static let nested = AnyShapeStyle(HierarchicalShapeStyle.quaternary.opacity(0.22))
+        static let selection = AnyShapeStyle(Color(nsColor: .unemphasizedSelectedContentBackgroundColor))
+    }
+
+    enum Separator {
+        static let standard = Color(nsColor: .separatorColor)
+    }
+
+    /// Interactive accent. It is the system accent, not a status or selection color.
+    /// A future branding change replaces this token only.
+    static let accentPrimary = Color.accentColor
+
+    enum Status {
+        static let neutral = Color.secondary
+        static let success = Color.green
+        static let warning = Color.orange
+        static let error = Color.red
+        static let info = Color.blue
+    }
+
+    enum Width {
+        /// Readable column for pages other than Connection and Simulation.
+        static let readable: CGFloat = 920
+        /// Connection and Simulation column, including the page inset.
+        static let adaptivePage: CGFloat = 1120
+        static let configurationCardMinimum: CGFloat = 440
+        static let configurationCardMaximum: CGFloat = 520
+        static let sentenceCard: CGFloat = 520
+    }
+
+    enum Form {
+        static let labelWidth: CGFloat = 152
+        static let valueMinimum: CGFloat = 280
+        static let valueIdeal: CGFloat = 320
+        static let valueMaximum: CGFloat = 360
+        static let editorMinimum: CGFloat = 88
+    }
+
+    enum Breakpoint {
+        /// Available page content. Below this, the content class is Compact.
+        static let regular: CGFloat = 720
+        /// Two minimum configuration cards plus the section gutter: 440 + 20 + 440.
+        static var wide: CGFloat {
+            Width.configurationCardMinimum * 2 + Spacing.section
+        }
+    }
+
+    /// The window minimum. It is not a content-size guarantee.
+    enum Window {
+        static let minimumWidth: CGFloat = 960
+        static let minimumHeight: CGFloat = 640
+        static let defaultWidth: CGFloat = 1180
+        static let defaultHeight: CGFloat = 760
+    }
+}
+
 public struct UIConstants {
-    
+
+    /// Legacy 6-point gap for pages that are not on `DesignToken`. Not an alias of `DesignToken.Spacing`.
     static let spacing: CGFloat = 6
     static let halfScreen = (NSScreen.main?.frame.width ?? 1728) / 2
     static let minAppWindowHeight = 520 + (3 * spacing)
@@ -38,14 +143,16 @@ public struct UIConstants {
     
 }
 
-/// Shared inset for sidebar pages (Connection is the reference).
+/// Page-layout names for `DesignToken`. Connection and Simulation use
+/// `ResponsiveLayout.adaptivePageMaxWidth`. Other pages keep `maxWidth`.
+/// `previewColumnWidth` stays a sentence-page measurement, not a shared token.
 enum PageChrome {
-    static let padding: CGFloat = 24
-    static let maxWidth: CGFloat = 920
-    static let stackSpacing: CGFloat = 20
-    static let splitBreakpoint: CGFloat = 720
+    static let padding = DesignToken.Spacing.page
+    static let maxWidth = DesignToken.Width.readable
+    static let stackSpacing = DesignToken.Spacing.section
+    static let splitBreakpoint = DesignToken.Breakpoint.regular
     static let previewColumnWidth: CGFloat = 320
-    static let sentenceCardMaxWidth: CGFloat = 520
+    static let sentenceCardMaxWidth = DesignToken.Width.sentenceCard
 }
 
 public enum UIStrings {
@@ -77,6 +184,8 @@ public enum UIStrings {
 
 import SwiftUI
 
+/// Tinted status colors for pages that still use this type, plus the console palette.
+/// Migrated setup UI uses `DesignToken.Status`. Do not spread the console RGB values.
 enum AppColors {
     static let warning = Color.orange.opacity(0.8)
     static let info = Color.blue.opacity(0.7)
