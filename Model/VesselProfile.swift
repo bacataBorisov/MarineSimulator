@@ -60,6 +60,7 @@ enum BuiltInVesselID {
 
 enum ActiveVesselState: Equatable, Sendable {
     case resolved(UUID)
+    case none
     case unresolved(storedReference: String)
 }
 

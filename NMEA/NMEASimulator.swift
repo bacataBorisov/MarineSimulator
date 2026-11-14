@@ -790,6 +790,17 @@ class NMEASimulator {
 
     var vesselAllowsSimulation: Bool {
         vesselStoreError == nil && {
+            switch activeVesselState {
+            case .resolved, .none:
+                return true
+            case .unresolved:
+                return false
+            }
+        }()
+    }
+
+    var vesselAllowsBoatFeatures: Bool {
+        vesselStoreError == nil && {
             if case .resolved = activeVesselState { return true }
             return false
         }()
@@ -799,6 +810,8 @@ class NMEASimulator {
         switch activeVesselState {
         case .resolved(let id):
             return vesselRepository.profile(id: id)?.name ?? "Vessel"
+        case .none:
+            return "No boat"
         case .unresolved:
             return "No vessel"
         }
@@ -811,6 +824,8 @@ class NMEASimulator {
         switch activeVesselState {
         case .resolved(let id):
             return vesselRepository.profile(id: id)?.summary ?? "Select a vessel."
+        case .none:
+            return "Simulating raw instruments without a boat profile."
         case .unresolved(let storedReference):
             if storedReference.isEmpty {
                 return "Select a vessel. The saved vessel was not found."
@@ -828,10 +843,14 @@ class NMEASimulator {
         switch activeVesselState {
         case .resolved(let id):
             return id.uuidString
+        case .none:
+            return Self.noVesselReference
         case .unresolved(let storedReference):
             return storedReference
         }
     }
+
+    private static let noVesselReference = "none"
 
     func selectVessel(_ id: UUID) {
         guard vesselStoreError == nil, let profile = vesselRepository.profile(id: id) else { return }
@@ -839,6 +858,22 @@ class NMEASimulator {
         activeVesselState = .resolved(id)
         boatProfile = profile.sailingKey
         isApplyingVesselSelection = false
+        adoptHoistedSails()
+        persistSettingsIfNeeded()
+    }
+
+    func clearSelectedVessel() {
+        guard vesselStoreError == nil else { return }
+        isApplyingVesselSelection = true
+        activeVesselState = .none
+        boatProfile = .nimana
+        isApplyingVesselSelection = false
+        if boatSpeedMode != .manual {
+            boatSpeedMode = .manual
+        }
+        if activeManeuver != nil || isTackInProgress {
+            cancelManeuver()
+        }
         adoptHoistedSails()
         persistSettingsIfNeeded()
     }
@@ -999,7 +1034,12 @@ class NMEASimulator {
             return
         }
         let raw = settings.activeVesselID ?? ""
-        if let id = UUID(uuidString: raw), vesselRepository.profile(id: id) != nil {
+        if raw == Self.noVesselReference {
+            activeVesselState = .none
+            isApplyingVesselSelection = true
+            boatProfile = .nimana
+            isApplyingVesselSelection = false
+        } else if let id = UUID(uuidString: raw), vesselRepository.profile(id: id) != nil {
             activeVesselState = .resolved(id)
             isApplyingVesselSelection = true
             boatProfile = vesselRepository.profile(id: id)?.sailingKey ?? .nimana

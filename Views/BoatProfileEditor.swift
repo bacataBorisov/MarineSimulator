@@ -598,11 +598,16 @@ struct BoatSetupDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                if nmeaManager.selectedVesselID == nil || nmeaManager.vesselStoreError != nil {
+                if nmeaManager.vesselStoreError != nil || !nmeaManager.vesselAllowsSimulation {
                     Label(nmeaManager.activeVesselSummary, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(DesignToken.Status.warning)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("Vessel selection required")
+                } else if nmeaManager.selectedVesselID == nil {
+                    Text(nmeaManager.activeVesselSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 VStack(alignment: .leading, spacing: BoatProfileLayout.headerToCard) {
                     Text("Vessel Library")

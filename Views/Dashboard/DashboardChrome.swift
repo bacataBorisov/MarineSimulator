@@ -97,7 +97,7 @@ struct LiveControlsTabPage<Content: View>: View {
 
     var body: some View {
         content()
-            .padding(.top, 2)
+            .padding(.top, DesignToken.Spacing.stacked)
             .padding(.horizontal, AppChrome.liveControlContentHorizontalPadding)
             .frame(width: AppChrome.liveControlScrollViewportWidth, alignment: .leading)
     }

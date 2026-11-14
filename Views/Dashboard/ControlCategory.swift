@@ -44,7 +44,7 @@ struct LeftControlsPanel: View {
     @AppStorage("dashboard.live_control_category") private var category: ControlCategory = .wind
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignToken.Spacing.inset) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: DesignToken.Spacing.row) {
                 ForEach(ControlCategory.allCases, id: \.self) { cat in
                     let isSelected = category == cat
@@ -70,6 +70,7 @@ struct LeftControlsPanel: View {
                     }
                 }
             }
+            .padding(.vertical, DesignToken.Spacing.inset)
 
             RailDivider()
 
@@ -91,7 +92,8 @@ struct LeftControlsPanel: View {
             .frame(width: AppChrome.liveControlScrollViewportWidth)
             .frame(maxHeight: .infinity)
         }
-        .padding(AppChrome.railPadding)
+        .padding(.horizontal, AppChrome.railPadding)
+        .padding(.bottom, AppChrome.railPadding)
         .frame(width: AppChrome.liveControlRailOuterWidth, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .clipped()
@@ -227,21 +229,21 @@ struct BoatControls: View {
                         )
                     }
 
-                    Picker("Boat Speed Model", selection: $nmea.boatSpeedMode) {
+                    Picker("Boat Speed Model", selection: Binding(
+                        get: { nmea.selectedVesselID == nil ? .manual : nmea.boatSpeedMode },
+                        set: { nmea.boatSpeedMode = $0 }
+                    )) {
                         ForEach(BoatSpeedMode.allCases) { mode in
                             Text(mode.displayName).tag(mode)
                         }
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
+                    .disabled(nmea.selectedVesselID == nil)
                     .frame(maxWidth: .infinity)
                     .accessibilityLabel("Boat Speed Model")
                 }
             }
-
-            chromeSeparator
-
-            headingSetpoint
 
             chromeSeparator
 
@@ -303,44 +305,6 @@ struct BoatControls: View {
                         .padding(.top, 6)
                     }
                     .font(.caption)
-
-                    DisclosureGroup("Compass measurements") {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("These are instruments. The heading setpoint above is what the boat steers.")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .padding(.bottom, 6)
-                            if nmea.sensorToggles.hasGyro {
-                                ControlSliderView(
-                                    nmea: nmea,
-                                    valuePath: \.heading,
-                                    title: "Magnetic Compass",
-                                    unit: "°",
-                                    precision: 0,
-                                    sliderRange: SimulatedValueType.magneticCompass.defaultRange,
-                                    onChange: nmea.persistLiveSettings,
-                                    isDisabled: !nmea.sensorToggles.hasCompass || nmea.isTackInProgress,
-                                    disabledReason: headingDisabledReason(hasSensor: nmea.sensorToggles.hasCompass, sensorName: "Magnetic Compass"),
-                                    wrapsCircularDegrees: true
-                                )
-                            } else {
-                                ControlSliderView(
-                                    nmea: nmea,
-                                    valuePath: \.gyroHeading,
-                                    title: "Gyro",
-                                    unit: "°",
-                                    precision: 0,
-                                    sliderRange: SimulatedValueType.gyroCompass.defaultRange,
-                                    onChange: nmea.persistLiveSettings,
-                                    isDisabled: true,
-                                    disabledReason: "Enable the Gyro Compass in Configuration. The heading setpoint is the magnetic compass.",
-                                    wrapsCircularDegrees: true
-                                )
-                            }
-                        }
-                        .padding(.top, 6)
-                    }
-                    .font(.caption)
                 }
             }
         }
@@ -350,49 +314,6 @@ struct BoatControls: View {
         .onChange(of: sailing.tack) { _, _ in
             nmea.maneuverRejectionReason = nil
         }
-    }
-
-    @ViewBuilder
-    private var headingSetpoint: some View {
-        if nmea.sensorToggles.hasGyro {
-            ControlSliderView(
-                nmea: nmea,
-                valuePath: \.gyroHeading,
-                title: "Heading Setpoint",
-                unit: "°",
-                precision: 0,
-                sliderRange: SimulatedValueType.gyroCompass.defaultRange,
-                onChange: nmea.persistLiveSettings,
-                isDisabled: nmea.isTackInProgress,
-                disabledReason: nmea.isTackInProgress ? "A maneuver owns heading. Cancel it to steer manually." : nil,
-                supportingNote: "Commands true heading. The large number is the live gyro reading, not the setpoint.",
-                wrapsCircularDegrees: true
-            )
-        } else {
-            ControlSliderView(
-                nmea: nmea,
-                valuePath: \.heading,
-                title: "Heading Setpoint",
-                unit: "°",
-                precision: 0,
-                sliderRange: SimulatedValueType.magneticCompass.defaultRange,
-                onChange: nmea.persistLiveSettings,
-                isDisabled: !nmea.sensorToggles.hasCompass || nmea.isTackInProgress,
-                disabledReason: headingDisabledReason(hasSensor: nmea.sensorToggles.hasCompass, sensorName: "Magnetic Compass"),
-                supportingNote: "No gyro is installed. This is magnetic heading. True heading adds variation. The large number is the live compass reading.",
-                wrapsCircularDegrees: true
-            )
-        }
-    }
-
-    private func headingDisabledReason(hasSensor: Bool, sensorName: String) -> String? {
-        if nmea.isTackInProgress {
-            return "A maneuver owns heading. Cancel it to steer manually."
-        }
-        if !hasSensor {
-            return "Enable the \(sensorName) in Configuration to control heading."
-        }
-        return nil
     }
 
     private func maneuverButton(_ command: ManeuverCommand, title: String) -> some View {
@@ -405,7 +326,7 @@ struct BoatControls: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
-        .disabled(!nmea.canExecuteTackManeuver || !nmea.maneuverCommandIsAvailable(command))
+        .disabled(nmea.selectedVesselID == nil || !nmea.canExecuteTackManeuver || !nmea.maneuverCommandIsAvailable(command))
     }
 
     private func durationRow(title: String, enabled: Binding<Bool>, seconds: Binding<Double>) -> some View {
@@ -447,6 +368,9 @@ struct BoatControls: View {
     }
 
     private var tackDisabledReason: String? {
+        if nmea.selectedVesselID == nil {
+            return "Select a boat profile above to enable maneuvers and sail modeling."
+        }
         if nmea.isTackInProgress {
             return nil
         }
@@ -533,7 +457,51 @@ struct HeadingControls: View {
     @Bindable var nmea: NMEASimulator
 
     var body: some View {
-        HeadingStatusText(nmea: nmea)
+        VStack(alignment: .leading, spacing: 0) {
+            HeadingStatusText(nmea: nmea)
+
+            RailDivider()
+
+            ControlSliderView(
+                nmea: nmea,
+                valuePath: \.gyroHeading,
+                title: "Gyro Compass (True)",
+                unit: "°",
+                precision: 0,
+                sliderRange: SimulatedValueType.gyroCompass.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasGyro || nmea.isTackInProgress,
+                disabledReason: headingDisabledReason(hasSensor: nmea.sensorToggles.hasGyro, sensorName: "Gyro Compass"),
+                supportingNote: "Commands true heading (HDT / ROT).",
+                wrapsCircularDegrees: true
+            )
+
+            RailDivider()
+
+            ControlSliderView(
+                nmea: nmea,
+                valuePath: \.heading,
+                title: "Magnetic Compass",
+                unit: "°",
+                precision: 0,
+                sliderRange: SimulatedValueType.magneticCompass.defaultRange,
+                onChange: nmea.persistLiveSettings,
+                isDisabled: !nmea.sensorToggles.hasCompass || nmea.isTackInProgress,
+                disabledReason: headingDisabledReason(hasSensor: nmea.sensorToggles.hasCompass, sensorName: "Magnetic Compass"),
+                supportingNote: "Commands magnetic heading (HDG). Editing Gyro updates this via local variation.",
+                wrapsCircularDegrees: true
+            )
+        }
+    }
+
+    private func headingDisabledReason(hasSensor: Bool, sensorName: String) -> String? {
+        if nmea.isTackInProgress {
+            return "A maneuver owns heading. Cancel it to steer manually."
+        }
+        if !hasSensor {
+            return "Enable the \(sensorName) in Simulation to control heading."
+        }
+        return nil
     }
 }
 
@@ -550,16 +518,13 @@ private struct HeadingStatusText: View {
         #endif
         LiveControlRailBlock(
             title: "Compass",
-            subtitle: "Measurements",
-            trailing: gyro,
+            subtitle: "Live measurements",
+            trailing: nmea.sensorToggles.hasGyro ? gyro : magnetic,
             detail: readout,
             detailMonospaced: true,
             detailIdentifier: "Heading Status"
         ) {
-            Text("The heading setpoint, vessel, and tack commands are on the Boat segment. This page does not steer the boat.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            EmptyView()
         }
     }
 
@@ -664,12 +629,14 @@ struct VesselPicker: View {
         Picker("Boat Profile", selection: Binding(
             get: { nmea.selectedVesselID },
             set: { id in
-                if let id { nmea.selectVessel(id) }
+                if let id {
+                    nmea.selectVessel(id)
+                } else {
+                    nmea.clearSelectedVessel()
+                }
             }
         )) {
-            if nmea.selectedVesselID == nil {
-                Text("Select a vessel").tag(Optional<UUID>.none)
-            }
+            Text("No Boat (Instruments Only)").tag(Optional<UUID>.none)
             ForEach(nmea.vessels) { vessel in
                 Text(vessel.name).tag(Optional(vessel.id))
             }

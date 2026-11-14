@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Toolbar Play/Continuous/Burst indicators, unified Dashboard toolbar (removing `TopControlBar` and redundant window titles; moving panel toggles to leading `.navigation` and Connection/Weather/Boat status to `.principal`), and the 280pt left Live Controls rail (SF Symbol tabs, unified 16pt padding, Setpoint/Variation nudge rows, compact Boat pickers) passed user smoke tests and are committed. Remaining open items: per-page last scroll-position restoration, and then GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. Toolbar Play/Continuous/Burst indicators, unified Dashboard toolbar, 280pt left Live Controls rail (symmetric tab padding, `Compass` live summary + separate `Gyro Compass (True)` & `Magnetic Compass` controls in Heading tab), and `"No Boat (Instruments Only)"` mode (`ActiveVesselState.none`) passed user smoke tests and are committed. Remaining open items: per-page last scroll-position restoration, and then GPS `retainedMapResource`.
 **Last updated:** 2026-11-14
 
 ## Accepted navigation outcome

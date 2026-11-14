@@ -73,7 +73,7 @@ extension NMEASimulator {
     }
 
     func beginManeuver(_ command: ManeuverCommand) {
-        guard vesselAllowsSimulation else {
+        guard vesselAllowsBoatFeatures else {
             maneuverRejectionReason = "Select a vessel before starting a maneuver."
             return
         }
@@ -118,7 +118,7 @@ extension NMEASimulator {
     }
 
     private func beginAutomaticManeuver(_ kind: ManeuverKind) {
-        guard vesselAllowsSimulation else {
+        guard vesselAllowsBoatFeatures else {
             maneuverRejectionReason = "Select a vessel before starting a maneuver."
             return
         }
