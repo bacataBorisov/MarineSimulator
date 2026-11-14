@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active (explain plan + architectural fit first, implement directly without subagents or unrequested regression tests, user smoke-tests). Piece 1 (toolbar Start/Stop `@Bindable` observation + single-shot console generation) passed user smoke test and is committed. Remaining open items: visible Play feedback when `Enable Timer` is disabled, per-page last scroll-position restoration, and then GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active (explain plan + architectural fit first, implement directly without subagents or unrequested regression tests, user smoke-tests). Toolbar Play observation, idle console generation, and the Continuous/Burst mode indicators passed user smoke test and are committed. Remaining open items: verify/fix Dashboard live instruments if still stale during continuous transmission, fix per-page last scroll-position restoration, and then GPS `retainedMapResource`.
 **Last updated:** 2026-11-14
 
 ## Accepted navigation outcome
@@ -39,7 +39,7 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Add visible Play/toolbar cue when `Enable Timer` (`isTimerSelected`) is off so single-shot bursts cannot look like a broken Play button.
+- Verify Dashboard live instruments (`TrailingSidePanel` / `WindCompass`) during continuous transmission and fix if stale.
 - Fix per-page last scroll-position restoration.
 - Next feature item after regression cleanup: GPS `retainedMapResource`. No retained GPS map exists.
 - Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).

@@ -556,6 +556,11 @@ class NMEASimulator {
     func beginSimulationRun() {
         guard isTimerSelected else {
             appendHistoryEvent(level: .connected, category: .lifecycle, message: "Single transmission sent")
+            latestTransportStatus = OutputEndpointStatus(
+                endpointID: outputEndpoints.first?.id ?? UUID(),
+                level: .warning,
+                message: "Single burst sent (timer off)"
+            )
             runSimulationCycle()
             return
         }

@@ -124,7 +124,7 @@ private struct TimerStatusText: View {
         #endif
         Text(status)
             .font(DesignToken.Typography.supporting)
-            .foregroundStyle(DesignToken.Status.neutral)
+            .foregroundStyle(nmeaManager.isTimerSelected ? DesignToken.Status.neutral : DesignToken.Status.warning)
             .accessibilityLabel(status)
             .accessibilityIdentifier("Timer Status")
     }
@@ -188,5 +188,5 @@ private struct AdditionalOutputsSection: View {
 
 #Preview {
     ConnectionView(nmeaManager: NMEASimulator())
-        .frame(width: 920, height: 720)
+        .frame(width: 1160, height: 820)
 }

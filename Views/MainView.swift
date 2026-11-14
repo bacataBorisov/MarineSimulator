@@ -383,6 +383,13 @@ private struct MainWindowToolbar: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
+            TransmissionModeBadge(nmeaManager: nmeaManager)
+        }
+        .sharedBackgroundVisibility(.hidden)
+
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+
+        ToolbarItem(placement: .primaryAction) {
             TransmissionToolbarButton(nmeaManager: nmeaManager)
         }
 
@@ -395,10 +402,31 @@ private struct MainWindowToolbar: ToolbarContent {
     }
 }
 
+private struct TransmissionModeBadge: View {
+    @Bindable var nmeaManager: NMEASimulator
+
+    var body: some View {
+        let isBurst = !nmeaManager.isTimerSelected
+        Text(isBurst ? "Burst" : "Continuous")
+            .font(DesignToken.Typography.supporting)
+            .foregroundStyle(isBurst ? DesignToken.Status.warning : DesignToken.Status.neutral)
+            .padding(.horizontal, DesignToken.Spacing.row)
+            .padding(.vertical, DesignToken.Spacing.stacked)
+            .background(
+                (isBurst ? DesignToken.Status.warning : DesignToken.Status.neutral).opacity(0.14),
+                in: Capsule()
+            )
+    }
+}
+
 private struct TransmissionToolbarButton: View {
     @Bindable var nmeaManager: NMEASimulator
 
     var body: some View {
+        let buttonTitle = nmeaManager.isTransmitting ? "Stop" : "Start"
+        let systemImage = nmeaManager.isTransmitting
+            ? "stop.fill"
+            : (nmeaManager.isTimerSelected ? "play.fill" : "play.circle")
         Button {
             if nmeaManager.isTransmitting {
                 nmeaManager.stopSimulation()
@@ -406,12 +434,16 @@ private struct TransmissionToolbarButton: View {
                 nmeaManager.startSimulation()
             }
         } label: {
-            Label(
-                nmeaManager.isTransmitting ? "Stop" : "Start",
-                systemImage: nmeaManager.isTransmitting ? "stop.fill" : "play.fill"
-            )
+            Label(buttonTitle, systemImage: systemImage)
+                .labelStyle(.iconOnly)
         }
-        .help(nmeaManager.isTransmitting ? "Stop sending data (⌘R)" : "Start sending data (⌘R)")
+        .help(
+            nmeaManager.isTransmitting
+                ? "Stop sending data (⌘R)"
+                : (nmeaManager.isTimerSelected
+                    ? "Start continuous sending (⌘R)"
+                    : "Send single burst — Enable Timer is off in Connection (⌘R)")
+        )
         .keyboardShortcut("r", modifiers: .command)
     }
 }
@@ -423,17 +455,22 @@ private struct TransportStatusToolbarButton: View {
     var body: some View {
         let transportMessage = nmeaManager.latestTransportStatus?.message
         let summary = PrimaryOutputSummary.label(for: nmeaManager)
-        let activity = nmeaManager.isTransmitting ? "Transmitting" : "Idle"
+        let activity = nmeaManager.isTransmitting
+            ? "Transmitting"
+            : (nmeaManager.isTimerSelected ? "Idle" : "Timer Off · Single Burst")
         let statusLine = [activity, transportMessage, summary].compactMap { $0 }.joined(separator: " · ")
+        let systemImage = nmeaManager.isTransmitting
+            ? "antenna.radiowaves.left.and.right"
+            : (nmeaManager.isTimerSelected ? "antenna.radiowaves.left.and.right.slash" : "timer.circle")
+        let tintColor = nmeaManager.isTransmitting
+            ? DesignToken.Status.success
+            : (nmeaManager.isTimerSelected ? DesignToken.Status.neutral : DesignToken.Status.warning)
         Button {
             openConnection()
         } label: {
-            Label(
-                statusLine,
-                systemImage: nmeaManager.isTransmitting ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash"
-            )
-            .foregroundStyle(nmeaManager.isTransmitting ? DesignToken.Status.success : DesignToken.Status.neutral)
-            .lineLimit(1)
+            Label(statusLine, systemImage: systemImage)
+                .foregroundStyle(tintColor)
+                .lineLimit(1)
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
@@ -700,7 +737,7 @@ final class RetainedDestinationHost<Content: View>: NSView, RetainedDestinationH
     }
 }
 
-#Preview(traits: .sizeThatFitsLayout) {
+#Preview {
     MainView(nmeaManager: NMEASimulator())
-        .frame(width: 900, height: 550)
+        .frame(width: 1280, height: 800)
 }

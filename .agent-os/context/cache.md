@@ -4,7 +4,7 @@ Last updated: 2026-11-14
 
 ## Current Objective
 
-Workflow reset to direct single-chat execution: explain plan and architectural fit first, wait for approval, implement directly without subagents or unrequested regression tests, and build for user smoke-testing. Piece 1 (toolbar `@Bindable` child `View`s + idle console generation bump) passed user smoke test.
+Workflow reset to direct single-chat execution: explain plan and architectural fit first, wait for approval, implement directly without subagents or unrequested regression tests, and build for user smoke-testing. Toolbar Continuous/Burst badge + warning text + preview sizes passed user smoke test.
 
 ## Constraints
 
@@ -12,6 +12,6 @@ Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connectio
 
 ## Next
 
-1. Add clear user-facing indication when Play is pressed with `Enable Timer` disabled (single-shot mode).
+1. Inspect and explain why Dashboard live instruments (`TrailingSidePanel` / `WindCompass`) didn't update during transmission (or verify with timer on), then fix if needed.
 2. Fix per-page last scroll-position restoration.
 3. Return to GPS `retainedMapResource` and deferred Dashboard work.
