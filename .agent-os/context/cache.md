@@ -4,12 +4,12 @@ Last updated: 2026-11-15
 
 ## Current Objective
 
-Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). Accessibility labels/values pass (Dashboard, Console, Connection, Simulation) is complete and committed.
+All planned UI/HIG, lifecycle, map persistence, atmospheric NMEA (`MDA`/`XDR`), and accessibility label tasks are complete, user-verified, and pushed on `main` (`0641c51`).
 
 ## Constraints
 
-Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connection, Simulation, Diagnostics, Overview, Wind, Compass, Hydro, GPS, and Dashboard keep their retained AppKit hosts; `MainView` owns the single shared `ConsolePanelView` across all destinations. Do not restyle deferred pages unless requested. The user is the external verifier for runtime smoke tests.
+Direct single-chat workflow; user is external smoke-test verifier. `Manual` stays ephemeral; all other pages use retained AppKit hosts with one shared `ConsolePanelView` in `MainView`. Check local HIG docs before UI proposals.
 
 ## Next
 
-1. Await user direction (custom proprietary NMEA sentences / new sentences, Light Mode polish, M3/M4 research roadmap, or end session).
+1. Choose next focus: custom/new NMEA sentences, Light Mode polish, or M3/M4 research roadmap (`ROADMAP.md` / `Docs/FutureTasks.md`).
