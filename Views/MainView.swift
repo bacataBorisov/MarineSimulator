@@ -88,32 +88,50 @@ struct MainView: View {
                 ShellContentTopSeparator()
                 GeometryReader { geometry in
                     let dashboardSize = selected.retainedDashboardSize(fitting: geometry.size)
-                    ZStack {
-                        // One dashboard identity stays mounted at full detail size behind
-                        // the shell so its MKMapView keeps its Metal surface and tiles warm
-                        // (no flash on revisit). Off the dashboard it is hidden via AppKit.
+                    ZStack(alignment: .bottom) {
+                        // One dashboard map host stays mounted at full detail size behind
+                        // the detail column so its MKMapView keeps its Metal surface and tiles
+                        // warm (no flash on revisit). Off the dashboard it is hidden via AppKit.
                         DashboardPageHost(nmeaManager: nmeaManager, isVisible: selected == .dashboard)
                             .frame(width: dashboardSize.width, height: dashboardSize.height)
                             .clipped()
                             .allowsHitTesting(selected == .dashboard)
                             .accessibilityHidden(selected != .dashboard)
 
-                        // One shell column for every non-dashboard page. Retained forms and
-                        // the boat session stay in stable AppKit hosts after their first visit.
-                        // Activity changes that host only. It does not pass selection into
-                        // the root, so the hosted SwiftUI view is not rebuilt. Ephemeral
-                        // destinations are still created by the switch and released on leave.
-                        shellColumn(
-                            selected: selected,
-                            shellVisible: selected.placesConsoleInTheShell,
-                            geometryHeight: geometry.size.height
-                        )
-                        .frame(
-                            width: selected.placesConsoleInTheShell ? geometry.size.width : 0,
-                            height: selected.placesConsoleInTheShell ? geometry.size.height : 0
-                        )
-                        .opacity(selected.placesConsoleInTheShell ? 1 : 0)
-                        .allowsHitTesting(selected.placesConsoleInTheShell)
+                        // One VStack owns the active destination area on top and one shared
+                        // ConsolePanelView at the bottom across every page, including Dashboard.
+                        // Switching pages never tears down, recreates, or reparents the console.
+                        VStack(spacing: 0) {
+                            ZStack(alignment: .topLeading) {
+                                if selected == .dashboard {
+                                    DashboardDocksOverlay(nmeaManager: nmeaManager)
+                                }
+
+                                shellPages(
+                                    selected: selected,
+                                    shellVisible: selected.placesConsoleInTheShell
+                                )
+                                .frame(
+                                    width: selected.placesConsoleInTheShell ? geometry.size.width : 0,
+                                    height: selected.placesConsoleInTheShell ? nil : 0
+                                )
+                                .frame(
+                                    maxWidth: selected.placesConsoleInTheShell ? .infinity : 0,
+                                    maxHeight: selected.placesConsoleInTheShell ? .infinity : 0
+                                )
+                                .opacity(selected.placesConsoleInTheShell ? 1 : 0)
+                                .allowsHitTesting(selected.placesConsoleInTheShell)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                            ConsolePanelView(
+                                nmeaManager: nmeaManager,
+                                consoleHeight: consoleHeight,
+                                geometryHeight: geometry.size.height
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+                        .frame(width: geometry.size.width, height: geometry.size.height)
                     }
                     .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                     .transaction { $0.animation = nil }
@@ -162,43 +180,33 @@ struct MainView: View {
     }
 
     @ViewBuilder
-    private func shellColumn(selected: SidebarItem, shellVisible: Bool, geometryHeight: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                if retainedConnection || selected == .connection {
-                    retainedHost(.connection, isActive: selected == .connection) {
-                        ConnectionView(nmeaManager: nmeaManager)
-                    }
-                }
-                if retainedSimulation || selected == .simulation {
-                    retainedHost(.simulation, isActive: selected == .simulation) {
-                        SimulationView(nmeaManager: nmeaManager)
-                    }
-                }
-                if retainedBoat || selected == .boat {
-                    retainedHost(.boat, isActive: selected == .boat) {
-                        BoatSetupDetailView(nmeaManager: nmeaManager)
-                    }
-                }
-                if shellVisible && !selected.retainsDestinationTree {
-                    setupDetail(for: selected)
-                        .id(selected)
-                        .environment(\.pageScrollIdentity, selected)
-                        .onAppear { noteDestinationMounted(selected) }
-                        .onDisappear { noteDestinationRemoved(selected) }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    private func shellPages(selected: SidebarItem, shellVisible: Bool) -> some View {
+        ZStack(alignment: .topLeading) {
+            if retainedConnection || selected == .connection {
+                retainedHost(.connection, isActive: selected == .connection) {
+                    ConnectionView(nmeaManager: nmeaManager)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            if shellVisible {
-                ConsolePanelView(
-                    nmeaManager: nmeaManager,
-                    consoleHeight: consoleHeight,
-                    geometryHeight: geometryHeight
-                )
+            if retainedSimulation || selected == .simulation {
+                retainedHost(.simulation, isActive: selected == .simulation) {
+                    SimulationView(nmeaManager: nmeaManager)
+                }
+            }
+            if retainedBoat || selected == .boat {
+                retainedHost(.boat, isActive: selected == .boat) {
+                    BoatSetupDetailView(nmeaManager: nmeaManager)
+                }
+            }
+            if shellVisible && !selected.retainsDestinationTree {
+                setupDetail(for: selected)
+                    .id(selected)
+                    .environment(\.pageScrollIdentity, selected)
+                    .onAppear { noteDestinationMounted(selected) }
+                    .onDisappear { noteDestinationRemoved(selected) }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func retainedHost<Content: View>(
@@ -290,6 +298,8 @@ private struct OpaqueSidebarColumnBackground: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 
     private final class SidebarMaterialFlattener: NSView {
+        private var configuredEffects: [ObjectIdentifier: NSVisualEffectView] = [:]
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             flattenSidebarEffects()
@@ -297,18 +307,29 @@ private struct OpaqueSidebarColumnBackground: NSViewRepresentable {
 
         override func layout() {
             super.layout()
-            flattenSidebarEffects()
+            if configuredEffects.isEmpty {
+                flattenSidebarEffects()
+            }
         }
 
         private func flattenSidebarEffects() {
             var current: NSView? = self
             while let view = current {
                 if let effect = view as? NSVisualEffectView {
-                    effect.material = .contentBackground
-                    effect.blendingMode = .withinWindow
-                    effect.state = .active
-                    effect.wantsLayer = true
-                    effect.layer?.backgroundColor = NSColor.black.cgColor
+                    let key = ObjectIdentifier(effect)
+                    let targetColor = NSColor.black.cgColor
+                    if configuredEffects[key] !== effect
+                        || effect.material != .contentBackground
+                        || effect.blendingMode != .withinWindow
+                        || effect.state != .active
+                        || effect.layer?.backgroundColor != targetColor {
+                        effect.material = .contentBackground
+                        effect.blendingMode = .withinWindow
+                        effect.state = .active
+                        effect.wantsLayer = true
+                        effect.layer?.backgroundColor = targetColor
+                        configuredEffects[key] = effect
+                    }
                 }
                 if view is NSSplitView {
                     break

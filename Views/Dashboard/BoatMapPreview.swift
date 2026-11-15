@@ -4,7 +4,7 @@ import AppKit
 
 /// Map overlay controls: match `MKCompassButton` / `MKZoomControl` footprint (circle diameter and slot width).
 private enum MapFloatingChrome {
-    static let controlDiameter: CGFloat = 38
+    static let controlDiameter: CGFloat = 34
     static let slotWidth: CGFloat = 38
 }
 
@@ -262,6 +262,7 @@ final class BoatMapContainerView: NSView {
     let compassButton = MKCompassButton(mapView: nil)
     let zoomControl = MKZoomControl(mapView: nil)
     let recenterButton = NSButton()
+    private let recenterGlassView = NSGlassEffectView()
     private let controlStack = NSStackView()
     private let compassSlot = CenteredControlSlot()
     private let recenterSlot = CenteredControlSlot()
@@ -294,6 +295,7 @@ final class BoatMapContainerView: NSView {
         compassButton.translatesAutoresizingMaskIntoConstraints = false
         zoomControl.translatesAutoresizingMaskIntoConstraints = false
         recenterButton.translatesAutoresizingMaskIntoConstraints = false
+        recenterGlassView.translatesAutoresizingMaskIntoConstraints = false
         controlStack.translatesAutoresizingMaskIntoConstraints = false
         compassSlot.translatesAutoresizingMaskIntoConstraints = false
         recenterSlot.translatesAutoresizingMaskIntoConstraints = false
@@ -303,9 +305,9 @@ final class BoatMapContainerView: NSView {
         compassButton.compassVisibility = .visible
         zoomControl.mapView = mapView
 
-        let mapControlPointSize: CGFloat = 17
-        let mapControlSymbolConfig = NSImage.SymbolConfiguration(pointSize: mapControlPointSize, weight: .semibold)
-        if let base = NSImage(systemSymbolName: "location.viewfinder", accessibilityDescription: "Center on Boat") {
+        let mapControlPointSize: CGFloat = 15
+        let mapControlSymbolConfig = NSImage.SymbolConfiguration(pointSize: mapControlPointSize, weight: .medium)
+        if let base = NSImage(systemSymbolName: "location", accessibilityDescription: "Center on Boat") {
             recenterButton.image = base.withSymbolConfiguration(mapControlSymbolConfig)
         }
         recenterButton.imagePosition = .imageOnly
@@ -313,20 +315,16 @@ final class BoatMapContainerView: NSView {
         recenterButton.bezelStyle = .regularSquare
         recenterButton.isBordered = false
         recenterButton.toolTip = "Center on Boat"
-        recenterButton.contentTintColor = .white
+        recenterButton.contentTintColor = .labelColor
         recenterButton.setButtonType(.momentaryPushIn)
         recenterButton.focusRingType = .none
-        recenterButton.wantsLayer = true
-        if let layer = recenterButton.layer {
-            layer.cornerRadius = MapFloatingChrome.controlDiameter / 2
-            layer.masksToBounds = true
-            layer.backgroundColor = NSColor.black.withAlphaComponent(0.78).cgColor
-            layer.borderWidth = 0.5
-            layer.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
-        }
+
+        recenterGlassView.style = .regular
+        recenterGlassView.cornerRadius = MapFloatingChrome.controlDiameter / 2
+        recenterGlassView.contentView = recenterButton
 
         compassSlot.embed(compassButton, fixedHeight: MapFloatingChrome.controlDiameter)
-        recenterSlot.embed(recenterButton, fixedHeight: MapFloatingChrome.controlDiameter)
+        recenterSlot.embed(recenterGlassView, fixedHeight: MapFloatingChrome.controlDiameter)
         zoomSlot.embed(zoomControl, fixedHeight: nil)
 
         controlStack.orientation = .vertical

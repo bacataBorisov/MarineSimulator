@@ -18,8 +18,15 @@ struct ConsolePanelView: View {
 
     @AppStorage("console_panel.mode") private var consoleModeRawValue: String = ConsoleView.Mode.nmea.rawValue
     @AppStorage("console_panel.last_expanded_height") private var lastExpandedHeight: Double = 220
-    @State private var animatedHeight: CGFloat = 0
+    @State private var animatedHeight: CGFloat
     @State private var liveHeight: CGFloat?
+
+    init(nmeaManager: NMEASimulator, consoleHeight: Binding<CGFloat>, geometryHeight: CGFloat) {
+        self.nmeaManager = nmeaManager
+        self._consoleHeight = consoleHeight
+        self.geometryHeight = geometryHeight
+        self._animatedHeight = State(initialValue: consoleHeight.wrappedValue)
+    }
     @State private var dragOrigin: CGFloat?
     @State private var dragMaxHeight: CGFloat?
     @State private var dragSession = false
@@ -82,6 +89,10 @@ struct ConsolePanelView: View {
             if consoleHeight > parkThreshold {
                 lastExpandedHeight = Double(max(consoleHeight, expandedMinimumHeight))
             }
+            cachedSentPerSecond = nmeaManager.sentPerSecond()
+            cachedTotalSent = nmeaManager.totalSentCount
+            cachedHasNMEARows = !nmeaManager.outputMessageRecords.isEmpty
+            cachedHasTransportRows = !nmeaManager.transportHistory.isEmpty
         }
         .onDisappear {
             cancelConsoleDrag()

@@ -13,7 +13,7 @@ struct DashboardMount: View {
     @Bindable var nmeaManager: NMEASimulator
 
     var body: some View {
-        DashboardView(isVisible: visibility.isVisible, nmeaManager: nmeaManager)
+        DashboardMapSurface(isVisible: visibility.isVisible)
             .environment(nmeaManager)
     }
 }
@@ -28,7 +28,10 @@ struct DashboardPageHost: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSHostingView<DashboardMount> {
         let host = NSHostingView(
-            rootView: DashboardMount(visibility: context.coordinator.visibility, nmeaManager: nmeaManager)
+            rootView: DashboardMount(
+                visibility: context.coordinator.visibility,
+                nmeaManager: nmeaManager
+            )
         )
         host.sizingOptions = []
         applyVisibility(isVisible, to: host)

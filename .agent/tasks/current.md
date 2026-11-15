@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5), per-page scroll-position restoration, Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences (`MDA` & `XDR`), GPS `retainedMapResource`, and warm Dashboard map retention (pre-loaded, no revisit flash) passed user smoke tests and are committed. Next: remaining UI/lifecycle checks or next user-requested task.
+**Status:** Direct single-chat workflow active. Shared single `ConsolePanelView` in `MainView`, `NSGlassEffectView` map re-center button, normalized `WindCompass` start/fold, `SidebarMaterialFlattener` guard, `GaugeMarkerCompass` stable IDs, and `ExperimentDiagnosticsSession` sentence caching passed user smoke tests and are committed. Next: Step 2 page-switching latency optimization.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome

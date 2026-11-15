@@ -80,27 +80,26 @@ struct WindCompass: View {
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
         .onAppear {
-            displayedTrueWindAngle = storedTrueWindAngle
-            displayedApparentWindAngle = storedApparentWindAngle
-            anemometerShouldAnimate = false
-            lastAppliedInstrumentKey = ""
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                let twa = nmea.calculatedTWA ?? 0
-                let awa = nmea.calculatedAWA ?? 180
-                applyWindDelta($displayedTrueWindAngle, to: twa)
-                applyWindDelta($displayedApparentWindAngle, to: awa)
-                anemometerShouldAnimate = true
-                lastAppliedInstrumentKey = instrumentDependencyKey()
-            }
-
-            if !hasValidCompassHeading {
-                displayedHeading = lastKnownHeading
-                compassAnimationDelta = lastKnownHeading
-                hasValidCompassHeading = true
-                compassShouldAnimate = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    compassShouldAnimate = true
+            let twa = normalizeAngle(nmea.calculatedTWA ?? storedTrueWindAngle)
+            let awa = normalizeAngle(nmea.calculatedAWA ?? storedApparentWindAngle)
+            var snapTransaction = Transaction()
+            snapTransaction.disablesAnimations = true
+            withTransaction(snapTransaction) {
+                anemometerShouldAnimate = false
+                displayedTrueWindAngle = twa
+                displayedApparentWindAngle = awa
+                if !hasValidCompassHeading {
+                    let initialHeading = normalizeAngle(lastKnownHeading)
+                    displayedHeading = initialHeading
+                    compassAnimationDelta = initialHeading
+                    hasValidCompassHeading = true
+                    compassShouldAnimate = false
                 }
+            }
+            lastAppliedInstrumentKey = instrumentDependencyKey()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                anemometerShouldAnimate = true
+                compassShouldAnimate = true
             }
         }
         .onDisappear {
@@ -179,6 +178,7 @@ struct WindCompass: View {
         lastInstrumentCommitAt = now
         applyWindDelta($displayedTrueWindAngle, to: twa)
         applyWindDelta($displayedApparentWindAngle, to: awa)
+        foldWindAnglesIfNeeded()
         applyCompassRotation(to: headingValue)
         lastAppliedInstrumentKey = instrumentDependencyKey()
     }
@@ -186,6 +186,20 @@ struct WindCompass: View {
     private func applyWindDelta(_ value: Binding<Double>, to newAngle: Double) {
         let shortestDelta = calculateShortestRotation(from: value.wrappedValue, to: newAngle)
         value.wrappedValue += shortestDelta
+    }
+
+    private func foldWindAnglesIfNeeded() {
+        guard abs(displayedTrueWindAngle) > 360 || abs(displayedApparentWindAngle) > 360 else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            if abs(displayedTrueWindAngle) > 360 {
+                displayedTrueWindAngle = normalizeAngle(displayedTrueWindAngle)
+            }
+            if abs(displayedApparentWindAngle) > 360 {
+                displayedApparentWindAngle = normalizeAngle(displayedApparentWindAngle)
+            }
+        }
     }
 
     private func applyCompassRotation(to newHeading: Double) {

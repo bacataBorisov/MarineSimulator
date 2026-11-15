@@ -49,6 +49,16 @@ final class ExperimentDiagnosticsSession {
     private var loop: Task<Void, Never>?
     private var loopGeneration = 0
     @ObservationIgnored private var sentenceFormatter: NMEASimulator?
+    @ObservationIgnored private var cachedSentenceKey: SentenceCacheKey?
+    @ObservationIgnored private var cachedSentences: [ExperimentDiagnosticSentence] = []
+
+    private struct SentenceCacheKey: Equatable {
+        var timestamp: Date
+        var windInstrument: Bool
+        var speedLog: Bool
+        var trueHeadingInstrument: Bool
+        var magneticCompass: Bool
+    }
 
     var elapsedSeconds: TimeInterval {
         Double(stepCount) * Self.physicsInterval
@@ -247,7 +257,19 @@ final class ExperimentDiagnosticsSession {
     private func currentSentences() -> [ExperimentDiagnosticSentence] {
         let names = ["MWV relative", "MWV true", "MWD", "VHW", "HDG", "HDT"]
         guard let snapshot = runtime?.state.latestSnapshot, let config = runtime?.config else {
+            cachedSentenceKey = nil
+            cachedSentences = []
             return names.map { ExperimentDiagnosticSentence(name: $0, text: nil) }
+        }
+        let key = SentenceCacheKey(
+            timestamp: snapshot.timestamp,
+            windInstrument: windInstrument,
+            speedLog: speedLog,
+            trueHeadingInstrument: trueHeadingInstrument,
+            magneticCompass: magneticCompass
+        )
+        if cachedSentenceKey == key, !cachedSentences.isEmpty {
+            return cachedSentences
         }
         let builder = makeSentenceBuilder()
         func line(_ type: NMEASentenceType, mode: MWVReferenceMode) -> String? {
@@ -260,7 +282,7 @@ final class ExperimentDiagnosticsSession {
                 config: config.replacing(mwvReferenceMode: mode)
             ).first
         }
-        return [
+        let built = [
             ExperimentDiagnosticSentence(name: "MWV relative", text: line(.mwv, mode: .relative)),
             ExperimentDiagnosticSentence(name: "MWV true", text: line(.mwv, mode: .trueReference)),
             ExperimentDiagnosticSentence(name: "MWD", text: line(.mwd, mode: .trueReference)),
@@ -268,6 +290,9 @@ final class ExperimentDiagnosticsSession {
             ExperimentDiagnosticSentence(name: "HDG", text: line(.hdg, mode: .trueReference)),
             ExperimentDiagnosticSentence(name: "HDT", text: line(.hdt, mode: .trueReference))
         ]
+        cachedSentenceKey = key
+        cachedSentences = built
+        return built
     }
 
     private func makeSentenceBuilder() -> NMEASimulator {

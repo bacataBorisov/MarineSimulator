@@ -27,6 +27,7 @@ struct ConsoleView: View {
         ConsoleLogRepresentable(
             mode: mode,
             generation: generation,
+            isActive: isActive,
             simulator: nmeaManager
         )
         .background {
@@ -47,29 +48,39 @@ struct ConsoleView: View {
 private struct ConsoleLogRepresentable: NSViewRepresentable {
     var mode: ConsoleView.Mode
     var generation: UInt64
+    var isActive: Bool
     var simulator: NMEASimulator
 
     func makeNSView(context: Context) -> ConsoleLogHost {
-        ConsoleLogHost()
+        let host = ConsoleLogHost()
+        if isActive {
+            host.scheduleSync(mode: mode, generation: generation, simulator: simulator)
+        }
+        return host
     }
 
     func updateNSView(_ host: ConsoleLogHost, context: Context) {
-        _ = generation
-        host.scheduleSync(mode: mode, simulator: simulator)
+        if isActive {
+            host.scheduleSync(mode: mode, generation: generation, simulator: simulator)
+        }
     }
 }
 
-private final class ConsoleLogHost: NSView {
+final class ConsoleLogHost: NSView {
     private static let visibleLineCap = 200
 
     private let scrollView = NSScrollView()
     private let textView = NSTextView()
     private var lastMode: ConsoleView.Mode?
+    private var lastSyncedGeneration: UInt64?
     private var lastRecordID: UUID?
     private var lastEventID: UUID?
     private var lineCount = 0
     private var syncQueued = false
     private var isSyncing = false
+    private var pendingSyncRequest: (mode: ConsoleView.Mode, generation: UInt64, simulator: NMEASimulator)?
+    private var lastLaidOutWidth: CGFloat = 0
+    private var lastLaidOutHeight: CGFloat = 0
     /// Fresh / empty log follows the tail until the user scrolls away from the bottom.
     private var followTail = true
     private var isProgrammaticScroll = false
@@ -91,9 +102,10 @@ private final class ConsoleLogHost: NSView {
         textView.textContainerInset = NSSize(width: 10, height: 6)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
-        textView.textContainer?.widthTracksTextView = true
+        textView.autoresizingMask = []
+        textView.textContainer?.widthTracksTextView = false
         textView.textContainer?.containerSize = NSSize(
-            width: 0,
+            width: 800,
             height: CGFloat.greatestFiniteMagnitude
         )
         textView.minSize = .zero
@@ -125,7 +137,85 @@ private final class ConsoleLogHost: NSView {
         nil
     }
 
-    func scheduleSync(mode: ConsoleView.Mode, simulator: NMEASimulator) {
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        lastLaidOutWidth = 0
+        lastLaidOutHeight = 0
+    }
+
+    override func layout() {
+        super.layout()
+        guard bounds.width > 1, bounds.height > 1 else {
+            lastLaidOutWidth = 0
+            lastLaidOutHeight = 0
+            return
+        }
+        scrollView.layoutSubtreeIfNeeded()
+        let contentWidth = scrollView.contentView.bounds.width
+        let contentHeight = scrollView.contentView.bounds.height
+        guard contentWidth > 1, contentHeight > 1 else {
+            lastLaidOutWidth = 0
+            lastLaidOutHeight = 0
+            return
+        }
+        let widthChanged = abs(lastLaidOutWidth - contentWidth) > 0.5
+        let heightChanged = abs(lastLaidOutHeight - contentHeight) > 0.5
+        if widthChanged {
+            lastLaidOutWidth = contentWidth
+            var frame = textView.frame
+            frame.size.width = contentWidth
+            textView.frame = frame
+            textView.textContainer?.containerSize = NSSize(
+                width: contentWidth,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+        }
+        if heightChanged {
+            lastLaidOutHeight = contentHeight
+        }
+        if let pending = pendingSyncRequest {
+            pendingSyncRequest = nil
+            scheduleSync(mode: pending.mode, generation: pending.generation, simulator: pending.simulator)
+        }
+        if (widthChanged || heightChanged), lineCount > 0 {
+            if followTail {
+                scrollToEnd()
+            } else {
+                updateTextViewHeight()
+                scrollView.reflectScrolledClipView(scrollView.contentView)
+            }
+        }
+    }
+
+    func scheduleSync(mode: ConsoleView.Mode, generation: UInt64, simulator: NMEASimulator) {
+        guard bounds.width > 1, bounds.height > 1 else {
+            pendingSyncRequest = (mode, generation, simulator)
+            return
+        }
+        pendingSyncRequest = nil
+        if lastMode == mode && lastSyncedGeneration == generation {
+            let needsInitialSync = mode == .nmea
+                ? (lastRecordID == nil && !simulator.outputMessageRecords.isEmpty)
+                : (lastEventID == nil && !simulator.transportHistory.isEmpty)
+            if !needsInitialSync {
+                return
+            }
+        }
+        lastSyncedGeneration = generation
+
+        // Populate immediately on first render or mode switch so the console never flashes blank.
+        let needsImmediateSync = lastMode != mode
+            || (mode == .nmea && lastRecordID == nil && !simulator.outputMessageRecords.isEmpty)
+            || (mode == .transport && lastEventID == nil && !simulator.transportHistory.isEmpty)
+        if needsImmediateSync {
+            sync(
+                mode: mode,
+                records: simulator.outputMessageRecords,
+                events: simulator.transportHistory
+            )
+            return
+        }
+
         #if DEBUG
         HangProbe.tick(.consoleSync)
         #endif
@@ -262,6 +352,8 @@ private final class ConsoleLogHost: NSView {
     @objc
     private func clipViewBoundsDidChange() {
         guard !isProgrammaticScroll else { return }
+        let clipBounds = scrollView.contentView.bounds
+        guard clipBounds.width > 1, clipBounds.height > 1 else { return }
         followTail = isPinnedToBottom
     }
 
@@ -274,17 +366,22 @@ private final class ConsoleLogHost: NSView {
         return documentHeight - clip.bounds.maxY < 40
     }
 
-    private func scrollToEnd() {
-        guard let layoutManager = textView.layoutManager, let container = textView.textContainer else {
-            textView.scrollToEndOfDocument(nil)
-            return
-        }
+    private func updateTextViewHeight() {
+        guard let layoutManager = textView.layoutManager, let container = textView.textContainer else { return }
         layoutManager.ensureLayout(for: container)
         let used = layoutManager.usedRect(for: container)
         let inset = textView.textContainerInset.height * 2
         var frame = textView.frame
         frame.size.height = max(used.height + inset, scrollView.contentView.bounds.height)
         textView.frame = frame
+    }
+
+    private func scrollToEnd() {
+        guard textView.layoutManager != nil, textView.textContainer != nil else {
+            textView.scrollToEndOfDocument(nil)
+            return
+        }
+        updateTextViewHeight()
 
         isProgrammaticScroll = true
         let end = NSRange(location: (textView.string as NSString).length, length: 0)
@@ -302,17 +399,22 @@ private final class ConsoleLogHost: NSView {
         return formatter
     }()
 
-    private static func line(timestamp: Date, text: String, index: Int) -> NSAttributedString {
-        let time = timestampFormatter.string(from: timestamp)
-        let color = NSColor(index.isMultiple(of: 2) ? AppColors.consoleLinePrimary : AppColors.consoleLineSecondary)
-        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+    private static let primaryLineAttributes: [NSAttributedString.Key: Any] = makeLineAttributes(color: AppColors.consoleLinePrimary)
+    private static let secondaryLineAttributes: [NSAttributedString.Key: Any] = makeLineAttributes(color: AppColors.consoleLineSecondary)
+
+    private static func makeLineAttributes(color: Color) -> [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 2
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: color,
+        return [
+            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: NSColor(color),
             .paragraphStyle: paragraph
         ]
+    }
+
+    private static func line(timestamp: Date, text: String, index: Int) -> NSAttributedString {
+        let time = timestampFormatter.string(from: timestamp)
+        let attributes = index.isMultiple(of: 2) ? primaryLineAttributes : secondaryLineAttributes
         return NSAttributedString(string: "\(time)  \(text)\n", attributes: attributes)
     }
 }

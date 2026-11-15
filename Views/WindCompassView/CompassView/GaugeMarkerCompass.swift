@@ -7,8 +7,8 @@
 import Foundation
 
 struct GaugeMarkerCompass: Identifiable, Hashable {
-    let id = UUID()
-    
+    var id: Double { degrees }
+
     let degrees: Double
     let label: String
     
