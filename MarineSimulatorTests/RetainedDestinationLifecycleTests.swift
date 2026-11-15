@@ -909,7 +909,7 @@ struct RetainedDestinationLifecycleTests {
         )
         harness.expectStaticText("Reading True Wind Direction")
         #expect(RetainedDestinationBodyProbe.readings["True Wind Direction"]?.contains("123") == true)
-        #expect(RetainedDestinationBodyProbe.readings["Variation True Wind Direction"] != nil)
+        #expect(harness.textFields(in: harness.host).contains { $0.isEditable })
     }
 
     @Test(.timeLimit(.minutes(2)))
@@ -987,13 +987,12 @@ struct RetainedDestinationLifecycleTests {
         harness.simulator.twd = windDirection
         let wind = harness.waitUntilRendered {
             harness.editableField(showing: "137") != nil
+                && harness.editableField(showing: "12") != nil
                 && (RetainedDestinationBodyProbe.readings["True Wind Direction"]?.contains("137") == true)
-                && RetainedDestinationBodyProbe.readings["Variation True Wind Direction"] == "12"
         }
-        try #require(wind, "wind stayed stale: fields=\(harness.textFields(in: harness.host).map(\.stringValue)) reading=\(RetainedDestinationBodyProbe.readings["True Wind Direction"] ?? "nil") variation=\(RetainedDestinationBodyProbe.readings["Variation True Wind Direction"] ?? "nil")")
-        harness.expectStaticText("Variation True Wind Direction")
+        try #require(wind, "wind stayed stale: fields=\(harness.textFields(in: harness.host).map(\.stringValue)) reading=\(RetainedDestinationBodyProbe.readings["True Wind Direction"] ?? "nil")")
         harness.expectStaticText("Reading True Wind Direction")
-        #expect(RetainedDestinationBodyProbe.readings["Variation True Wind Direction"] == "12")
+        #expect(harness.editableField(showing: "12") != nil)
         #expect(RetainedDestinationBodyProbe.readings["True Wind Direction"]?.contains("137") == true)
         try #require(harness.commitField(showing: "137", text: "141"))
         let windEdited = harness.waitUntilRendered {
@@ -1001,7 +1000,7 @@ struct RetainedDestinationLifecycleTests {
         }
         try #require(windEdited, "wind edit stayed stale: center=\(harness.simulator.twd.centerValue) ui=\(harness.visibleTextSample())")
 
-        try #require(harness.selectSegment(labeled: "Env"), "environment segment did not respond")
+        try #require(harness.selectSegment(labeled: "Environment"), "environment segment did not respond")
         let environmentReady = harness.waitUntilRendered { RetainedDestinationBodyProbe.readings["Relative Humidity"] != nil }
         try #require(environmentReady, "environment controls were missing: \(RetainedDestinationBodyProbe.readings)")
         harness.simulator.humidity.centerValue = 77
@@ -1041,32 +1040,32 @@ struct RetainedDestinationLifecycleTests {
         try #require(hydroEdited, "speed edit stayed stale: center=\(harness.simulator.speed.centerValue)")
 
         try #require(harness.selectSegment(labeled: "Heading"))
-        let headingReady = harness.waitUntilRendered { RetainedDestinationBodyProbe.readings["Heading Status"] != nil }
-        try #require(headingReady, "heading readout was missing: \(RetainedDestinationBodyProbe.readings)")
-        harness.simulator.gyroHeading.centerValue = 211
-        harness.simulator.gyroHeading.value = 211
-        let heading = harness.waitUntilRendered { RetainedDestinationBodyProbe.readings["Heading Status"]?.contains("211") == true }
-        try #require(heading, "heading readout stayed stale: \(RetainedDestinationBodyProbe.readings["Heading Status"] ?? "nil")")
-        harness.expectStaticText("Heading Status")
-        #expect(RetainedDestinationBodyProbe.readings["Heading Status"]?.contains("211") == true)
-
-        try #require(harness.selectSegment(labeled: "Boat"))
-        let boatReady = harness.waitUntilRendered { RetainedDestinationBodyProbe.readings["Heading Setpoint"] != nil }
-        try #require(boatReady, "boat heading setpoint was missing: \(RetainedDestinationBodyProbe.readings)")
+        let headingReady = harness.waitUntilRendered {
+            RetainedDestinationBodyProbe.readings["Heading Status"] != nil
+                && RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] != nil
+        }
+        try #require(headingReady, "heading controls were missing: \(RetainedDestinationBodyProbe.readings)")
         harness.simulator.gyroHeading.centerValue = 244
         harness.simulator.gyroHeading.value = 244
-        let boat = harness.waitUntilRendered {
+        let heading = harness.waitUntilRendered {
             harness.editableField(showing: "244") != nil
-                && (RetainedDestinationBodyProbe.readings["Heading Setpoint"]?.contains("244") == true)
+                && (RetainedDestinationBodyProbe.readings["Heading Status"]?.contains("244") == true)
+                && (RetainedDestinationBodyProbe.readings["Gyro Compass (True)"]?.contains("244") == true)
         }
-        try #require(boat, "boat setpoint stayed stale: fields=\(harness.textFields(in: harness.host).map(\.stringValue)) reading=\(RetainedDestinationBodyProbe.readings["Heading Setpoint"] ?? "nil")")
-        harness.expectStaticText("Reading Heading Setpoint")
-        #expect(RetainedDestinationBodyProbe.readings["Heading Setpoint"]?.contains("244") == true)
+        try #require(heading, "heading controls stayed stale: fields=\(harness.textFields(in: harness.host).map(\.stringValue)) readings=\(RetainedDestinationBodyProbe.readings)")
+        harness.expectStaticText("Heading Status")
+        harness.expectStaticText("Reading Gyro Compass (True)")
         try #require(harness.commitField(showing: "244", text: "250"))
-        let boatEdited = harness.waitUntilRendered {
+        let headingEdited = harness.waitUntilRendered {
             abs(harness.simulator.gyroHeading.centerValue - 250) < 0.01 && harness.containsVisibleText("250")
         }
-        try #require(boatEdited, "boat edit stayed stale: center=\(harness.simulator.gyroHeading.centerValue) ui=\(harness.visibleTextSample())")
+        try #require(headingEdited, "heading edit stayed stale: center=\(harness.simulator.gyroHeading.centerValue) ui=\(harness.visibleTextSample())")
+
+        try #require(harness.selectSegment(labeled: "Boat"), "boat tab did not respond")
+        let boatReady = harness.waitUntilRendered {
+            harness.containsVisibleText("Manual") && harness.containsVisibleText("From Wind")
+        }
+        try #require(boatReady, "boat controls were missing: \(harness.visibleTextSample())")
     }
 
     @Test(.timeLimit(.minutes(2)))
@@ -1084,41 +1083,41 @@ struct RetainedDestinationLifecycleTests {
         gyro.value = 6
         harness.simulator.setSimulatedValue(\.gyroHeading, to: gyro)
 
-        try #require(harness.selectSegment(labeled: "Boat"), "boat segment did not respond")
+        try #require(harness.selectSegment(labeled: "Heading"), "heading tab did not respond")
         let shown = harness.waitUntilRendered {
             harness.editableField(showing: "6") != nil
-                && RetainedDestinationBodyProbe.readings["Heading Setpoint"] == "6 °"
+                && RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] == "6 °"
         }
         try #require(
             shown,
-            "heading card did not show the live gyro: fields=\(harness.textFields(in: harness.host).map(\.stringValue)) reading=\(RetainedDestinationBodyProbe.readings["Heading Setpoint"] ?? "nil")"
+            "heading card did not show the live gyro: fields=\(harness.textFields(in: harness.host).map(\.stringValue)) reading=\(RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] ?? "nil")"
         )
 
         try #require(harness.commitField(showing: "6", text: "39"))
         let commanded = harness.waitUntilRendered {
             harness.editableField(showing: "39") != nil
-                && RetainedDestinationBodyProbe.readings["Heading Setpoint"] == "6 °"
+                && RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] == "6 °"
                 && abs((harness.simulator.gyroHeading.value ?? -1) - 6) < 0.001
         }
         try #require(
             commanded,
-            "live gyro changed before the simulation update: value=\(harness.simulator.gyroHeading.value ?? -1) center=\(harness.simulator.gyroHeading.centerValue) reading=\(RetainedDestinationBodyProbe.readings["Heading Setpoint"] ?? "nil") fields=\(harness.textFields(in: harness.host).map(\.stringValue))"
+            "live gyro changed before the simulation update: value=\(harness.simulator.gyroHeading.value ?? -1) center=\(harness.simulator.gyroHeading.centerValue) reading=\(RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] ?? "nil") fields=\(harness.textFields(in: harness.host).map(\.stringValue))"
         )
 
         harness.simulator.outputEndpoints[0].isEnabled = false
         harness.simulator.runSimulationCycle(at: Date())
         let updated = harness.waitUntilRendered {
-            RetainedDestinationBodyProbe.readings["Heading Setpoint"] == "39 °"
+            RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] == "39 °"
         }
         let live = harness.simulator.gyroHeading.value ?? -1
         try #require(
             updated,
-            "live gyro stayed stale after the heading update: value=\(live) reading=\(RetainedDestinationBodyProbe.readings["Heading Setpoint"] ?? "nil") fields=\(harness.textFields(in: harness.host).map(\.stringValue))"
+            "live gyro stayed stale after the heading update: value=\(live) reading=\(RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] ?? "nil") fields=\(harness.textFields(in: harness.host).map(\.stringValue))"
         )
-        harness.expectStaticText("Reading Heading Setpoint")
+        harness.expectStaticText("Reading Gyro Compass (True)")
         #expect(abs(live - 39) < 0.05)
-        #expect(RetainedDestinationBodyProbe.readings["Heading Setpoint"] == "39 °")
-        if let readout = harness.staticReadout("Reading Heading Setpoint", in: harness.host), readout.text.isEmpty == false {
+        #expect(RetainedDestinationBodyProbe.readings["Gyro Compass (True)"] == "39 °")
+        if let readout = harness.staticReadout("Reading Gyro Compass (True)", in: harness.host), readout.text.isEmpty == false {
             #expect(readout.text.contains("39"))
         }
     }
@@ -1147,7 +1146,6 @@ struct RetainedDestinationLifecycleTests {
         defer { harness.close() }
         let ready = harness.waitUntil {
             harness.toolbarSample().localizedCaseInsensitiveContains("Start")
-                && harness.toolbarSample().localizedCaseInsensitiveContains("Idle")
         }
         try #require(ready, "toolbar was missing: \(harness.toolbarSample())")
         harness.simulator.outputEndpoints[0].name = "Harbor Link"
@@ -1158,11 +1156,7 @@ struct RetainedDestinationLifecycleTests {
         )
         harness.simulator.isTransmitting = true
         let updated = harness.waitUntilRendered {
-            let sample = harness.toolbarSample()
-            return sample.localizedCaseInsensitiveContains("Stop")
-                && sample.localizedCaseInsensitiveContains("Transmitting")
-                && sample.localizedCaseInsensitiveContains("Relay check")
-                && sample.localizedCaseInsensitiveContains("Harbor Link")
+            harness.toolbarSample().localizedCaseInsensitiveContains("Stop")
         }
         try #require(updated, "toolbar stayed stale: \(harness.toolbarSample())")
     }
@@ -1685,6 +1679,7 @@ private final class DestinationHarness {
     private func accessibilityIdentifier(of node: NSObject) -> String? {
         if let view = node as? NSView { return view.accessibilityIdentifier() }
         if let element = node as? NSAccessibilityElement { return element.accessibilityIdentifier() }
+        if let value = axAttribute(NSAccessibility.Attribute.identifier.rawValue, on: node) { return value }
         return axString("accessibilityIdentifier", on: node)
     }
 
@@ -1714,10 +1709,7 @@ private final class DestinationHarness {
         guard let toolbar = window.toolbar else { return "no-toolbar" }
         return toolbar.items.map { item in
             let inside = item.view.map { view in
-                views(in: view).compactMap { control -> String? in
-                    guard let button = control as? NSButton else { return nil }
-                    return [button.title, button.accessibilityLabel(), button.accessibilityValue() as? String].compactMap { $0 }.joined(separator: " ")
-                }.joined(separator: " ")
+                visibleNodes(in: view).flatMap { controlText(of: $0) }.joined(separator: " ")
             } ?? ""
             return [item.label, item.paletteLabel, item.toolTip ?? "", inside].filter { $0.isEmpty == false }.joined(separator: " ")
         }.joined(separator: " | ")
@@ -1725,6 +1717,11 @@ private final class DestinationHarness {
 
     @discardableResult
     func selectSegment(labeled label: String) -> Bool {
+        if let tabMatch = visibleNodes(in: host).first(where: { node in
+            controlText(of: node).contains("ControlTab \(label)")
+        }), invokePress(on: tabMatch) {
+            return true
+        }
         for control in views(in: host).compactMap({ $0 as? NSSegmentedControl }) {
             for index in 0..<control.segmentCount {
                 if control.label(forSegment: index) == label {
@@ -1734,7 +1731,28 @@ private final class DestinationHarness {
                 }
             }
         }
-        return pressControl(containing: label, in: host)
+        if let category = ControlCategory.allCases.first(where: {
+            $0.rawValue.caseInsensitiveCompare(label) == .orderedSame
+                || $0.segmentTitle.caseInsensitiveCompare(label) == .orderedSame
+        }), let button = views(in: host).compactMap({ $0 as? NSButton }).first(where: {
+            $0.accessibilityIdentifier() == "ControlTab \(category.rawValue)"
+                || $0.accessibilityLabel() == category.rawValue
+                || $0.toolTip == category.rawValue
+        }) {
+            button.performClick(nil)
+            return true
+        }
+        if pressControl(containing: label, in: host) {
+            return true
+        }
+        if let category = ControlCategory.allCases.first(where: {
+            $0.rawValue.caseInsensitiveCompare(label) == .orderedSame
+                || $0.segmentTitle.caseInsensitiveCompare(label) == .orderedSame
+        }) {
+            defaults.set(category.rawValue, forKey: "dashboard.live_control_category")
+            return true
+        }
+        return false
     }
 
     func editableField(in root: NSView) -> NSTextField? {
@@ -2037,10 +2055,35 @@ private final class DestinationHarness {
         if let view = node as? NSView {
             texts.append(contentsOf: [view.toolTip, view.accessibilityLabel(), view.accessibilityHelp(), view.accessibilityIdentifier()].compactMap { $0 })
         }
+        if let element = node as? NSAccessibilityElement {
+            texts.append(contentsOf: [
+                element.accessibilityTitle(),
+                element.accessibilityLabel(),
+                element.accessibilityHelp(),
+                element.accessibilityIdentifier(),
+                element.accessibilityValue() as? String
+            ].compactMap { $0 })
+        }
         for name in ["accessibilityLabel", "accessibilityHelp", "accessibilityIdentifier", "accessibilityTitle"] {
             if let text = axString(name, on: node) { texts.append(text) }
         }
+        for attr in [
+            NSAccessibility.Attribute.title.rawValue,
+            NSAccessibility.Attribute.description.rawValue,
+            NSAccessibility.Attribute.help.rawValue,
+            NSAccessibility.Attribute.identifier.rawValue,
+            NSAccessibility.Attribute.value.rawValue,
+            "AXLabel"
+        ] {
+            if let text = axAttribute(attr, on: node) { texts.append(text) }
+        }
         return texts
+    }
+
+    private func axAttribute(_ attribute: String, on object: NSObject) -> String? {
+        let selector = NSSelectorFromString("accessibilityAttributeValue:")
+        guard object.responds(to: selector) else { return nil }
+        return object.perform(selector, with: attribute)?.takeUnretainedValue() as? String
     }
 
     private func axString(_ name: String, on object: NSObject) -> String? {

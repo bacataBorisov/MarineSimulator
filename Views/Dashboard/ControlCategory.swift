@@ -64,6 +64,7 @@ struct LeftControlsPanel: View {
                     .buttonStyle(.plain)
                     .help(cat.rawValue)
                     .accessibilityLabel(cat.rawValue)
+                    .accessibilityIdentifier("ControlTab \(cat.rawValue)")
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                     if cat != ControlCategory.allCases.last {
                         Spacer(minLength: 0)

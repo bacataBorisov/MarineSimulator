@@ -106,6 +106,9 @@
 		06SPL0012F901001005DE47D /* ConsoleScrollTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */; };
 		06SPL0022F901001005DE47D /* ConnectionChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0122F901001005DE47D /* ConnectionChrome.swift */; };
 		06SPL0032F901001005DE47D /* SimulationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0132F901001005DE47D /* SimulationChrome.swift */; };
+		06SPL0042F901001005DE47D /* SidebarItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0142F901001005DE47D /* SidebarItem.swift */; };
+		06SPL0052F901001005DE47D /* MainWindowToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0152F901001005DE47D /* MainWindowToolbar.swift */; };
+		06SPL0062F901001005DE47D /* RetainedDestinationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */; };
 		06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0142F901001005DE47D /* SidebarNavigation.swift */; };
 		06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0152F901001005DE47D /* SentencePanelLayout.swift */; };
 		06HIG0062F901001005DE47D /* ConsoleHeightStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */; };
@@ -247,6 +250,9 @@
 		06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleScrollTracking.swift; sourceTree = "<group>"; };
 		06SPL0122F901001005DE47D /* ConnectionChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionChrome.swift; sourceTree = "<group>"; };
 		06SPL0132F901001005DE47D /* SimulationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationChrome.swift; sourceTree = "<group>"; };
+		06SPL0142F901001005DE47D /* SidebarItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItem.swift; sourceTree = "<group>"; };
+		06SPL0152F901001005DE47D /* MainWindowToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowToolbar.swift; sourceTree = "<group>"; };
+		06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetainedDestinationHost.swift; sourceTree = "<group>"; };
 		06HIG0142F901001005DE47D /* SidebarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigation.swift; sourceTree = "<group>"; };
 		06HIG0152F901001005DE47D /* SentencePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePanelLayout.swift; sourceTree = "<group>"; };
 		06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleHeightStorage.swift; sourceTree = "<group>"; };
@@ -572,6 +578,9 @@
 				06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */,
 				06SPL0122F901001005DE47D /* ConnectionChrome.swift */,
 				06SPL0132F901001005DE47D /* SimulationChrome.swift */,
+				06SPL0142F901001005DE47D /* SidebarItem.swift */,
+				06SPL0152F901001005DE47D /* MainWindowToolbar.swift */,
+				06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */,
 				06HIG0142F901001005DE47D /* SidebarNavigation.swift */,
 				06HIG0152F901001005DE47D /* SentencePanelLayout.swift */,
 				06V6F2012F901020005DE47D /* BoatProfileEditor.swift */,
@@ -812,6 +821,9 @@
 				06SPL0012F901001005DE47D /* ConsoleScrollTracking.swift in Sources */,
 				06SPL0022F901001005DE47D /* ConnectionChrome.swift in Sources */,
 				06SPL0032F901001005DE47D /* SimulationChrome.swift in Sources */,
+				06SPL0042F901001005DE47D /* SidebarItem.swift in Sources */,
+				06SPL0052F901001005DE47D /* MainWindowToolbar.swift in Sources */,
+				06SPL0062F901001005DE47D /* RetainedDestinationHost.swift in Sources */,
 				06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */,
 				06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */,
 				06V6F2022F901020005DE47D /* BoatProfileEditor.swift in Sources */,
