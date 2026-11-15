@@ -10,7 +10,9 @@ struct WindConfig: View {
     @State var showMWV: Bool = false
     @State var showMWD: Bool = false
     @State var showVPW: Bool = false
-    
+    @State var showMDA: Bool = false
+    @State var showXDR: Bool = false
+
     var body: some View {
         SentencePage {
             WindSentencesSection(
@@ -22,10 +24,21 @@ struct WindConfig: View {
                 showVPW: $showVPW,
                 nmeaManager: nmeaManager
             )
+            AtmosphericSentencesSection(
+                shouldSendMDA: $nmeaManager.sentenceToggles.shouldSendMDA,
+                shouldSendXDR: $nmeaManager.sentenceToggles.shouldSendXDR,
+                showMDA: $showMDA,
+                showXDR: $showXDR,
+                nmeaManager: nmeaManager
+            )
         } live: {
             ViewKit.displayLabel("TWD", value: nmeaManager.isTransmitting ? nmeaManager.twd.value : nil, precision: 0)
             ViewKit.displayLabel("TWS", value: nmeaManager.isTransmitting ? nmeaManager.tws.value : nil, precision: 1)
             ViewKit.displayLabel("HDG", value: nmeaManager.isTransmitting ? nmeaManager.heading.value : nil, precision: 0)
+            Divider()
+            ViewKit.displayLabel("Air °C", value: nmeaManager.isTransmitting && nmeaManager.sensorToggles.hasAirTempSensor ? nmeaManager.airTemp.value : nil, precision: 1)
+            ViewKit.displayLabel("Humidity %", value: nmeaManager.isTransmitting && nmeaManager.sensorToggles.hasHumidtySensor ? nmeaManager.humidity.value : nil, precision: 0)
+            ViewKit.displayLabel("Baro hPa", value: nmeaManager.isTransmitting && nmeaManager.sensorToggles.hasBarometer ? nmeaManager.barometer.value : nil, precision: 1)
         }
     }
 }
@@ -124,6 +137,60 @@ private struct WindSentencesSection: View {
                         .foregroundStyle(AppColors.warning)
                         .font(.caption2)
                         .padding(.leading, 4)
+                }
+            }
+            .toggleStyle(.switch)
+            .controlSize(.regular)
+        }
+    }
+}
+
+private struct AtmosphericSentencesSection: View {
+    @Binding var shouldSendMDA: Bool
+    @Binding var shouldSendXDR: Bool
+
+    @Binding var showMDA: Bool
+    @Binding var showXDR: Bool
+
+    @Bindable var nmeaManager: NMEASimulator
+
+    var body: some View {
+        let hasSensor = nmeaManager.hasAtmosphericSensor
+
+        GroupBox(label: Label("Atmospheric Sentences", systemImage: "barometer")) {
+            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+                ViewKit.SentenceRow(
+                    "MDA - Meteorological Composite",
+                    isOn: $shouldSendMDA,
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .mda) },
+                        set: { nmeaManager.setInterval($0, for: .mda) }
+                    ),
+                    intervalDisabled: !hasSensor || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showMDA,
+                    infoView: { AnyView(MDAHelpView().font(.caption)) }
+                )
+                .disabled(!hasSensor)
+
+                ViewKit.SentenceRow(
+                    "XDR - Transducer Measurement",
+                    isOn: $shouldSendXDR,
+                    interval: Binding(
+                        get: { nmeaManager.sentenceInterval(for: .xdr) },
+                        set: { nmeaManager.setInterval($0, for: .xdr) }
+                    ),
+                    intervalDisabled: !hasSensor || !nmeaManager.isSentenceIntervalEditable,
+                    showInfo: $showXDR,
+                    infoView: { AnyView(XDRHelpView().font(.caption)) }
+                )
+                .disabled(!hasSensor)
+
+                if !hasSensor {
+                    Text(UIStrings.Warnings.enableAtmosphericSensor)
+                        .font(.caption2)
+                        .foregroundStyle(AppColors.warning)
+                        .padding(.leading, 4)
+                    OpenSimulationSensorsButton()
                 }
             }
             .toggleStyle(.switch)

@@ -532,6 +532,16 @@ enum SimulationEngine {
             types.append(.vlw)
         }
 
+        let hasAtmosphericSensor = config.sensorToggles.hasAirTempSensor
+            || config.sensorToggles.hasHumidtySensor
+            || config.sensorToggles.hasBarometer
+        if hasAtmosphericSensor && config.sentenceToggles.shouldSendMDA {
+            types.append(.mda)
+        }
+        if hasAtmosphericSensor && config.sentenceToggles.shouldSendXDR {
+            types.append(.xdr)
+        }
+
         if config.sensorToggles.hasGPS {
             if config.sentenceToggles.shouldSendRMC { types.append(.rmc) }
             if config.sentenceToggles.shouldSendGGA { types.append(.gga) }

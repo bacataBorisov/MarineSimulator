@@ -167,6 +167,7 @@ public enum UIStrings {
         static let enableGyroCompass = "Enable Gyro Compass in Configuration to activate sentences."
         static let enableSpeedLog = "Enable Speed Log in Configuration to activate sentences."
         static let enableGPS = "Enable GPS in Configuration to activate sentences."
+        static let enableAtmosphericSensor = "Enable Air Temperature, Humidity, or Barometer in Simulation to activate sentences."
 
     }
     

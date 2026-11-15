@@ -913,6 +913,10 @@ extension NMEASimulator {
         sensorToggles.hasGyro || sensorToggles.hasCompass
     }
 
+    var hasAtmosphericSensor: Bool {
+        sensorToggles.hasAirTempSensor || sensorToggles.hasHumidtySensor || sensorToggles.hasBarometer
+    }
+
     var canSendTrueWind: Bool {
         hasAnemometer && hasBoatSpeed
     }

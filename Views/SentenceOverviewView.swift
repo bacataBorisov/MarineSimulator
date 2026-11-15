@@ -12,6 +12,7 @@ struct SentenceOverviewView: View {
             SetupColumns {
                 summaryBanner
                 windCard
+                atmosphereCard
                 headingCard
                 gpsCard
                 hydroCard
@@ -20,6 +21,7 @@ struct SentenceOverviewView: View {
                 HStack(alignment: .top, spacing: ResponsiveLayout.configurationGutter) {
                     VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
                         windCard
+                        atmosphereCard
                         headingCard
                     }
                     .frame(maxWidth: ResponsiveLayout.configurationCardMaximum, alignment: .topLeading)
@@ -48,6 +50,16 @@ struct SentenceOverviewView: View {
                 SentenceControl(label: "MWV", isEnabled: $nmeaManager.sentenceToggles.shouldSendMWV, sendable: nmeaManager.sensorToggles.hasAnemometer),
                 SentenceControl(label: "MWD", isEnabled: $nmeaManager.sentenceToggles.shouldSendMWD, sendable: nmeaManager.sensorToggles.hasAnemometer && nmeaManager.hasTrueHeading && nmeaManager.hasBoatSpeed),
                 SentenceControl(label: "VPW", isEnabled: $nmeaManager.sentenceToggles.shouldSendVPW, sendable: nmeaManager.sensorToggles.hasAnemometer && nmeaManager.hasTrueHeading && nmeaManager.hasBoatSpeed)
+            ]
+        )
+    }
+
+    private var atmosphereCard: some View {
+        sentenceCard(
+            title: "Atmosphere",
+            sentences: [
+                SentenceControl(label: "MDA", isEnabled: $nmeaManager.sentenceToggles.shouldSendMDA, sendable: nmeaManager.hasAtmosphericSensor),
+                SentenceControl(label: "XDR", isEnabled: $nmeaManager.sentenceToggles.shouldSendXDR, sendable: nmeaManager.hasAtmosphericSensor)
             ]
         )
     }

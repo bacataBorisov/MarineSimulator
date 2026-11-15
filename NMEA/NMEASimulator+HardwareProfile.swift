@@ -13,6 +13,8 @@ extension NMEASimulator {
         d[.dpt] = 1.0
         d[.dbt] = 1.0
         d[.mtw] = 1.0
+        d[.mda] = 5.0
+        d[.xdr] = 5.0
         d[.vhw] = 1.0
         d[.vbw] = 1.0
         d[.vlw] = 5.0
@@ -34,6 +36,7 @@ extension NMEASimulator {
         .dpt: "SD", .dbt: "SD",
         .hdg: "HC", .hdt: "HE", .rot: "HE",
         .mwv: "II", .mwd: "II", .vpw: "II",
+        .mda: "II", .xdr: "II",
         .vhw: "II", .vbw: "II", .vlw: "II", .mtw: "II",
         .rmb: "GP", .xte: "GP"
     ]
@@ -125,6 +128,8 @@ extension NMEASimulator {
                 shouldSendVLW: false,
                 shouldSendVBW: false,
                 shouldSendMTW: false,
+                shouldSendMDA: false,
+                shouldSendXDR: false,
                 shouldSendRMB: false,
                 shouldSendXTE: false
             )
@@ -184,6 +189,8 @@ extension NMEASimulator {
             shouldSendVLW: enabled,
             shouldSendVBW: enabled,
             shouldSendMTW: enabled,
+            shouldSendMDA: enabled,
+            shouldSendXDR: enabled,
             shouldSendRMB: enabled,
             shouldSendXTE: enabled
         )

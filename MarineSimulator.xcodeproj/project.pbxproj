@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		06212DC52E024F9E007A4537 /* VPWHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DC42E024F9E007A4537 /* VPWHelpView.swift */; };
+		06MDA0122F901200005DE47D /* MDAHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06MDA0112F901200005DE47D /* MDAHelpView.swift */; };
+		06XDR0122F901200005DE47D /* XDRHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06XDR0112F901200005DE47D /* XDRHelpView.swift */; };
 		06212DD22E0B65D2007A4537 /* SentenceToggleStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */; };
 		06212DD42E0B66FD007A4537 /* SensorToggleStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */; };
 		06212DD72E0B6B1C007A4537 /* HDGHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD62E0B6B1C007A4537 /* HDGHelpView.swift */; };
@@ -155,6 +157,8 @@
 
 /* Begin PBXFileReference section */
 		06212DC42E024F9E007A4537 /* VPWHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPWHelpView.swift; sourceTree = "<group>"; };
+		06MDA0112F901200005DE47D /* MDAHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MDAHelpView.swift; sourceTree = "<group>"; };
+		06XDR0112F901200005DE47D /* XDRHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XDRHelpView.swift; sourceTree = "<group>"; };
 		06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceToggleStates.swift; sourceTree = "<group>"; };
 		06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorToggleStates.swift; sourceTree = "<group>"; };
 		06212DD62E0B6B1C007A4537 /* HDGHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HDGHelpView.swift; sourceTree = "<group>"; };
@@ -338,6 +342,8 @@
 				06212DC42E024F9E007A4537 /* VPWHelpView.swift */,
 				0648D2652E024807000DC7E3 /* MWDHelpView.swift */,
 				0648D2632E02433E000DC7E3 /* MWVHelpView.swift */,
+				06MDA0112F901200005DE47D /* MDAHelpView.swift */,
+				06XDR0112F901200005DE47D /* XDRHelpView.swift */,
 			);
 			path = Wind;
 			sourceTree = "<group>";
@@ -869,6 +875,8 @@
 				06212DF42E10DF70007A4537 /* VLWHelpView.swift in Sources */,
 				0648D2612E023441000DC7E3 /* NMEASimulator+FormattedValues.swift in Sources */,
 				06212DC52E024F9E007A4537 /* VPWHelpView.swift in Sources */,
+				06MDA0122F901200005DE47D /* MDAHelpView.swift in Sources */,
+				06XDR0122F901200005DE47D /* XDRHelpView.swift in Sources */,
 				06212E922E149C2C007A4537 /* RMCHelpView.swift in Sources */,
 				06212DDB2E0B6B83007A4537 /* ROTHelpView.swift in Sources */,
 				0682C7642DFE640A00AD0C0B /* Shapes.swift in Sources */,

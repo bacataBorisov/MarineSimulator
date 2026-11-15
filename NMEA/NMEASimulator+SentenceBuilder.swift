@@ -20,6 +20,8 @@ enum NMEASentenceType: String, CaseIterable {
     case vbw
     case vlw
     case mtw
+    case mda
+    case xdr
     case rmb
     case xte
 }
@@ -56,6 +58,8 @@ extension NMEASimulator {
             payloads = buildGPSSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .dbt, .dpt, .vhw, .vbw, .vlw, .mtw:
             payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot)
+        case .mda, .xdr:
+            payloads = buildAtmosphericSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .rmb, .xte:
             payloads = buildNavigationSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         }
@@ -80,6 +84,8 @@ extension NMEASimulator {
             payloads = buildGPSSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .dbt, .dpt, .vhw, .vbw, .vlw, .mtw:
             payloads = buildHydroSentences(talkerID: talkerID, type: type, snapshot: snapshot, config: config)
+        case .mda, .xdr:
+            payloads = buildAtmosphericSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         case .rmb, .xte:
             payloads = buildNavigationSentences(talkerID: talkerID, type: type, snapshot: snapshot)
         }
@@ -262,6 +268,101 @@ extension NMEASimulator {
         default:
             return []
         }
+    }
+
+    private func buildAtmosphericSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {
+        guard snapshot.airTemperature != nil || snapshot.relativeHumidity != nil || snapshot.airPressure != nil else {
+            return []
+        }
+
+        switch type {
+        case .mda:
+            let inHgField: String
+            let inHgUnit: String
+            let barField: String
+            let barUnit: String
+            if let pressureHPa = snapshot.airPressure {
+                inHgField = NMEANumericFormatting.format(pressureHPa * 0.02953, fractionDigits: 2)
+                inHgUnit = "I"
+                barField = NMEANumericFormatting.format(pressureHPa / 1000.0, fractionDigits: 4)
+                barUnit = "B"
+            } else {
+                inHgField = ""
+                inHgUnit = ""
+                barField = ""
+                barUnit = ""
+            }
+
+            let airTempField = snapshot.airTemperature.map { NMEANumericFormatting.format($0, fractionDigits: 1) } ?? ""
+            let airTempUnit = snapshot.airTemperature == nil ? "" : "C"
+
+            let waterTempField = snapshot.seaTemperature.map { NMEANumericFormatting.format($0, fractionDigits: 1) } ?? ""
+            let waterTempUnit = snapshot.seaTemperature == nil ? "" : "C"
+
+            let relHumidityField = snapshot.relativeHumidity.map { NMEANumericFormatting.format($0, fractionDigits: 1) } ?? ""
+
+            let dewPoint = dewPointCelsius(airTemperature: snapshot.airTemperature, relativeHumidity: snapshot.relativeHumidity)
+            let dewPointField = dewPoint.map { NMEANumericFormatting.format($0, fractionDigits: 1) } ?? ""
+            let dewPointUnit = dewPoint == nil ? "" : "C"
+
+            let windTrueField: String
+            let windTrueUnit: String
+            let windMagField: String
+            let windMagUnit: String
+            let windKnotsField: String
+            let windKnotsUnit: String
+            let windMSField: String
+            let windMSUnit: String
+            if let twd = computeTWD(from: snapshot), let tws = computeTWS(from: snapshot) {
+                let magneticDirection = normalizeAngle(twd - snapshot.magneticVariation)
+                windTrueField = NMEANumericFormatting.format(twd, fractionDigits: 1)
+                windTrueUnit = "T"
+                windMagField = NMEANumericFormatting.format(magneticDirection, fractionDigits: 1)
+                windMagUnit = "M"
+                windKnotsField = NMEANumericFormatting.format(tws, fractionDigits: 1)
+                windKnotsUnit = "N"
+                windMSField = NMEANumericFormatting.format(tws * 0.514444, fractionDigits: 1)
+                windMSUnit = "M"
+            } else {
+                windTrueField = ""
+                windTrueUnit = ""
+                windMagField = ""
+                windMagUnit = ""
+                windKnotsField = ""
+                windKnotsUnit = ""
+                windMSField = ""
+                windMSUnit = ""
+            }
+
+            return [
+                "$\(talkerID)MDA,\(inHgField),\(inHgUnit),\(barField),\(barUnit),\(airTempField),\(airTempUnit),\(waterTempField),\(waterTempUnit),\(relHumidityField),,\(dewPointField),\(dewPointUnit),\(windTrueField),\(windTrueUnit),\(windMagField),\(windMagUnit),\(windKnotsField),\(windKnotsUnit),\(windMSField),\(windMSUnit)"
+            ]
+
+        case .xdr:
+            var transducers: [String] = []
+            if let airTemp = snapshot.airTemperature {
+                transducers.append("C,\(NMEANumericFormatting.format(airTemp, fractionDigits: 1)),C,AIRTEMP")
+            }
+            if let humidity = snapshot.relativeHumidity {
+                transducers.append("H,\(NMEANumericFormatting.format(humidity, fractionDigits: 1)),P,HUMIDITY")
+            }
+            if let pressureHPa = snapshot.airPressure {
+                transducers.append("P,\(NMEANumericFormatting.format(pressureHPa / 1000.0, fractionDigits: 4)),B,BARO")
+            }
+            guard !transducers.isEmpty else { return [] }
+            return ["$\(talkerID)XDR,\(transducers.joined(separator: ","))"]
+
+        default:
+            return []
+        }
+    }
+
+    private func dewPointCelsius(airTemperature: Double?, relativeHumidity: Double?) -> Double? {
+        guard let t = airTemperature, let rh = relativeHumidity, rh > 0 else { return nil }
+        let b = 17.625
+        let c = 243.04
+        let gamma = log(min(100, rh) / 100.0) + (b * t) / (c + t)
+        return (c * gamma) / (b - gamma)
     }
 
     private func buildGPSSentences(talkerID: String, type: NMEASentenceType, snapshot: SimulationSnapshot) -> [String] {

@@ -46,6 +46,10 @@ struct SentenceToggleStates: Codable {
     // Temperature
     var shouldSendMTW: Bool = true
 
+    // Atmosphere
+    var shouldSendMDA: Bool = true
+    var shouldSendXDR: Bool = true
+
     // Navigation
     var shouldSendRMB: Bool = true
     var shouldSendXTE: Bool = true
@@ -70,6 +74,8 @@ struct SentenceToggleStates: Codable {
         shouldSendVLW: Bool = true,
         shouldSendVBW: Bool = true,
         shouldSendMTW: Bool = true,
+        shouldSendMDA: Bool = true,
+        shouldSendXDR: Bool = true,
         shouldSendRMB: Bool = true,
         shouldSendXTE: Bool = true
     ) {
@@ -92,6 +98,8 @@ struct SentenceToggleStates: Codable {
         self.shouldSendVLW = shouldSendVLW
         self.shouldSendVBW = shouldSendVBW
         self.shouldSendMTW = shouldSendMTW
+        self.shouldSendMDA = shouldSendMDA
+        self.shouldSendXDR = shouldSendXDR
         self.shouldSendRMB = shouldSendRMB
         self.shouldSendXTE = shouldSendXTE
     }
@@ -129,6 +137,10 @@ struct SentenceToggleStates: Codable {
 
         // Temperature
         shouldSendMTW = try c.decodeIfPresent(Bool.self, forKey: .shouldSendMTW) ?? true
+
+        // Atmosphere
+        shouldSendMDA = try c.decodeIfPresent(Bool.self, forKey: .shouldSendMDA) ?? true
+        shouldSendXDR = try c.decodeIfPresent(Bool.self, forKey: .shouldSendXDR) ?? true
 
         // Navigation
         shouldSendRMB = try c.decodeIfPresent(Bool.self, forKey: .shouldSendRMB) ?? true
