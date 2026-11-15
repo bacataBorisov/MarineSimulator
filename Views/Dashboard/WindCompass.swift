@@ -78,6 +78,13 @@ struct WindCompass: View {
                 .frame(width: compassWidth, height: compassWidth)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Wind and compass dial")
+            .accessibilityValue(
+                "Heading \(Int(normalizeAngle(displayedHeading).rounded()))°, "
+                + "True wind angle \(Int(normalizeAngle(displayedTrueWindAngle).rounded()))°, "
+                + "Apparent wind angle \(Int(normalizeAngle(displayedApparentWindAngle).rounded()))°"
+            )
         }
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)

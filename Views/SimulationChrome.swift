@@ -103,6 +103,7 @@ struct RecentTransportEventsSection: View {
                         Label("", systemImage: event.level.systemImage)
                             .labelStyle(.iconOnly)
                             .foregroundStyle(event.level.color)
+                            .accessibilityHidden(true)
                         Text(event.timestamp, style: .time)
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.secondary)
@@ -111,6 +112,7 @@ struct RecentTransportEventsSection: View {
                             .font(.caption)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
@@ -137,15 +139,15 @@ struct FaultInjectionSection: View {
             Grid(horizontalSpacing: 16, verticalSpacing: UIConstants.spacing) {
                 GridRow {
                     Text("Drop Rate")
-                    FaultInjectionPercentageStepper(value: $nmeaManager.faultInjection.dropRate)
+                    FaultInjectionPercentageStepper(title: "Drop rate", value: $nmeaManager.faultInjection.dropRate)
                     Text("Delay Rate")
-                    FaultInjectionPercentageStepper(value: $nmeaManager.faultInjection.delayRate)
+                    FaultInjectionPercentageStepper(title: "Delay rate", value: $nmeaManager.faultInjection.delayRate)
                 }
                 GridRow {
                     Text("Checksum Corruption")
-                    FaultInjectionPercentageStepper(value: $nmeaManager.faultInjection.checksumCorruptionRate)
+                    FaultInjectionPercentageStepper(title: "Checksum corruption rate", value: $nmeaManager.faultInjection.checksumCorruptionRate)
                     Text("Invalid Data Rate")
-                    FaultInjectionPercentageStepper(value: $nmeaManager.faultInjection.invalidDataRate)
+                    FaultInjectionPercentageStepper(title: "Invalid data rate", value: $nmeaManager.faultInjection.invalidDataRate)
                 }
                 GridRow {
                     Text("Max Delay Cycles")
@@ -153,6 +155,7 @@ struct FaultInjectionSection: View {
                         Text("\(nmeaManager.faultInjection.maximumDelayCycles)")
                             .monospacedDigit()
                     }
+                    .accessibilityLabel("Maximum delay cycles")
                     .disabled(!nmeaManager.faultInjection.isEnabled)
                 }
             }
@@ -163,6 +166,7 @@ struct FaultInjectionSection: View {
 }
 
 struct FaultInjectionPercentageStepper: View {
+    var title: String
     @Binding var value: Double
 
     var body: some View {
@@ -171,6 +175,7 @@ struct FaultInjectionPercentageStepper: View {
                 .monospacedDigit()
                 .frame(width: 44, alignment: .leading)
         }
+        .accessibilityLabel(title)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

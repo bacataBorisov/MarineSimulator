@@ -189,6 +189,8 @@ struct EndpointEditorView: View {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.borderless)
+                    .help("Remove output")
+                    .accessibilityLabel("Remove \(endpoint.name.isEmpty ? "output" : endpoint.name)")
                 }
             }
 
@@ -210,6 +212,7 @@ struct EndpointEditorView: View {
                 TextField("Output Name", text: $endpoint.name)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 280)
+                    .accessibilityLabel("Output name")
             }
 
             fieldRow("Transport") {
@@ -219,6 +222,7 @@ struct EndpointEditorView: View {
                     }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Transport protocol")
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 240)
                 .onChange(of: endpoint.transport) { _, newTransport in
@@ -240,10 +244,12 @@ struct EndpointEditorView: View {
                 .disabled(endpoint.transport == .udp && endpoint.isBroadcast)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 280)
+                .accessibilityLabel("Host address")
             }
 
             fieldRow("Port") {
                 DeferredNumericField(port: $endpoint.port, width: 120)
+                    .accessibilityLabel("Port number")
             }
 
             if isPrimary {
@@ -252,6 +258,7 @@ struct EndpointEditorView: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 100)
                         .disabled(nmeaManager.selectedProfile != .custom)
+                        .accessibilityLabel("Talker ID")
                 }
 
                 Text("3 characters, e.g. II or GP. Per-sentence talkers follow the hardware profile unless Custom.")

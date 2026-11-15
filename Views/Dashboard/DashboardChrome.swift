@@ -275,14 +275,20 @@ struct ControlSliderView: View {
         binding: Binding<Double>,
         nudge: @escaping (Double) -> Void
     ) -> some View {
-        HStack(alignment: .center, spacing: DesignToken.Spacing.row) {
+        let currentFormatted = "\(formatted(binding.wrappedValue)) \(unit)"
+        return HStack(alignment: .center, spacing: DesignToken.Spacing.row) {
             Text(label)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Spacer(minLength: DesignToken.Spacing.related)
 
-            ValueNudgeButton(systemImage: "minus", isDisabled: isDisabled) {
+            ValueNudgeButton(
+                systemImage: "minus",
+                accessibilityLabel: "Decrease \(title) \(label.lowercased())",
+                accessibilityValue: currentFormatted,
+                isDisabled: isDisabled
+            ) {
                 nudge(-stepAmount)
             }
 
@@ -295,9 +301,15 @@ struct ControlSliderView: View {
             .monospacedDigit()
             .frame(width: 72)
             .disabled(isDisabled)
+            .accessibilityLabel("\(title) \(label.lowercased())")
             .accessibilityIdentifier(identifier)
 
-            ValueNudgeButton(systemImage: "plus", isDisabled: isDisabled) {
+            ValueNudgeButton(
+                systemImage: "plus",
+                accessibilityLabel: "Increase \(title) \(label.lowercased())",
+                accessibilityValue: currentFormatted,
+                isDisabled: isDisabled
+            ) {
                 nudge(stepAmount)
             }
         }
@@ -353,6 +365,8 @@ struct ControlSliderView: View {
 
                 Slider(value: centerValueBinding, in: sliderRange)
                     .disabled(isDisabled)
+                    .accessibilityLabel("\(title) slider")
+                    .accessibilityValue("\(formatted(centerValueBinding.wrappedValue)) \(unit)")
             }
             .disabled(isDisabled)
 
@@ -423,6 +437,8 @@ private struct SimulatedReadingText: View {
             .font(.system(.title3, design: .rounded).weight(.semibold))
             .monospacedDigit()
             .multilineTextAlignment(.trailing)
+            .accessibilityLabel("\(title) live output")
+            .accessibilityValue(label)
             .accessibilityIdentifier("Reading \(title)")
     }
 
@@ -433,6 +449,8 @@ private struct SimulatedReadingText: View {
 
 private struct ValueNudgeButton: View {
     let systemImage: String
+    let accessibilityLabel: String
+    let accessibilityValue: String
     let isDisabled: Bool
     let action: () -> Void
 
@@ -446,5 +464,7 @@ private struct ValueNudgeButton: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.45 : 1)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
     }
 }

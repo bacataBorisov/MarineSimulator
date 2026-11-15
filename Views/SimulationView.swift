@@ -160,12 +160,14 @@ struct SimulationView: View {
                                 Text("\(nmeaManager.liveWeatherSettings.refreshIntervalMinutes) min")
                                     .monospacedDigit()
                             }
+                            .accessibilityLabel("Weather refresh interval in minutes")
                         }
                         LabeledContent("Refresh After") {
                             Stepper(value: $nmeaManager.liveWeatherSettings.minimumRefreshDistanceNM, in: 1...30, step: 1) {
                                 Text("\(nmeaManager.liveWeatherSettings.minimumRefreshDistanceNM.formatted(.number.precision(.fractionLength(0)))) nm")
                                     .monospacedDigit()
                             }
+                            .accessibilityLabel("Weather minimum refresh distance in nautical miles")
                         }
 
                         HStack(alignment: .top, spacing: DesignToken.Spacing.related) {

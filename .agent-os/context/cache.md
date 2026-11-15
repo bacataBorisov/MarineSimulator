@@ -4,7 +4,7 @@ Last updated: 2026-11-15
 
 ## Current Objective
 
-Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). Step B UI/HIG pass (`ExperimentDiagnosticsView` on `DesignToken` + `SettingsCard`, adaptive `ViewThatFits` error/control rows, focus-loss commit, `FormTextInputMode` input filtering + popover validation) passed user smoke tests and is committed.
+Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). Accessibility labels/values pass (Dashboard, Console, Connection, Simulation) is complete and committed.
 
 ## Constraints
 
@@ -12,4 +12,4 @@ Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connectio
 
 ## Next
 
-1. Await user direction (Keyboard/VoiceOver check, custom proprietary NMEA sentences / new sentences, or M3/M4 research roadmap).
+1. Await user direction (custom proprietary NMEA sentences / new sentences, Light Mode polish, M3/M4 research roadmap, or end session).

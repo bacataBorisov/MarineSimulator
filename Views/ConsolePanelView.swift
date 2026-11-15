@@ -150,6 +150,7 @@ struct ConsolePanelView: View {
                     }
                 }
                 .labelsHidden()
+                .accessibilityLabel("Console mode")
                 .pickerStyle(.segmented)
                 .frame(width: 188)
                 .controlSize(.small)
@@ -182,6 +183,7 @@ struct ConsolePanelView: View {
                 }
                 .buttonStyle(.borderless)
                 .help(resolvedMode == .nmea ? "Copy NMEA console" : "Copy transport history")
+                .accessibilityLabel(resolvedMode == .nmea ? "Copy NMEA console" : "Copy transport history")
                 .disabled(
                     resolvedMode == .nmea
                     ? !cachedHasNMEARows
@@ -201,6 +203,7 @@ struct ConsolePanelView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Clear console")
+                .accessibilityLabel(resolvedMode == .nmea ? "Clear NMEA console" : "Clear transport history")
             }
             .padding(.horizontal, spacing)
         }
@@ -294,6 +297,7 @@ struct ConsolePanelView: View {
             Text(value)
                 .font(.caption.monospacedDigit().weight(.semibold))
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var formattedSimulatorInterval: String {

@@ -97,6 +97,7 @@ private struct ConnectionTransmissionCard: View {
                 Stepper(value: $nmeaManager.interval, in: 0.1...10, step: 0.1) {
                     SendIntervalText(nmeaManager: nmeaManager)
                 }
+                .accessibilityLabel("Send interval in seconds")
                 .disabled(!nmeaManager.isTimerSelected)
                 Spacer(minLength: 0)
             }

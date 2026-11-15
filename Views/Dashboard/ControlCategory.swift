@@ -122,10 +122,13 @@ struct CompactControlRow: View {
             // Slider + stepper + text field (stable across SDKs)
             HStack(spacing: 8) {
                 Slider(value: $value, in: range, step: step)
+                    .accessibilityLabel("\(title) slider")
                 Stepper("", value: $value, in: range, step: step)
                     .labelsHidden()
                     .frame(width: 60)
+                    .accessibilityLabel("\(title) stepper")
                 DeferredNumericField(value: $value, fractionDigits: 1, width: 64)
+                    .accessibilityLabel(title)
             }
         }
         .padding(10)

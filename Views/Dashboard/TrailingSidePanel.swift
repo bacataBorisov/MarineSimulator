@@ -113,6 +113,7 @@ struct MetricRow: View {
             Text(value)
                 .font(.system(.callout, design: .monospaced).weight(.medium))
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -131,6 +132,7 @@ struct MonoLabel: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(AppChrome.subtleFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 

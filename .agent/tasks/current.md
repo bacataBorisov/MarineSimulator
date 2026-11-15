@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Step B UI/HIG pass (`ExperimentDiagnosticsView` migrated to `DesignToken`, `SettingsCard`, adaptive `ViewThatFits` controls/error rows, focus-loss commit, and `FormTextInputMode` + popover validation matching Boat Profile) passed user smoke tests and is committed. Next: await user choice (Keyboard/VoiceOver check, custom proprietary NMEA sentences, or M3/M4 research roadmap).
+**Status:** Direct single-chat workflow active. Accessibility labels/values pass (Dashboard controls/readouts/WindCompass, Console toolbar, Connection endpoints/interval, Simulation fault/weather steppers) passed user review and is committed. Next: await user choice (custom proprietary NMEA sentences, Light Mode polish, M3/M4 research roadmap, or end session).
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -38,7 +38,7 @@ Implemented, including the semantic-token follow-up. The window minimum is 1080Ã
 
 ## Still outstanding
 
-- Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).
+- Accessibility labels/values pass completed across Dashboard, Console, Connection, and Simulation; full VoiceOver-specific UX redesign stays deferred.
 - Shared master-detail for Boat Profile and other selection-detail pages stays deferred (do not force master-detail onto single-form pages).
 - One non-blocking resize glitch across the one-column/two-column threshold stays deferred.
 - Do not start M4 automatically.
