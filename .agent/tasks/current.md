@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Shared single `ConsolePanelView` in `MainView`, `NSGlassEffectView` map re-center button, normalized `WindCompass` start/fold, `SidebarMaterialFlattener` guard, `GaugeMarkerCompass` stable IDs, and `ExperimentDiagnosticsSession` sentence caching passed user smoke tests and are committed. Next: Step 2 page-switching latency optimization.
+**Status:** Direct single-chat workflow active. Step 2 UI/performance pass (retaining Diagnostics/Overview/Wind/Compass/Hydro/GPS in `RetainedDestinationHostBox`, keeping `DashboardDocksHost` mounted off-dashboard with map hit-test passthrough, splitting `SidebarColumnList`/`MainDetailColumn`, stabilizing `MainWindowToolbar`, persisting Dashboard & GPS map cameras + flushing `gpsData`, fixing `DeferredNumericField` `onChange` and GPS `Cycle detected`/`CAMetalLayer` warnings) passed user smoke tests and is committed.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -16,12 +16,11 @@ Historical traces and measurements remain in `../architecture/ui-performance-aud
 
 ## Selective lifecycle outcome
 
-- Connection and Simulation remain unchanged as lazy `retainedForm` destinations.
+- Connection, Simulation, Diagnostics, Overview, Wind, Hydro, and Compass use lazy `retainedForm` hosts (`RetainedDestinationHostBox`).
 - Boat Profile is lazy `retainedSessionView`. After first visit, one destination root and one `VesselLibrarySession` persist. Valid Boat Profile edits autosave. Selection and the latest persisted profile survive navigation. Invalid intermediate text is not persisted.
 - Manual remains `ephemeral`. Keep its accepted 320-point `HStack`, native `List`, and original anchors. Parking a scrolled topics list reproducibly traps in SwiftUI `DynamicContainerInfo.tryRemovingItem` with `DynamicPreferenceCombiner`; do not retain it or inject an AppKit anchor without a separately reviewed design.
-- Diagnostics, Wind, Hydro, and Compass remain `ephemeral`. Do not add inactive 10 Hz observation for low-cost sentence pages.
-- GPS uses `retainedMapResource` (`GPSSelectorMapResource` in `Views/GPS/MapWithRightClick.swift`): `GPSConfig` remains `ephemeral`, while its `MKMapView`, pin, and camera survive sidebar navigation.
-- Keep Dashboard's specialized retained-map lifecycle (full-size `DashboardPageHost` kept warm and hidden via AppKit `isHidden` off-dashboard so `MKMapView` never tears down its Metal surface or flashes on revisit), one-console ownership, automatic key-view handling, scroll anchors, keyboard, VoiceOver, and operator/experiment isolation.
+- GPS uses `retainedMapResource` (`RetainedDestinationHostBox` + `GPSSelectorMapResource` in `Views/GPS/MapWithRightClick.swift`): its page root, `MKMapView`, pin, and persisted camera (`gps.map_camera`) survive sidebar navigation and app restarts.
+- Keep Dashboard's specialized retained-map and docks lifecycle (full-size `DashboardPageHost` and `DashboardDocksHost` kept warm and hidden via AppKit `isHidden` off-dashboard, with `DashboardDocksHostingView` passing center map hits through, and `dashboard.map_camera` persisted), one shared `ConsolePanelView` in `MainView`, automatic key-view handling, scroll anchors, keyboard, VoiceOver, and operator/experiment isolation.
 - Runtime UI validation of the lifecycle slice remains outstanding; do not claim it complete from hosted tests alone.
 - Runtime VoiceOver and full keyboard/focus traversal remain open. Automated tests do not traverse focus.
 

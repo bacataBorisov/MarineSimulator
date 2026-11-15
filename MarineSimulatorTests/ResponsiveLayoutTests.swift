@@ -99,12 +99,12 @@ struct ResponsiveLayoutTests {
         #expect(SidebarItem.manual.lifecycle == .ephemeral)
         #expect(SidebarItem.manual.retainsDestinationTree == false)
         #expect(SidebarItem.gps.lifecycle == .retainedMapResource)
-        #expect(SidebarItem.gps.retainsDestinationTree == false)
+        #expect(SidebarItem.gps.retainsDestinationTree)
         #expect(SidebarItem.dashboard.lifecycle == .retainedDashboardMap)
         #expect(SidebarItem.dashboard.placesConsoleInTheShell == false)
         for page in [SidebarItem.diagnostics, .sentencesOverview, .wind, .hydro, .compass] {
-            #expect(page.lifecycle == .ephemeral)
-            #expect(page.retainsDestinationTree == false)
+            #expect(page.lifecycle == .retainedForm)
+            #expect(page.retainsDestinationTree)
         }
     }
 

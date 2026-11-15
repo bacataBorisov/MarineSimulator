@@ -12,12 +12,13 @@ import MapKit
 /// Replace the old placeholder `SidebarContent` with this:
 struct TrailingSidePanel: View {
     @Environment(NMEASimulator.self) private var nmea
+    var isCompassActive: Bool = true
 
     var body: some View {
         @Bindable var nmea = nmea
 
         VStack(alignment: .leading, spacing: AppChrome.railSectionSpacing) {
-            WindCompass()
+            WindCompass(isActive: isCompassActive)
                 .padding(6)
                 .background(AppChrome.subtleFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 

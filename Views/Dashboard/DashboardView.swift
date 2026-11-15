@@ -41,6 +41,7 @@ struct DashboardMapSurface: View {
 
 struct DashboardDocksOverlay: View {
     @Bindable var nmeaManager: NMEASimulator
+    var isActive: Bool = true
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -81,7 +82,7 @@ struct DashboardDocksOverlay: View {
 
             if showRightInspector {
                 ScrollView {
-                    TrailingSidePanel()
+                    TrailingSidePanel(isCompassActive: isActive)
                 }
                 .scrollIndicators(.hidden)
                 .frame(width: inspectorWidth)
@@ -110,6 +111,7 @@ struct DashboardDocksOverlay: View {
             remountDocksIfStale(minimumAbsence: 0)
         }
         .onReceive(Self.dockSoakRefresh) { _ in
+            guard isActive else { return }
             dockGeneration &+= 1
         }
     }

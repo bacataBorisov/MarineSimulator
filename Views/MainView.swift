@@ -8,10 +8,8 @@ struct MainView: View {
     @State private var consoleDrag = ConsoleDragTracking()
     @State private var pagePresentation = PagePresentationSession()
     @State private var gpsMapResource = GPSSelectorMapResource()
-    /// Set on the first visit and then left true, so a later selection does not rebuild the root.
-    @State private var retainedConnection = false
-    @State private var retainedSimulation = false
-    @State private var retainedBoat = false
+    @State private var retainedPages: Set<SidebarItem> = []
+    @State private var retainedDashboardDocks = false
 
     @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
     @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
@@ -21,9 +19,7 @@ struct MainView: View {
             get: { SidebarItem(rawValue: selectedPanelRawValue) ?? .dashboard },
             set: { newValue in
                 let item = newValue ?? .dashboard
-                selectedPanelRawValue = item.rawValue
-                sidebarNavigation.selectedItem = item
-                retainVisitedDestination(item)
+                selectSidebarItem(item)
             }
         )
     }
@@ -37,106 +33,25 @@ struct MainView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: selection) {
-                Section("Dashboard") {
-                    NavigationLink(value: SidebarItem.dashboard) {
-                        Label(SidebarItem.dashboard.pageTitle, systemImage: "gauge.open.with.lines.needle.33percent")
-                    }
-                }
-                Section("Setup") {
-                    NavigationLink(value: SidebarItem.connection) {
-                        Label(SidebarItem.connection.pageTitle, systemImage: "network")
-                    }
-                    NavigationLink(value: SidebarItem.simulation) {
-                        Label(SidebarItem.simulation.pageTitle, systemImage: "slider.horizontal.3")
-                    }
-                    NavigationLink(value: SidebarItem.boat) {
-                        Label(SidebarItem.boat.pageTitle, systemImage: "sailboat")
-                    }
-                    NavigationLink(value: SidebarItem.diagnostics) {
-                        Label(SidebarItem.diagnostics.pageTitle, systemImage: "waveform.path.ecg")
-                    }
-                    NavigationLink(value: SidebarItem.manual) {
-                        Label(SidebarItem.manual.pageTitle, systemImage: "book.closed")
-                    }
-                }
-                Section("Sentences") {
-                    NavigationLink(value: SidebarItem.sentencesOverview) {
-                        Label(SidebarItem.sentencesOverview.pageTitle, systemImage: "checklist")
-                    }
-                    NavigationLink(value: SidebarItem.wind) {
-                        Label(SidebarItem.wind.pageTitle, systemImage: "wind")
-                    }
-                    NavigationLink(value: SidebarItem.compass) {
-                        Label(SidebarItem.compass.pageTitle, systemImage: "location.north.line")
-                    }
-                    NavigationLink(value: SidebarItem.hydro) {
-                        Label(SidebarItem.hydro.pageTitle, systemImage: "drop")
-                    }
-                    NavigationLink(value: SidebarItem.gps) {
-                        Label(SidebarItem.gps.pageTitle, systemImage: "location")
-                    }
-                }
-            }
+            SidebarColumnList(
+                selection: selection,
+                sidebarSections: Self.sidebarSections
+            )
             .scrollContentBackground(.hidden)
             .background(Color.black)
             .background(OpaqueSidebarColumnBackground())
             .navigationSplitViewStyle(.prominentDetail)
+            .transaction { $0.animation = nil }
         } detail: {
-            let selected = selection.wrappedValue ?? .dashboard
-            VStack(spacing: 0) {
-                ShellContentTopSeparator()
-                GeometryReader { geometry in
-                    let dashboardSize = selected.retainedDashboardSize(fitting: geometry.size)
-                    ZStack(alignment: .bottom) {
-                        // One dashboard map host stays mounted at full detail size behind
-                        // the detail column so its MKMapView keeps its Metal surface and tiles
-                        // warm (no flash on revisit). Off the dashboard it is hidden via AppKit.
-                        DashboardPageHost(nmeaManager: nmeaManager, isVisible: selected == .dashboard)
-                            .frame(width: dashboardSize.width, height: dashboardSize.height)
-                            .clipped()
-                            .allowsHitTesting(selected == .dashboard)
-                            .accessibilityHidden(selected != .dashboard)
-
-                        // One VStack owns the active destination area on top and one shared
-                        // ConsolePanelView at the bottom across every page, including Dashboard.
-                        // Switching pages never tears down, recreates, or reparents the console.
-                        VStack(spacing: 0) {
-                            ZStack(alignment: .topLeading) {
-                                if selected == .dashboard {
-                                    DashboardDocksOverlay(nmeaManager: nmeaManager)
-                                }
-
-                                shellPages(
-                                    selected: selected,
-                                    shellVisible: selected.placesConsoleInTheShell
-                                )
-                                .frame(
-                                    width: selected.placesConsoleInTheShell ? geometry.size.width : 0,
-                                    height: selected.placesConsoleInTheShell ? nil : 0
-                                )
-                                .frame(
-                                    maxWidth: selected.placesConsoleInTheShell ? .infinity : 0,
-                                    maxHeight: selected.placesConsoleInTheShell ? .infinity : 0
-                                )
-                                .opacity(selected.placesConsoleInTheShell ? 1 : 0)
-                                .allowsHitTesting(selected.placesConsoleInTheShell)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                            ConsolePanelView(
-                                nmeaManager: nmeaManager,
-                                consoleHeight: consoleHeight,
-                                geometryHeight: geometry.size.height
-                            )
-                            .frame(maxWidth: .infinity)
-                        }
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
-                    .transaction { $0.animation = nil }
-                }
-            }
+            MainDetailColumn(
+                nmeaManager: nmeaManager,
+                diagnostics: diagnostics,
+                consoleDrag: consoleDrag,
+                pagePresentation: pagePresentation,
+                sidebarNavigation: sidebarNavigation,
+                retainedPages: $retainedPages,
+                retainedDashboardDocks: $retainedDashboardDocks
+            )
             .navigationTitle("")
         }
         .environment(nmeaManager)
@@ -153,48 +68,239 @@ struct MainView: View {
             let item = SidebarItem(rawValue: selectedPanelRawValue) ?? .dashboard
             sidebarNavigation.selectedItem = item
             retainVisitedDestination(item)
+            diagnostics.allowsWallClockLoop = (item == .diagnostics)
             #if DEBUG
             ScrollRuntimeTrace.shared.noteSelection(selectedPanelRawValue)
             #endif
         }
         .onChange(of: sidebarNavigation.selectedItem) { _, item in
-            selectedPanelRawValue = item.rawValue
+            if selectedPanelRawValue != item.rawValue {
+                selectedPanelRawValue = item.rawValue
+            }
             #if DEBUG
             ScrollRuntimeTrace.shared.noteSelection(item.rawValue)
             #endif
         }
-        .onChange(of: selectedPanelRawValue) { _, value in
-            retainVisitedDestination(SidebarItem(rawValue: value) ?? .dashboard)
+        .onChange(of: selectedPanelRawValue) { oldValue, value in
+            let oldItem = SidebarItem(rawValue: oldValue)
+            let newItem = SidebarItem(rawValue: value) ?? .dashboard
+            if sidebarNavigation.selectedItem != newItem {
+                sidebarNavigation.selectedItem = newItem
+            }
+            retainVisitedDestination(newItem)
+            if oldItem == .diagnostics && newItem != .diagnostics {
+                diagnostics.pauseIfRunning()
+            }
+            if newItem == .diagnostics {
+                diagnostics.allowsWallClockLoop = true
+            }
             #if DEBUG
             ScrollRuntimeTrace.shared.noteSelection(value)
             #endif
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            nmeaManager.persistLiveSettings()
+        }
         .toolbar {
             MainWindowToolbar(
                 nmeaManager: nmeaManager,
-                selectedDestination: selection.wrappedValue ?? .dashboard,
                 sidebarNavigation: sidebarNavigation,
                 selectedPanelRawValue: $selectedPanelRawValue
             )
         }
     }
 
+    private static let sidebarSections: [(title: String, items: [(item: SidebarItem, systemImage: String)])] = [
+        ("Dashboard", [
+            (.dashboard, "gauge.open.with.lines.needle.33percent")
+        ]),
+        ("Setup", [
+            (.connection, "network"),
+            (.simulation, "slider.horizontal.3"),
+            (.boat, "sailboat"),
+            (.diagnostics, "waveform.path.ecg"),
+            (.manual, "book.closed")
+        ]),
+        ("Sentences", [
+            (.sentencesOverview, "checklist"),
+            (.wind, "wind"),
+            (.compass, "location.north.line"),
+            (.hydro, "drop"),
+            (.gps, "location")
+        ])
+    ]
+
+    private func selectSidebarItem(_ item: SidebarItem) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            if sidebarNavigation.selectedItem != item {
+                sidebarNavigation.selectedItem = item
+            }
+            if selectedPanelRawValue != item.rawValue {
+                selectedPanelRawValue = item.rawValue
+            }
+            retainVisitedDestination(item)
+        }
+    }
+
+    private func retainVisitedDestination(_ item: SidebarItem) {
+        if item == .dashboard {
+            retainedDashboardDocks = true
+        } else if item.retainsDestinationTree {
+            retainedPages.insert(item)
+        }
+    }
+}
+
+private struct SidebarColumnList: View {
+    var selection: Binding<SidebarItem?>
+    var sidebarSections: [(title: String, items: [(item: SidebarItem, systemImage: String)])]
+
+    var body: some View {
+        List(selection: selection) {
+            ForEach(sidebarSections, id: \.title) { section in
+                Section(section.title) {
+                    ForEach(section.items, id: \.item) { entry in
+                        Label {
+                            Text(entry.item.pageTitle)
+                        } icon: {
+                            Image(systemName: entry.systemImage)
+                                .frame(width: 18, height: 18)
+                        }
+                        .tag(entry.item)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct MainDetailColumn: View {
+    var nmeaManager: NMEASimulator
+    var diagnostics: ExperimentDiagnosticsSession
+    var consoleDrag: ConsoleDragTracking
+    var pagePresentation: PagePresentationSession
+    var sidebarNavigation: SidebarNavigation
+    @Binding var retainedPages: Set<SidebarItem>
+    @Binding var retainedDashboardDocks: Bool
+
+    @AppStorage("main_view.selection") private var selectedPanelRawValue: String = SidebarItem.dashboard.rawValue
+    @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
+
+    private var consoleHeight: Binding<CGFloat> {
+        Binding(
+            get: { CGFloat(max(0, storedLogHeight)) },
+            set: { storedLogHeight = Double(max(0, $0)) }
+        )
+    }
+
+    var body: some View {
+        let selected = SidebarItem(rawValue: selectedPanelRawValue) ?? sidebarNavigation.selectedItem
+        VStack(spacing: 0) {
+            ShellContentTopSeparator()
+            GeometryReader { geometry in
+                let dashboardSize = selected.retainedDashboardSize(fitting: geometry.size)
+                ZStack(alignment: .bottom) {
+                    // One dashboard map host stays mounted at full detail size behind
+                    // the detail column so its MKMapView keeps its Metal surface and tiles
+                    // warm (no flash on revisit). Off the dashboard it is hidden via AppKit.
+                    DashboardPageHost(nmeaManager: nmeaManager, isVisible: selected == .dashboard)
+                        .frame(width: dashboardSize.width, height: dashboardSize.height)
+                        .clipped()
+                        .allowsHitTesting(selected == .dashboard)
+                        .accessibilityHidden(selected != .dashboard)
+
+                    // One VStack owns the active destination area on top and one shared
+                    // ConsolePanelView at the bottom across every page, including Dashboard.
+                    // Switching pages never tears down, recreates, or reparents the console.
+                    VStack(spacing: 0) {
+                        ZStack(alignment: .topLeading) {
+                            if retainedDashboardDocks || selected == .dashboard {
+                                DashboardDocksHost(nmeaManager: nmeaManager, isVisible: selected == .dashboard)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .allowsHitTesting(selected == .dashboard)
+                                    .accessibilityHidden(selected != .dashboard)
+                            }
+
+                            shellPages(
+                                selected: selected,
+                                shellVisible: selected.placesConsoleInTheShell
+                            )
+                            .frame(
+                                width: selected.placesConsoleInTheShell ? geometry.size.width : 0,
+                                height: selected.placesConsoleInTheShell ? nil : 0
+                            )
+                            .frame(
+                                maxWidth: selected.placesConsoleInTheShell ? .infinity : 0,
+                                maxHeight: selected.placesConsoleInTheShell ? .infinity : 0
+                            )
+                            .opacity(selected.placesConsoleInTheShell ? 1 : 0)
+                            .allowsHitTesting(selected.placesConsoleInTheShell)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                        ConsolePanelView(
+                            nmeaManager: nmeaManager,
+                            consoleHeight: consoleHeight,
+                            geometryHeight: geometry.size.height
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+                .transaction { $0.animation = nil }
+            }
+        }
+    }
+
     @ViewBuilder
     private func shellPages(selected: SidebarItem, shellVisible: Bool) -> some View {
         ZStack(alignment: .topLeading) {
-            if retainedConnection || selected == .connection {
+            if retainedPages.contains(.connection) || selected == .connection {
                 retainedHost(.connection, isActive: selected == .connection) {
                     ConnectionView(nmeaManager: nmeaManager)
                 }
             }
-            if retainedSimulation || selected == .simulation {
+            if retainedPages.contains(.simulation) || selected == .simulation {
                 retainedHost(.simulation, isActive: selected == .simulation) {
                     SimulationView(nmeaManager: nmeaManager)
                 }
             }
-            if retainedBoat || selected == .boat {
+            if retainedPages.contains(.boat) || selected == .boat {
                 retainedHost(.boat, isActive: selected == .boat) {
                     BoatSetupDetailView(nmeaManager: nmeaManager)
+                }
+            }
+            if retainedPages.contains(.diagnostics) || selected == .diagnostics {
+                retainedHost(.diagnostics, isActive: selected == .diagnostics) {
+                    ExperimentDiagnosticsView(session: diagnostics)
+                }
+            }
+            if retainedPages.contains(.sentencesOverview) || selected == .sentencesOverview {
+                retainedHost(.sentencesOverview, isActive: selected == .sentencesOverview) {
+                    SentenceOverviewView(nmeaManager: nmeaManager)
+                }
+            }
+            if retainedPages.contains(.wind) || selected == .wind {
+                retainedHost(.wind, isActive: selected == .wind) {
+                    WindConfig(nmeaManager: nmeaManager)
+                }
+            }
+            if retainedPages.contains(.compass) || selected == .compass {
+                retainedHost(.compass, isActive: selected == .compass) {
+                    HeadingConfig(nmeaManager: nmeaManager)
+                }
+            }
+            if retainedPages.contains(.hydro) || selected == .hydro {
+                retainedHost(.hydro, isActive: selected == .hydro) {
+                    HydroConfig(nmeaManager: nmeaManager)
+                }
+            }
+            if retainedPages.contains(.gps) || selected == .gps {
+                retainedHost(.gps, isActive: selected == .gps) {
+                    GPSConfig(nmeaManager: nmeaManager)
                 }
             }
             if shellVisible && !selected.retainsDestinationTree {
@@ -228,19 +334,6 @@ struct MainView: View {
         .allowsHitTesting(isActive)
         .onAppear { noteDestinationMounted(page) }
         .onDisappear { noteDestinationRemoved(page) }
-    }
-
-    private func retainVisitedDestination(_ item: SidebarItem) {
-        switch item {
-        case .connection:
-            retainedConnection = true
-        case .simulation:
-            retainedSimulation = true
-        case .boat:
-            retainedBoat = true
-        default:
-            break
-        }
     }
 
     private func noteDestinationMounted(_ item: SidebarItem) {

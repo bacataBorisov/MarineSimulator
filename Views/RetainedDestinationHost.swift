@@ -55,6 +55,74 @@ struct DashboardPageHost: NSViewRepresentable {
     }
 }
 
+struct DashboardDocksMount: View {
+    @Bindable var visibility: DashboardVisibility
+    @Bindable var nmeaManager: NMEASimulator
+
+    var body: some View {
+        DashboardDocksOverlay(nmeaManager: nmeaManager, isActive: visibility.isVisible)
+            .environment(nmeaManager)
+    }
+}
+
+struct DashboardDocksHost: NSViewRepresentable {
+    var nmeaManager: NMEASimulator
+    var isVisible: Bool
+    @AppStorage("dashboard.show_left_dock") private var showLeftDock = true
+    @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isVisible)
+    }
+
+    func makeNSView(context: Context) -> DashboardDocksHostingView {
+        let host = DashboardDocksHostingView(
+            rootView: DashboardDocksMount(
+                visibility: context.coordinator.visibility,
+                nmeaManager: nmeaManager
+            )
+        )
+        host.sizingOptions = []
+        applyState(to: host)
+        return host
+    }
+
+    func updateNSView(_ host: DashboardDocksHostingView, context: Context) {
+        context.coordinator.visibility.isVisible = isVisible
+        applyState(to: host)
+    }
+
+    private func applyState(to host: DashboardDocksHostingView) {
+        host.isHidden = !isVisible
+        host.alphaValue = isVisible ? 1 : 0
+        host.setAccessibilityHidden(!isVisible)
+        host.leftDockWidth = showLeftDock ? AppChrome.liveControlRailOuterWidth : 0
+        host.rightDockWidth = showRightInspector ? AppChrome.liveControlRailOuterWidth : 0
+    }
+
+    final class Coordinator {
+        let visibility: DashboardVisibility
+        init(_ isVisible: Bool) { visibility = DashboardVisibility(isVisible) }
+    }
+}
+
+/// Lets mouse, drag, and scroll events in the open center gap pass straight through
+/// to `DashboardPageHost` (`MKMapView`) underneath while keeping the two side docks interactive.
+final class DashboardDocksHostingView: NSHostingView<DashboardDocksMount> {
+    var leftDockWidth: CGFloat = 0
+    var rightDockWidth: CGFloat = 0
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden else { return nil }
+        let localPoint = convert(point, from: superview)
+        guard bounds.contains(localPoint) else { return nil }
+        let inLeftDock = leftDockWidth > 0 && localPoint.x <= leftDockWidth
+        let inRightDock = rightDockWidth > 0 && localPoint.x >= bounds.width - rightDockWidth
+        guard inLeftDock || inRightDock else { return nil }
+        return super.hitTest(point)
+    }
+}
+
 /// Metrics the lifecycle tests read without knowing the hosted SwiftUI type.
 protocol RetainedPageMetrics: NSView {
     var performedLayoutCount: Int { get }

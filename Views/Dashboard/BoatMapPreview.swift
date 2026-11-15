@@ -18,8 +18,54 @@ private extension CLLocationCoordinate2D {
     }
 }
 
+private struct PersistedMapCamera: Codable {
+    var latitude: Double
+    var longitude: Double
+    var distance: Double
+    var pitch: Double
+    var heading: Double
+
+    init(_ camera: MKMapCamera) {
+        latitude = camera.centerCoordinate.latitude
+        longitude = camera.centerCoordinate.longitude
+        distance = camera.centerCoordinateDistance > 1 ? camera.centerCoordinateDistance : max(camera.altitude, 1_000)
+        pitch = camera.pitch
+        heading = camera.heading
+    }
+
+    var mkCamera: MKMapCamera {
+        MKMapCamera(
+            lookingAtCenter: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            fromDistance: distance,
+            pitch: pitch,
+            heading: heading
+        )
+    }
+
+    static func load(from data: Data) -> MKMapCamera? {
+        guard !data.isEmpty,
+              let decoded = try? JSONDecoder().decode(Self.self, from: data),
+              decoded.latitude.isFinite,
+              decoded.longitude.isFinite,
+              decoded.distance.isFinite,
+              decoded.distance > 1 else {
+            return nil
+        }
+        return decoded.mkCamera
+    }
+
+    static func encode(_ camera: MKMapCamera) -> Data? {
+        guard camera.centerCoordinate.latitude.isFinite,
+              camera.centerCoordinate.longitude.isFinite else {
+            return nil
+        }
+        return try? JSONEncoder().encode(Self(camera))
+    }
+}
+
 struct BoatMapView: NSViewRepresentable {
     @Environment(NMEASimulator.self) private var nmeaManager
+    @AppStorage("dashboard.map_camera") private var savedCameraData: Data = Data()
 
     var isActive: Bool = true
     var topChromeInset: CGFloat = 0
@@ -32,6 +78,11 @@ struct BoatMapView: NSViewRepresentable {
     func makeNSView(context: Context) -> BoatMapContainerView {
         let container = BoatMapContainerView()
         container.mapView.delegate = context.coordinator
+        context.coordinator.initialSavedCameraData = savedCameraData
+        context.coordinator.onSaveCamera = { [weak container] camera in
+            guard container != nil, let data = PersistedMapCamera.encode(camera) else { return }
+            savedCameraData = data
+        }
         context.coordinator.attach(to: container)
         return container
     }
@@ -59,6 +110,9 @@ struct BoatMapView: NSViewRepresentable {
         private var boatAnnotation = MKPointAnnotation()
         private(set) var hasPlacedInitialCamera = false
         var wasActive = false
+        var initialSavedCameraData: Data = Data()
+        var onSaveCamera: ((MKMapCamera) -> Void)?
+        private var cameraSaveWorkItem: DispatchWorkItem?
         private var lastBearingDegrees: Double = 0
         private var lastAppliedCameraHeading: CGFloat = .nan
         private var lastMapApplyTime: CFAbsoluteTime = 0
@@ -149,13 +203,16 @@ struct BoatMapView: NSViewRepresentable {
 
             if !hasPlacedInitialCamera {
                 hasPlacedInitialCamera = true
-                let camera = MKMapCamera(
+                let restored = PersistedMapCamera.load(from: initialSavedCameraData)
+                let camera = restored ?? MKMapCamera(
                     lookingAtCenter: coordinate,
                     fromDistance: 120_000,
                     pitch: 0,
                     heading: 0
                 )
+                isApplyingMap = true
                 mapView.setCamera(camera, animated: false)
+                isApplyingMap = false
             }
         }
 
@@ -238,10 +295,23 @@ struct BoatMapView: NSViewRepresentable {
             defer { HangProbe.leave("map.region") }
             #endif
             guard !isApplyingMap else { return }
+            if hasPlacedInitialCamera {
+                scheduleCameraPersist(mapView.camera)
+            }
             let heading = mapView.camera.heading
             guard !lastAppliedCameraHeading.isFinite || abs(lastAppliedCameraHeading - heading) > 0.05 else { return }
             lastAppliedCameraHeading = heading
             applyBoatRotation(on: mapView)
+        }
+
+        private func scheduleCameraPersist(_ camera: MKMapCamera) {
+            guard let snapshot = camera.copy() as? MKMapCamera else { return }
+            cameraSaveWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.onSaveCamera?(snapshot)
+            }
+            cameraSaveWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
         }
 
         private func applyBoatRotation(on mapView: MKMapView) {

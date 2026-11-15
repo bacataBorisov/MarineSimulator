@@ -218,12 +218,6 @@ struct DeferredNumericField: View {
             .focused($focused)
             .background(ResignFirstResponderOnOutsideClick(isActive: focused))
             .onAppear { draft = formatted(displayed ?? value) }
-            .onChange(of: displayed) { _, newValue in
-                if !focused, let newValue { draft = formatted(newValue) }
-            }
-            .onChange(of: value) { _, newValue in
-                if !focused, displayed == nil { draft = formatted(newValue) }
-            }
             .onChange(of: focused) { _, isFocused in
                 onEditingChange?(isFocused)
                 if isFocused {

@@ -656,6 +656,7 @@ class NMEASimulator {
                 applyResolvedLiveWeatherValues()
             }
             appendHistoryEvent(level: .idle, category: .lifecycle, message: "Simulation stopped")
+            persistSettingsIfNeeded()
         }
     }
 

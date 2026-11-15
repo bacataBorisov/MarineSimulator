@@ -61,31 +61,31 @@ extension SidebarItem: RawRepresentable {
         self != .dashboard
     }
 
-    /// Stable AppKit root after the first visit. The GPS map resource is classified
-    /// separately and is not mounted in this slice, so that page still leaves.
+    /// Stable AppKit root after the first visit.
+    /// Manual stays ephemeral: parking its scrolled topics list asserts in SwiftUI.
     var retainsDestinationTree: Bool {
         switch lifecycle {
-        case .retainedForm, .retainedSessionView:
+        case .retainedForm, .retainedSessionView, .retainedMapResource:
             return true
-        case .retainedDashboardMap, .retainedMapResource, .ephemeral:
+        case .retainedDashboardMap, .ephemeral:
             return false
         }
     }
 
-    /// Retention class for this destination. Dashboard keeps its existing map host.
-    /// GPS names a map resource that this slice does not install.
+    /// Retention class for this destination. Dashboard keeps its existing map + docks hosts.
+    /// GPS retains its page root and its `GPSSelectorMapResource`.
     /// Manual stays ephemeral: parking its scrolled topics list asserts in SwiftUI.
     var lifecycle: SidebarDestinationLifecycle {
         switch self {
         case .dashboard:
             return .retainedDashboardMap
-        case .connection, .simulation:
+        case .connection, .simulation, .diagnostics, .sentencesOverview, .wind, .hydro, .compass:
             return .retainedForm
         case .boat:
             return .retainedSessionView
         case .gps:
             return .retainedMapResource
-        case .diagnostics, .sentencesOverview, .wind, .hydro, .compass, .manual:
+        case .manual:
             return .ephemeral
         }
     }

@@ -316,7 +316,6 @@ private struct GPSCoordinatePreview: View {
                 }
                 Divider().padding(.vertical, 4)
                 GPSMapSelectorView(selectedCoordinate: selectedCoordinateBinding)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 if !nmeaManager.sensorToggles.hasGPS {
                     Text("Enable GPS in Simulation → Sensors to edit position and map starting coordinates.")

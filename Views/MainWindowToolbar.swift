@@ -2,9 +2,55 @@ import SwiftUI
 
 struct MainWindowToolbar: ToolbarContent {
     var nmeaManager: NMEASimulator
-    var selectedDestination: SidebarItem
     var sidebarNavigation: SidebarNavigation
     @Binding var selectedPanelRawValue: String
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            DashboardToolbarPanelGroup(sidebarNavigation: sidebarNavigation)
+        }
+
+        ToolbarItem(placement: .principal) {
+            MiddleStatusToolbarBar(
+                nmeaManager: nmeaManager,
+                openConnection: {
+                    navigateFromToolbar(to: .connection)
+                },
+                openBoat: {
+                    navigateFromToolbar(to: .boat)
+                }
+            )
+        }
+        .sharedBackgroundVisibility(.hidden)
+
+        ToolbarItem(placement: .primaryAction) {
+            TransmissionModeBadge(nmeaManager: nmeaManager)
+        }
+        .sharedBackgroundVisibility(.hidden)
+
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+
+        ToolbarItem(placement: .primaryAction) {
+            TransmissionToolbarButton(nmeaManager: nmeaManager)
+        }
+    }
+
+    private func navigateFromToolbar(to item: SidebarItem) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            if sidebarNavigation.selectedItem != item {
+                sidebarNavigation.selectedItem = item
+            }
+            if selectedPanelRawValue != item.rawValue {
+                selectedPanelRawValue = item.rawValue
+            }
+        }
+    }
+}
+
+private struct DashboardToolbarPanelGroup: View {
+    var sidebarNavigation: SidebarNavigation
 
     @AppStorage("dashboard.show_left_dock") private var showLeftDock = true
     @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
@@ -27,52 +73,28 @@ struct MainWindowToolbar: ToolbarContent {
         )
     }
 
-    var body: some ToolbarContent {
-        if selectedDestination == .dashboard {
-            ToolbarItemGroup(placement: .navigation) {
-                DashboardPanelToggleButton(
-                    title: "Controls",
-                    systemImage: "slider.horizontal.below.rectangle",
-                    isOn: $showLeftDock
-                )
-                DashboardPanelToggleButton(
-                    title: "Instruments",
-                    systemImage: "gauge.with.needle",
-                    isOn: $showRightInspector
-                )
-                DashboardPanelToggleButton(
-                    title: "Console Log",
-                    systemImage: "terminal",
-                    isOn: showConsoleBinding
-                )
-            }
-        }
-
-        ToolbarItem(placement: .principal) {
-            MiddleStatusToolbarBar(
-                nmeaManager: nmeaManager,
-                openConnection: {
-                    sidebarNavigation.select(.connection)
-                    selectedPanelRawValue = SidebarItem.connection.rawValue
-                },
-                openBoat: {
-                    sidebarNavigation.select(.boat)
-                    selectedPanelRawValue = SidebarItem.boat.rawValue
-                }
+    var body: some View {
+        let isDashboard = sidebarNavigation.selectedItem == .dashboard
+        HStack(spacing: 6) {
+            DashboardPanelToggleButton(
+                title: "Controls",
+                systemImage: "slider.horizontal.below.rectangle",
+                isOn: $showLeftDock
+            )
+            DashboardPanelToggleButton(
+                title: "Instruments",
+                systemImage: "gauge.with.needle",
+                isOn: $showRightInspector
+            )
+            DashboardPanelToggleButton(
+                title: "Console Log",
+                systemImage: "terminal",
+                isOn: showConsoleBinding
             )
         }
-        .sharedBackgroundVisibility(.hidden)
-
-        ToolbarItem(placement: .primaryAction) {
-            TransmissionModeBadge(nmeaManager: nmeaManager)
-        }
-        .sharedBackgroundVisibility(.hidden)
-
-        ToolbarSpacer(.fixed, placement: .primaryAction)
-
-        ToolbarItem(placement: .primaryAction) {
-            TransmissionToolbarButton(nmeaManager: nmeaManager)
-        }
+        .opacity(isDashboard ? 1 : 0)
+        .disabled(!isDashboard)
+        .accessibilityHidden(!isDashboard)
     }
 }
 

@@ -12,7 +12,7 @@ struct RetainedDestinationLifecycleTests {
     @Test
     func onlyApprovedLifecycleClassesStayMounted() {
         let detail = CGSize(width: 960, height: 640)
-        let forms: [SidebarItem] = [.connection, .simulation]
+        let forms: [SidebarItem] = [.connection, .simulation, .diagnostics, .sentencesOverview, .wind, .hydro, .compass]
         for page in forms {
             #expect(page.lifecycle == .retainedForm)
             #expect(page.retainsDestinationTree)
@@ -30,17 +30,14 @@ struct RetainedDestinationLifecycleTests {
         #expect(SidebarItem.dashboard.retainedDashboardSize(fitting: detail) == detail)
 
         #expect(SidebarItem.gps.lifecycle == .retainedMapResource)
-        #expect(SidebarItem.gps.retainsDestinationTree == false)
+        #expect(SidebarItem.gps.retainsDestinationTree)
         #expect(SidebarItem.gps.placesConsoleInTheShell)
         #expect(SidebarItem.gps.retainedDashboardSize(fitting: detail) == detail)
 
-        let ephemeral: [SidebarItem] = [.diagnostics, .wind, .hydro, .compass, .manual]
-        for page in ephemeral {
-            #expect(page.lifecycle == .ephemeral)
-            #expect(page.retainsDestinationTree == false)
-            #expect(page.placesConsoleInTheShell)
-            #expect(page.retainedDashboardSize(fitting: detail) == detail)
-        }
+        #expect(SidebarItem.manual.lifecycle == .ephemeral)
+        #expect(SidebarItem.manual.retainsDestinationTree == false)
+        #expect(SidebarItem.manual.placesConsoleInTheShell)
+        #expect(SidebarItem.manual.retainedDashboardSize(fitting: detail) == detail)
     }
 
     @Test(.timeLimit(.minutes(2)))
@@ -106,7 +103,7 @@ struct RetainedDestinationLifecycleTests {
         #expect(connectionHost.root === connectionRoot)
         #expect(connectionMarker.enclosingScrollView === connectionScroll)
         #expect(simulationMarker.enclosingScrollView === simulationScroll)
-        #expect(harness.destinationHost(.diagnostics) == nil)
+        #expect(harness.destinationHost(.diagnostics)?.isPageActive == true)
         #expect(harness.destinationHost(.manual) == nil)
         #expect(harness.destinationHost(.boat) == nil)
         #expect(harness.consoleHosts().count == 1)
@@ -116,11 +113,12 @@ struct RetainedDestinationLifecycleTests {
         let windReady = harness.waitUntil {
             harness.showsDiagnosticsPage() == false
                 && harness.showsWindPage()
+                && harness.isHostParked(.diagnostics)
                 && harness.marker(.connection) === connectionMarker
                 && harness.markers().count == 2
                 && harness.looseMapViews().isEmpty
         }
-        try #require(windReady, "wind stayed mounted or cloned a retained tree: \(harness.describe())")
+        try #require(windReady, "wind did not park diagnostics cleanly: \(harness.describe())")
         #expect(harness.consoleHosts().count == 1)
         #expect(harness.consoleHosts().first === shellConsole)
         #expect(harness.mapHosts().first === dashboardMap)
@@ -128,14 +126,15 @@ struct RetainedDestinationLifecycleTests {
         harness.select(.gps)
         let gpsReady = harness.waitUntil {
             harness.showsWindPage() == false
+                && harness.isHostParked(.wind)
                 && harness.looseMapViews().count == 1
                 && harness.markers().count == 2
                 && harness.mapHosts().first === dashboardMap
                 && harness.isParked(connectionScroll)
                 && harness.isParked(simulationScroll)
         }
-        try #require(gpsReady, "gps did not release the sentence page: \(harness.describe())")
-        #expect(harness.destinationHost(.gps) == nil)
+        try #require(gpsReady, "gps did not present cleanly: \(harness.describe())")
+        #expect(harness.destinationHost(.gps)?.isPageActive == true)
         #expect(harness.consoleHosts().count == 1)
         #expect(harness.consoleHosts().first === shellConsole)
 
@@ -724,13 +723,14 @@ struct RetainedDestinationLifecycleTests {
         harness.select(.gps)
         let gpsReady = harness.waitUntil {
             harness.showsWindPage() == false
+                && harness.isHostParked(.wind)
                 && harness.looseMapViews().count == 1
                 && harness.mapHosts().count == 1
                 && harness.mapHosts().first === dashboardMap
-                && harness.destinationHost(.gps) == nil
+                && harness.destinationHost(.gps)?.isPageActive == true
                 && boatHost.root === boatRoot
         }
-        try #require(gpsReady, "gps kept a page host or a second dashboard map: \(harness.describe())")
+        try #require(gpsReady, "gps kept a second dashboard map: \(harness.describe())")
 
         harness.select(.boat)
         let boatReturned = harness.waitUntil {
@@ -750,9 +750,9 @@ struct RetainedDestinationLifecycleTests {
         #expect(boatHost.root === boatRoot)
         #expect(harness.destinationHost(.connection) == nil)
         #expect(harness.destinationHost(.simulation) == nil)
-        #expect(harness.destinationHost(.diagnostics) == nil)
-        #expect(harness.destinationHost(.wind) == nil)
-        #expect(harness.destinationHost(.gps) == nil)
+        #expect(harness.isHostParked(.diagnostics))
+        #expect(harness.isHostParked(.wind))
+        #expect(harness.isHostParked(.gps))
         #expect(harness.destinationHost(.manual) == nil)
         #if DEBUG
         #expect(RetainedDestinationBodyProbe.boatEvaluations == boatBodies)
@@ -2007,7 +2007,7 @@ private final class DestinationHarness {
 
     func looseMapViews() -> [MKMapView] {
         views(in: host).compactMap { $0 as? MKMapView }.filter { map in
-            guard map.bounds.width > 2, map.bounds.height > 2 else { return false }
+            guard !map.isHiddenOrHasHiddenAncestor, map.bounds.width > 2, map.bounds.height > 2 else { return false }
             var current: NSView? = map
             while let node = current {
                 if node is BoatMapContainerView { return false }

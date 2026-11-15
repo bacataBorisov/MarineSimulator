@@ -3,6 +3,8 @@ import Combine
 import AppKit
 
 struct WindCompass: View {
+    var isActive: Bool = true
+
     @Environment(NMEASimulator.self) private var nmea
     @Environment(\.scenePhase) private var scenePhase
 
@@ -116,7 +118,7 @@ struct WindCompass: View {
             syncInstrumentsFromNMEA(force: true)
         }
         .onReceive(Self.idleInstrumentPoll) { _ in
-            guard NSApp.isActive else { return }
+            guard isActive, NSApp.isActive else { return }
             guard scenePhase == .active else { return }
             if nmea.isTackInProgress {
                 syncInstrumentsFromNMEA(force: true)
@@ -125,6 +127,10 @@ struct WindCompass: View {
             let key = instrumentDependencyKey()
             guard key != lastAppliedInstrumentKey else { return }
             syncInstrumentsFromNMEA()
+        }
+        .onChange(of: isActive) { _, active in
+            guard active else { return }
+            snapInstrumentsAfterWake()
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
