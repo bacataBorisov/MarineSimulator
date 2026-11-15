@@ -4,7 +4,7 @@ Last updated: 2026-11-15
 
 ## Current Objective
 
-Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly without subagents or unrequested regression tests unless asked, user smoke-tests). File-split audit Steps 1+2 (removed dead `TopControlBar.swift` & `LeadingSidePanel.swift`; split `ConfigurationChrome.swift` into `ConsoleScrollTracking.swift`, `ConfigurationChrome.swift`, `ConnectionChrome.swift`, `SimulationChrome.swift`) passed focused tests + user smoke test and are committed.
+Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). File-split audit Steps 1–5 are complete and committed (zero production files over 1,000 lines).
 
 ## Constraints
 
@@ -12,6 +12,8 @@ Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connectio
 
 ## Next
 
-1. Continue file-split audit Step 3 (`Views/MainView.swift`) or fix per-page scroll-position restoration in `Views/ConsoleScrollTracking.swift`.
-2. Add atmospheric NMEA output (`MDA` / `XDR` / `MTA` / `MMB` — confirm receiver format first) once the scroll/file-split cleanup settles.
-3. Return to GPS `retainedMapResource`.
+1. Fix per-page last scroll-position restoration (`Views/ConsoleScrollTracking.swift`).
+2. Add GPS-off glance hint to `WeatherModeToolbarPill` (`Views/MainWindowToolbar.swift`).
+3. Add numeric input filtering / inline feedback on Boat Profile Hull/Rig/Year fields (`Views/BoatProfileEditor.swift`).
+4. Add atmospheric NMEA sentences (air temp, humidity, barometer).
+5. Return to GPS `retainedMapResource`.

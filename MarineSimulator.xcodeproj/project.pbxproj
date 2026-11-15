@@ -78,6 +78,10 @@
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
+		06NMA0012F901001005DE47D /* NMEASimulator+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */; };
+		06NMA0022F901001005DE47D /* NMEASimulator+VesselLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */; };
+		06NMA0032F901001005DE47D /* SimulationEngine+Maneuvers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */; };
+		06NMA0042F901001005DE47D /* SimulationEngine+Environment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */; };
 		06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C92DF51286005DC523 /* UDPClient.swift */; };
 		06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */; };
 		06B4B2D02DF52FCD005DC523 /* HydroConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */; };
@@ -219,6 +223,10 @@
 		06B4B2A42DF50AB8005DC523 /* MarineSimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2AE2DF50AB8005DC523 /* MarineSimulatorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMEASimulator.swift; sourceTree = "<group>"; };
+		06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+Persistence.swift"; sourceTree = "<group>"; };
+		06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+VesselLibrary.swift"; sourceTree = "<group>"; };
+		06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimulationEngine+Maneuvers.swift"; sourceTree = "<group>"; };
+		06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimulationEngine+Environment.swift"; sourceTree = "<group>"; };
 		06B4B2C92DF51286005DC523 /* UDPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPClient.swift; sourceTree = "<group>"; };
 		06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindConfig.swift; sourceTree = "<group>"; };
 		06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HydroConfig.swift; sourceTree = "<group>"; };
@@ -398,6 +406,8 @@
 			isa = PBXGroup;
 			children = (
 				06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */,
+				06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */,
+				06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */,
 				06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */,
 				06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */,
 				06LW00102F901003005DE47D /* NMEASimulator+LiveWeather.swift */,
@@ -408,6 +418,8 @@
 				0648D2602E023437000DC7E3 /* NMEASimulator+FormattedValues.swift */,
 				0648D26E2E025000000DC7E3 /* NMEANumericFormatting.swift */,
 				06F0F94E2FF9EB27002F752C /* SimulationEngine.swift */,
+				06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */,
+				06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */,
 				06F0F9502FF9F42C002F752C /* SentenceScheduler.swift */,
 				06F0F9542FFB0E77002F752C /* TransportManager.swift */,
 				06F0F9562FFB151C002F752C /* PersistenceManager.swift */,
@@ -817,6 +829,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				06F0F94F2FF9EB27002F752C /* SimulationEngine.swift in Sources */,
+				06NMA0032F901001005DE47D /* SimulationEngine+Maneuvers.swift in Sources */,
+				06NMA0042F901001005DE47D /* SimulationEngine+Environment.swift in Sources */,
 				06212DEE2E10DF0E007A4537 /* MTWHelpView.swift in Sources */,
 				06883DEA2F78B925005DE47D /* SimulatorSettings.swift in Sources */,
 				06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */,
@@ -918,6 +932,8 @@
 				0648D25D2E02326A000DC7E3 /* NMEASimulator+SentenceBuilder.swift in Sources */,
 				06212E982E149D3B007A4537 /* GLLHelpView.swift in Sources */,
 				06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */,
+				06NMA0012F901001005DE47D /* NMEASimulator+Persistence.swift in Sources */,
+				06NMA0022F901001005DE47D /* NMEASimulator+VesselLibrary.swift in Sources */,
 				063AADF62E949A5B003B2A7A /* OpenSeaMapView.swift in Sources */,
 				06AFA93A2F8B049400A76F15 /* LiveWeather.swift in Sources */,
 				06212DD72E0B6B1C007A4537 /* HDGHelpView.swift in Sources */,

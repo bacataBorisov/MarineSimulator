@@ -19,7 +19,7 @@ class NMEASimulator {
     private static let consoleRetentionInterval: TimeInterval = 60
     private static let consoleMaxRecords = 400
 
-    private static let simulationValuePersistDebounceInterval: TimeInterval = 5.0
+    static let simulationValuePersistDebounceInterval: TimeInterval = 5.0
 
     /// Posted on the main thread after each tack heading update (see `applySimulatedTrueHeading`). Wind/compass use this instead of SwiftUI `onChange` so 60 Hz steps are not coalesced or deferred.
     static let tackInstrumentStepNotification = Notification.Name("MarineSimulator.NMEASimulator.tackInstrumentStep")
@@ -27,7 +27,7 @@ class NMEASimulator {
     // SimulationState and PendingTransmission are defined in Model/SimulationState.swift
     // SimulationConfig is defined in Model/SimulationConfig.swift
 
-    @ObservationIgnored private let persistenceManager: PersistenceManager
+    @ObservationIgnored let persistenceManager: PersistenceManager
     @ObservationIgnored let weatherService: any WeatherService
 
     // MARK: - Sensors & Sentences States
@@ -85,8 +85,8 @@ class NMEASimulator {
 
     /// Lock-protected mirror of every property the simulation queue reads.
     /// Written on main (via `syncInputMirror`), read on the sim queue (via `readInputMirror`).
-    @ObservationIgnored private let inputMirrorLock = NSLock()
-    @ObservationIgnored private var inputMirror: SimulationInputMirror?
+    @ObservationIgnored let inputMirrorLock = NSLock()
+    @ObservationIgnored var inputMirror: SimulationInputMirror?
 
     var isTimerSelected = true {
         didSet {
@@ -196,10 +196,10 @@ class NMEASimulator {
         }
     }
     var activeVesselState: ActiveVesselState = .resolved(BuiltInVesselID.extasy)
-    @ObservationIgnored private(set) var vesselRepository: VesselProfileRepository!
-    private(set) var vessels: [VesselProfile] = []
+    @ObservationIgnored var vesselRepository: VesselProfileRepository!
+    var vessels: [VesselProfile] = []
     var vesselStoreError: VesselProfileStoreError?
-    @ObservationIgnored private var isApplyingVesselSelection = false
+    @ObservationIgnored var isApplyingVesselSelection = false
     var sailConfiguration = SailConfiguration()
     var vesselObservation = VesselObservation()
     var activeManeuver: ActiveManeuver?
@@ -319,7 +319,7 @@ class NMEASimulator {
     var previousTurnReferenceHeading: Double?
     var totalLogDistanceNm: Double = 0
     var totalTripDistanceNm: Double = 0
-    private var isRestoringSettings = false
+    var isRestoringSettings = false
     var isApplyingSimulationTick = false
     var isApplyingHardwareProfile = false
     var isSynchronizingEndpoints = false
@@ -705,448 +705,6 @@ class NMEASimulator {
         if transportHistory.count > 200 {
             transportHistory.removeFirst(transportHistory.count - 200)
         }
-    }
-
-    func persistSettingsIfNeeded() {
-        syncInputMirror()
-        persistenceManager.persistIfNeeded(
-            isRestoring: isRestoringSettings,
-            isApplyingTick: isApplyingSimulationTick
-        ) { [self] in
-            makeSettingsSnapshot()
-        }
-    }
-
-    /// Copies every sim-queue-visible property into the lock-protected mirror.
-    /// Called from every relevant `didSet` (via `persistSettingsIfNeeded`), from
-    /// `applyRuntimeToMain`, and before starting a simulation run.
-    func syncInputMirror() {
-        let snapshot = SimulationInputMirror(from: self)
-        inputMirrorLock.lock()
-        inputMirror = snapshot
-        inputMirrorLock.unlock()
-    }
-
-    /// Returns a copy of the input mirror for use on the simulation queue.
-    func readInputMirror() -> SimulationInputMirror? {
-        inputMirrorLock.lock()
-        let snapshot = inputMirror
-        inputMirrorLock.unlock()
-        return snapshot
-    }
-
-    /// Queue-side tack install. The next tick reads this mirror instead of a stale main-thread gyro.
-    func writeTackCommandToMirror(
-        trueHeading: Double,
-        magneticHeading: Double?,
-        hasGyro: Bool,
-        hasCompass: Bool
-    ) {
-        inputMirrorLock.lock()
-        defer { inputMirrorLock.unlock() }
-        guard var mirror = inputMirror else { return }
-        mirror.tackAnimationInProgress = true
-        if hasGyro {
-            mirror.gyroHeading.value = trueHeading
-            mirror.gyroHeading.centerValue = trueHeading.clamped(to: mirror.gyroHeading.range)
-        }
-        if hasCompass, let magneticHeading {
-            mirror.heading.value = magneticHeading
-            mirror.heading.centerValue = magneticHeading.clamped(to: mirror.heading.range)
-        }
-        inputMirror = mirror
-    }
-
-    func scheduleDebouncedSimulationPersist() {
-        persistenceManager.scheduleDebouncedPersist(
-            delay: Self.simulationValuePersistDebounceInterval
-        ) { [weak self] in
-            self?.makeSettingsSnapshot()
-        }
-    }
-
-    var persistSettingsInvocationCount: Int {
-        persistenceManager.invocationCount
-    }
-
-    /// Export current settings to JSON (File menu).
-    func makeSettingsSnapshotForExport() -> SimulatorSettings {
-        makeSettingsSnapshot()
-    }
-
-    /// Import settings from JSON (File menu) — same path as launch restore.
-    func applyImportedSettings(_ settings: SimulatorSettings) {
-        apply(settings: settings)
-    }
-
-
-
-    private static func makeVesselStore(userDefaults: UserDefaults) -> any VesselProfileStoring {
-        if userDefaults === UserDefaults.standard {
-            return FileVesselProfileStore.applicationSupport()
-        }
-        return InMemoryVesselProfileStore()
-    }
-
-    var vesselAllowsSimulation: Bool {
-        vesselStoreError == nil && {
-            switch activeVesselState {
-            case .resolved, .none:
-                return true
-            case .unresolved:
-                return false
-            }
-        }()
-    }
-
-    var vesselAllowsBoatFeatures: Bool {
-        vesselStoreError == nil && {
-            if case .resolved = activeVesselState { return true }
-            return false
-        }()
-    }
-
-    var activeVesselName: String {
-        switch activeVesselState {
-        case .resolved(let id):
-            return vesselRepository.profile(id: id)?.name ?? "Vessel"
-        case .none:
-            return "No boat"
-        case .unresolved:
-            return "No vessel"
-        }
-    }
-
-    var activeVesselSummary: String {
-        if let vesselStoreError {
-            return "Vessel profiles could not be read (\(vesselStoreError)). The saved file was left in place."
-        }
-        switch activeVesselState {
-        case .resolved(let id):
-            return vesselRepository.profile(id: id)?.summary ?? "Select a vessel."
-        case .none:
-            return "Simulating raw instruments without a boat profile."
-        case .unresolved(let storedReference):
-            if storedReference.isEmpty {
-                return "Select a vessel. The saved vessel was not found."
-            }
-            return "Select a vessel. Saved reference \(storedReference) was not found."
-        }
-    }
-
-    var selectedVesselID: UUID? {
-        if case .resolved(let id) = activeVesselState { return id }
-        return nil
-    }
-
-    private var persistedVesselReference: String {
-        switch activeVesselState {
-        case .resolved(let id):
-            return id.uuidString
-        case .none:
-            return Self.noVesselReference
-        case .unresolved(let storedReference):
-            return storedReference
-        }
-    }
-
-    private static let noVesselReference = "none"
-
-    func selectVessel(_ id: UUID) {
-        guard vesselStoreError == nil, let profile = vesselRepository.profile(id: id) else { return }
-        isApplyingVesselSelection = true
-        activeVesselState = .resolved(id)
-        boatProfile = profile.sailingKey
-        isApplyingVesselSelection = false
-        adoptHoistedSails()
-        persistSettingsIfNeeded()
-    }
-
-    func clearSelectedVessel() {
-        guard vesselStoreError == nil else { return }
-        isApplyingVesselSelection = true
-        activeVesselState = .none
-        boatProfile = .nimana
-        isApplyingVesselSelection = false
-        if boatSpeedMode != .manual {
-            boatSpeedMode = .manual
-        }
-        if activeManeuver != nil || isTackInProgress {
-            cancelManeuver()
-        }
-        adoptHoistedSails()
-        persistSettingsIfNeeded()
-    }
-
-    @discardableResult
-    func createCustomVessel(name: String, modelName: String? = nil, constructionYear: Int? = nil) throws -> VesselProfile {
-        let profile = try vesselRepository.createCustomVessel(name: name, modelName: modelName, constructionYear: constructionYear)
-        vessels = vesselRepository.profiles
-        return profile
-    }
-
-    func renameVessel(_ id: UUID, to name: String) throws {
-        try vesselRepository.renameVessel(id, to: name)
-        vessels = vesselRepository.profiles
-    }
-
-    func updateCustomVessel(_ id: UUID, name: String, modelName: String?, constructionYear: Int?) throws {
-        try vesselRepository.updateCustomVessel(id, name: name, modelName: modelName, constructionYear: constructionYear)
-        vessels = vesselRepository.profiles
-    }
-
-    func updateCustomVessel(_ id: UUID, metadata: VesselEditableMetadata) throws {
-        try vesselRepository.updateCustomVessel(id, metadata: metadata)
-        vessels = vesselRepository.profiles
-    }
-
-    func saveProfileEdits(_ id: UUID, metadata: VesselEditableMetadata?, inventory: [SailRecord]) throws {
-        try vesselRepository.saveProfileEdits(id, metadata: metadata, inventory: inventory)
-        vessels = vesselRepository.profiles
-        if selectedVesselID == id {
-            reconcileHoistedSailsWithActiveInventory()
-        }
-    }
-
-    func replaceActiveSails(_ id: UUID, with selection: ActiveSailSelection) throws {
-        try vesselRepository.replaceActiveSails(id, with: selection)
-        vessels = vesselRepository.profiles
-    }
-
-    /// Copies the active vessel's saved sail selection into the runtime hoisted-sail record.
-    /// Called when the active vessel changes, at launch, and when the selection becomes unresolved.
-    func adoptHoistedSails() {
-        if let id = selectedVesselID, let profile = vesselRepository.profile(id: id) {
-            sailConfiguration = profile.activeSails.runtimeConfiguration
-        } else {
-            sailConfiguration = SailConfiguration()
-        }
-        publishHoistedConfiguration()
-    }
-
-    /// Session hoist. Does not write the vessel's saved selection.
-    func setHoistedSails(_ selection: ActiveSailSelection) throws {
-        guard let id = selectedVesselID, let profile = vesselRepository.profile(id: id) else {
-            throw VesselProfileStoreError.invalidProfileData("Select a vessel before changing hoisted sails.")
-        }
-        var selection = selection
-        let previousMain = sailConfiguration.mainSailID
-        if selection.mainsailID?.uuidString != previousMain {
-            selection.mainsailReef = Self.reefFitting(selection.mainsailReef, mainsail: profile.inventory.first { $0.id == selection.mainsailID })
-        }
-        if selection.mainsailID == nil {
-            selection.mainsailReef = .full
-        }
-        try VesselProfileRepository.validateActiveSails(selection, inventory: profile.inventory)
-        sailConfiguration = selection.runtimeConfiguration
-        publishHoistedConfiguration()
-    }
-
-    /// Drops hoisted sails that are no longer in the active inventory. Other hoisted slots stay.
-    func reconcileHoistedSailsWithActiveInventory() {
-        guard let id = selectedVesselID, let profile = vesselRepository.profile(id: id) else {
-            sailConfiguration = SailConfiguration()
-            publishHoistedConfiguration()
-            return
-        }
-        var selection = ActiveSailSelection(
-            mainsailID: sailConfiguration.mainSailID.flatMap(UUID.init(uuidString:)),
-            headsailID: sailConfiguration.headsailID.flatMap(UUID.init(uuidString:)),
-            downwindSailID: sailConfiguration.downwindSailID.flatMap(UUID.init(uuidString:)),
-            mainsailReef: sailConfiguration.mainsailReef
-        )
-        selection = selection.clearingSails(absentFrom: profile.inventory)
-        if let mainID = selection.mainsailID {
-            selection.mainsailReef = Self.reefFitting(selection.mainsailReef, mainsail: profile.inventory.first { $0.id == mainID })
-        }
-        sailConfiguration = selection.runtimeConfiguration
-        publishHoistedConfiguration()
-    }
-
-    private static func reefFitting(_ reef: ReefStep, mainsail: SailRecord?) -> ReefStep {
-        guard let count = mainsail?.mainsail?.reefCount else { return reef }
-        let used: Int
-        switch reef {
-        case .full: used = 0
-        case .reef1: used = 1
-        case .reef2: used = 2
-        case .reef3: used = 3
-        }
-        return used > count ? .full : reef
-    }
-
-    /// Makes the current hoist and vessel the observation snapshot, including a running transmit state.
-    func publishHoistedConfiguration() {
-        vesselObservation.sailConfiguration = sailConfiguration
-        vesselObservation.referenceProfile = boatProfile
-        syncInputMirror()
-        let sails = sailConfiguration
-        let reference = boatProfile
-        let publish = {
-            self.transmitRuntime?.sailConfiguration = sails
-            self.transmitRuntime?.vesselObservation.sailConfiguration = sails
-            self.transmitRuntime?.vesselObservation.referenceProfile = reference
-        }
-        if DispatchQueue.getSpecific(key: Self.simulationQueueMarker) != nil {
-            publish()
-        } else {
-            simulationQueue.sync(execute: publish)
-        }
-    }
-
-    @discardableResult
-    func duplicateVessel(_ id: UUID) throws -> VesselProfile {
-        let copy = try vesselRepository.duplicateVessel(id)
-        vessels = vesselRepository.profiles
-        return copy
-    }
-
-    func deleteCustomVessel(_ id: UUID) throws {
-        try vesselRepository.deleteCustomVessel(id)
-        vessels = vesselRepository.profiles
-        if case .resolved(let active) = activeVesselState, active == id {
-            isApplyingVesselSelection = true
-            activeVesselState = .unresolved(storedReference: id.uuidString)
-            boatProfile = .nimana
-            isApplyingVesselSelection = false
-            if isTransmitting || simulationTimer != nil {
-                stopSimulation()
-            }
-            adoptHoistedSails()
-            persistSettingsIfNeeded()
-        }
-    }
-
-    private func applyStoredVesselSelection(_ settings: SimulatorSettings) {
-        if vesselStoreError != nil {
-            let reference = settings.vesselSelectionWasStored ? (settings.activeVesselID ?? "") : FileVesselProfileStore.fileName
-            activeVesselState = .unresolved(storedReference: reference)
-            isApplyingVesselSelection = true
-            boatProfile = .nimana
-            isApplyingVesselSelection = false
-            return
-        }
-        guard settings.vesselSelectionWasStored else {
-            activeVesselState = .resolved(BuiltInVesselID.extasy)
-            isApplyingVesselSelection = true
-            boatProfile = .beneteauFirst407
-            isApplyingVesselSelection = false
-            return
-        }
-        let raw = settings.activeVesselID ?? ""
-        if raw == Self.noVesselReference {
-            activeVesselState = .none
-            isApplyingVesselSelection = true
-            boatProfile = .nimana
-            isApplyingVesselSelection = false
-        } else if let id = UUID(uuidString: raw), vesselRepository.profile(id: id) != nil {
-            activeVesselState = .resolved(id)
-            isApplyingVesselSelection = true
-            boatProfile = vesselRepository.profile(id: id)?.sailingKey ?? .nimana
-            isApplyingVesselSelection = false
-        } else {
-            activeVesselState = .unresolved(storedReference: raw)
-            isApplyingVesselSelection = true
-            boatProfile = .nimana
-            isApplyingVesselSelection = false
-        }
-    }
-
-    private func makeSettingsSnapshot() -> SimulatorSettings {
-        SimulatorSettings(
-            ip: ip,
-            port: port,
-            talkerID: talkerID,
-            outputEndpoints: outputEndpoints,
-            sentenceIntervals: Dictionary(uniqueKeysWithValues: sentenceIntervals.map { ($0.key.rawValue, $0.value) }),
-            isTimerSelected: isTimerSelected,
-            interval: interval,
-            sentenceToggles: sentenceToggles,
-            sensorToggles: sensorToggles,
-            twd: twd,
-            tws: tws,
-            speed: speed,
-            depth: depth,
-            depthOffsetMeters: depthOffsetMeters,
-            seaTemp: seaTemp,
-            airTemp: airTemp,
-            humidity: humidity,
-            barometer: barometer,
-            heading: heading,
-            gyroHeading: gyroHeading,
-            gpsData: gpsData,
-            faultInjection: faultInjection,
-            mwvReferenceMode: mwvReferenceMode,
-            selectedPreset: selectedPreset,
-            selectedProfile: selectedProfile,
-            sentenceRateMode: sentenceRateMode,
-            perSentenceTalkerID: Dictionary(uniqueKeysWithValues: perSentenceTalkerID.map { ($0.key.rawValue, $0.value) }),
-            boatProfile: boatProfile,
-            boatSpeedMode: boatSpeedMode,
-            weatherSourceMode: weatherSourceMode,
-            liveWeatherSettings: liveWeatherSettings,
-            latestLiveWeather: latestLiveWeather,
-            waypointNavigation: waypointNavigation,
-            maneuverSettings: maneuverSettings,
-            activeVesselID: persistedVesselReference,
-            vesselSelectionWasStored: true
-        )
-    }
-
-    private func apply(settings: SimulatorSettings) {
-        isRestoringSettings = true
-
-        ip = settings.ip
-        port = settings.port
-        talkerID = settings.talkerID
-        outputEndpoints = settings.outputEndpoints
-        sentenceIntervals = Dictionary(
-            uniqueKeysWithValues: NMEASentenceType.allCases.map { type in
-                (type, settings.sentenceIntervals[type.rawValue] ?? Self.defaultSentenceIntervals[type] ?? 1.0)
-            }
-        )
-        selectedProfile = settings.selectedProfile
-        sentenceRateMode = settings.sentenceRateMode
-        perSentenceTalkerID = Dictionary(
-            uniqueKeysWithValues: NMEASentenceType.allCases.map { type in
-                (type, settings.perSentenceTalkerID[type.rawValue] ?? Self.defaultTalkerIDs[type] ?? settings.talkerID)
-            }
-        )
-        isTimerSelected = settings.isTimerSelected
-        interval = max(0.1, settings.interval)
-        sentenceToggles = settings.sentenceToggles
-        sensorToggles = settings.sensorToggles
-        twd = settings.twd
-        tws = settings.tws
-        speed = settings.speed
-        depth = settings.depth
-        depthOffsetMeters = settings.depthOffsetMeters
-        seaTemp = settings.seaTemp
-        airTemp = settings.airTemp
-        humidity = settings.humidity
-        barometer = settings.barometer
-        heading = settings.heading
-        gyroHeading = settings.gyroHeading
-        gpsData = settings.gpsData
-        faultInjection = settings.faultInjection
-        mwvReferenceMode = settings.mwvReferenceMode
-        selectedPreset = settings.selectedPreset
-        boatSpeedMode = settings.boatSpeedMode
-        weatherSourceMode = settings.weatherSourceMode
-        liveWeatherSettings = settings.liveWeatherSettings
-        latestLiveWeather = settings.latestLiveWeather
-        waypointNavigation = settings.waypointNavigation
-        maneuverSettings = settings.maneuverSettings
-        applyStoredVesselSelection(settings)
-        liveWeatherStatus = weatherSourceMode == .liveWeather
-            ? LiveWeatherStatus(
-                state: latestLiveWeather == nil ? .idle : .ready,
-                message: latestLiveWeather == nil ? "Live weather not fetched yet." : "Using cached live weather.",
-                lastUpdated: latestLiveWeather?.fetchedAt
-            )
-            : .idle
-
-        isRestoringSettings = false
     }
 
     private func configuredValue(

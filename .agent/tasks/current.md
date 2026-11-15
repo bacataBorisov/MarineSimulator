@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. File-split audit Steps 1+2 passed `PagePresentationTests`, `ResponsiveLayoutTests`, `SemanticFormTests`, and user smoke test, and are committed (dead `TopControlBar.swift` / `LeadingSidePanel.swift` removed; `ConfigurationChrome.swift` split into `ConsoleScrollTracking.swift`, `ConfigurationChrome.swift`, `ConnectionChrome.swift`, and `SimulationChrome.swift`). Remaining open items: file-split Steps 3–5 (`MainView.swift`, `BoatProfileEditor.swift`, `NMEASimulator.swift`, `SimulationEngine.swift`), per-page last scroll-position restoration, atmospheric NMEA sentences (`MDA`/`XDR` for barometer, humidity, air temperature), and GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. All 5 file-split cleanup steps passed focused tests and user smoke tests, and are committed (`TopControlBar.swift`/`LeadingSidePanel.swift` removed; `ConfigurationChrome.swift`, `MainView.swift`, `BoatProfileEditor.swift`, `VesselProfile.swift`, `NMEASimulator.swift`, and `SimulationEngine.swift` split so zero production files exceed 1,000 lines). Next: fix per-page last scroll-position restoration, then Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences, and GPS `retainedMapResource`.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -39,10 +39,11 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Continue file-split cleanup (`Views/MainView.swift`, `Views/BoatProfileEditor.swift`, `NMEA/NMEASimulator.swift`, `NMEA/SimulationEngine.swift`) with focused regression tests and user smoke checks.
 - Fix per-page last scroll-position restoration (`Views/ConsoleScrollTracking.swift`).
-- Add atmospheric NMEA sentences (air temp, humidity, barometer — after file-split / scroll cleanup settles).
-- Next feature item after cleanup: GPS `retainedMapResource`. No retained GPS map exists.
+- Add GPS-off glance hint to `WeatherModeToolbarPill` (`Views/MainWindowToolbar.swift`).
+- Add numeric input restriction / inline feedback on Boat Profile numeric fields (`Views/BoatProfileEditor.swift`).
+- Add atmospheric NMEA sentences (air temp, humidity, barometer).
+- Next lifecycle item after cleanup: GPS `retainedMapResource`. No retained GPS map exists.
 - Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).
 - Shared master-detail for Boat Profile and other selection-detail pages stays deferred (do not force master-detail onto single-form pages).
 - One non-blocking resize glitch across the one-column/two-column threshold stays deferred.
