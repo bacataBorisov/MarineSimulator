@@ -30,7 +30,6 @@
 		06212EA02E149F49007A4537 /* GPSMapSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212E9F2E149F49007A4537 /* GPSMapSelectorView.swift */; };
 		06212EA22E14A0A4007A4537 /* MapWithRightClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212EA12E14A0A4007A4537 /* MapWithRightClick.swift */; };
 		063AADE52E9469FA003B2A7A /* TrailingSidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */; };
-		063AADE82E946F2A003B2A7A /* LeadingSidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */; };
 		063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADF02E947A71003B2A7A /* ControlCategory.swift */; };
 		063AADF62E949A5B003B2A7A /* OpenSeaMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 063AADF52E949A5B003B2A7A /* OpenSeaMapView.swift */; };
 		0648D2252E00F1FA000DC7E3 /* HeadingConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */; };
@@ -91,7 +90,6 @@
 		06B4B2E02DFE4C54005DC523 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */; };
 		06BFD0012F900001005DE47D /* HardwareProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BFD0022F900001005DE47D /* HardwareProfile.swift */; };
 		06BFD0032F900001005DE47D /* NMEASimulator+HardwareProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */; };
-		06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D349022E91ED6C005F76A4 /* TopControlBar.swift */; };
 		06EP00112F901005005DE47D /* NMEASimulator+Endpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EP00102F901005005DE47D /* NMEASimulator+Endpoints.swift */; };
 		06F0F94B2FF9E24C002F752C /* SimulationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94A2FF9E24C002F752C /* SimulationState.swift */; };
 		06F0F94D2FF9E26A002F752C /* SimulationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */; };
@@ -105,6 +103,9 @@
 		06HIG0022F901001005DE47D /* SimulationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0122F901001005DE47D /* SimulationView.swift */; };
 		06SEN0012F901001005DE47D /* SentenceOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SEN0112F901001005DE47D /* SentenceOverviewView.swift */; };
 		06HIG0032F901001005DE47D /* ConfigurationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0132F901001005DE47D /* ConfigurationChrome.swift */; };
+		06SPL0012F901001005DE47D /* ConsoleScrollTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */; };
+		06SPL0022F901001005DE47D /* ConnectionChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0122F901001005DE47D /* ConnectionChrome.swift */; };
+		06SPL0032F901001005DE47D /* SimulationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0132F901001005DE47D /* SimulationChrome.swift */; };
 		06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0142F901001005DE47D /* SidebarNavigation.swift */; };
 		06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0152F901001005DE47D /* SentencePanelLayout.swift */; };
 		06HIG0062F901001005DE47D /* ConsoleHeightStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */; };
@@ -166,7 +167,6 @@
 		06212E9F2E149F49007A4537 /* GPSMapSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPSMapSelectorView.swift; sourceTree = "<group>"; };
 		06212EA12E14A0A4007A4537 /* MapWithRightClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapWithRightClick.swift; sourceTree = "<group>"; };
 		063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingSidePanel.swift; sourceTree = "<group>"; };
-		063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadingSidePanel.swift; sourceTree = "<group>"; };
 		063AADF02E947A71003B2A7A /* ControlCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCategory.swift; sourceTree = "<group>"; };
 		063AADF52E949A5B003B2A7A /* OpenSeaMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSeaMapView.swift; sourceTree = "<group>"; };
 		0648D2242E00F1F6000DC7E3 /* HeadingConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadingConfig.swift; sourceTree = "<group>"; };
@@ -225,7 +225,6 @@
 		06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		06BFD0022F900001005DE47D /* HardwareProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareProfile.swift; sourceTree = "<group>"; };
 		06BFD0042F900001005DE47D /* NMEASimulator+HardwareProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+HardwareProfile.swift"; sourceTree = "<group>"; };
-		06D349022E91ED6C005F76A4 /* TopControlBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopControlBar.swift; sourceTree = "<group>"; };
 		06E0A0112F88B0E10008299A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		06E0A0122F88B0E10008299A /* begin-chat.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "begin-chat.md"; sourceTree = "<group>"; };
 		06E0A0132F88B0E10008299A /* cache.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = cache.md; sourceTree = "<group>"; };
@@ -245,6 +244,9 @@
 		06HIG0122F901001005DE47D /* SimulationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationView.swift; sourceTree = "<group>"; };
 		06SEN0112F901001005DE47D /* SentenceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceOverviewView.swift; sourceTree = "<group>"; };
 		06HIG0132F901001005DE47D /* ConfigurationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationChrome.swift; sourceTree = "<group>"; };
+		06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleScrollTracking.swift; sourceTree = "<group>"; };
+		06SPL0122F901001005DE47D /* ConnectionChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionChrome.swift; sourceTree = "<group>"; };
+		06SPL0132F901001005DE47D /* SimulationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationChrome.swift; sourceTree = "<group>"; };
 		06HIG0142F901001005DE47D /* SidebarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigation.swift; sourceTree = "<group>"; };
 		06HIG0152F901001005DE47D /* SentencePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePanelLayout.swift; sourceTree = "<group>"; };
 		06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleHeightStorage.swift; sourceTree = "<group>"; };
@@ -372,8 +374,6 @@
 			children = (
 				06B4B2DF2DFE4C54005DC523 /* DashboardView.swift */,
 				066372F82DFF83E000B7348E /* BoatMapPreview.swift */,
-				06D349022E91ED6C005F76A4 /* TopControlBar.swift */,
-				063AADE72E946F2A003B2A7A /* LeadingSidePanel.swift */,
 				063AADE42E9469FA003B2A7A /* TrailingSidePanel.swift */,
 				063AADF02E947A71003B2A7A /* ControlCategory.swift */,
 				0648D26C2E025000000DC7E3 /* DashboardChrome.swift */,
@@ -569,6 +569,9 @@
 				06HIG0122F901001005DE47D /* SimulationView.swift */,
 				06SEN0112F901001005DE47D /* SentenceOverviewView.swift */,
 				06HIG0132F901001005DE47D /* ConfigurationChrome.swift */,
+				06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */,
+				06SPL0122F901001005DE47D /* ConnectionChrome.swift */,
+				06SPL0132F901001005DE47D /* SimulationChrome.swift */,
 				06HIG0142F901001005DE47D /* SidebarNavigation.swift */,
 				06HIG0152F901001005DE47D /* SentencePanelLayout.swift */,
 				06V6F2012F901020005DE47D /* BoatProfileEditor.swift */,
@@ -806,6 +809,9 @@
 				06HIG0022F901001005DE47D /* SimulationView.swift in Sources */,
 				06SEN0012F901001005DE47D /* SentenceOverviewView.swift in Sources */,
 				06HIG0032F901001005DE47D /* ConfigurationChrome.swift in Sources */,
+				06SPL0012F901001005DE47D /* ConsoleScrollTracking.swift in Sources */,
+				06SPL0022F901001005DE47D /* ConnectionChrome.swift in Sources */,
+				06SPL0032F901001005DE47D /* SimulationChrome.swift in Sources */,
 				06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */,
 				06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */,
 				06V6F2022F901020005DE47D /* BoatProfileEditor.swift in Sources */,
@@ -855,7 +861,6 @@
 				063AADF12E947A76003B2A7A /* ControlCategory.swift in Sources */,
 				06B4B2D42DFA5391005DC523 /* SimulatedValue.swift in Sources */,
 				06AFA93C2F8B049400A76F15 /* WeatherService.swift in Sources */,
-				06D349032E91ED70005F76A4 /* TopControlBar.swift in Sources */,
 				06AFA9622F8C4DA900A76F15 /* BoatProfile.swift in Sources */,
 				06V6F1022F901010005DE47D /* VesselProfile.swift in Sources */,
 				06SAI0122F901030005DE47D /* SailInventory.swift in Sources */,
@@ -878,7 +883,6 @@
 				0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */,
 				06F0F9512FF9F42C002F752C /* SentenceScheduler.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
-				063AADE82E946F2A003B2A7A /* LeadingSidePanel.swift in Sources */,
 				06B4B2DC2DFCFEBA005DC523 /* GPSData.swift in Sources */,
 				06F0F9552FFB0E77002F752C /* TransportManager.swift in Sources */,
 				06212E9C2E149D98007A4537 /* GSVHelpView.swift in Sources */,

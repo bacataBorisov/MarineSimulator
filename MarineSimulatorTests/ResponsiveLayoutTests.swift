@@ -61,6 +61,7 @@ struct ResponsiveLayoutTests {
             (.boat, "Boat Profile"),
             (.diagnostics, "Diagnostics"),
             (.manual, "Manual"),
+            (.sentencesOverview, "Overview"),
             (.wind, "Wind"),
             (.compass, "Compass"),
             (.hydro, "Hydro"),
@@ -101,7 +102,7 @@ struct ResponsiveLayoutTests {
         #expect(SidebarItem.gps.retainsDestinationTree == false)
         #expect(SidebarItem.dashboard.lifecycle == .retainedDashboardMap)
         #expect(SidebarItem.dashboard.placesConsoleInTheShell == false)
-        for page in [SidebarItem.diagnostics, .wind, .hydro, .compass] {
+        for page in [SidebarItem.diagnostics, .sentencesOverview, .wind, .hydro, .compass] {
             #expect(page.lifecycle == .ephemeral)
             #expect(page.retainsDestinationTree == false)
         }

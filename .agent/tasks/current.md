@@ -1,7 +1,7 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Dashboard unified toolbar, 280pt left Live Controls rail (separate Gyro/Magnetic controls + No Boat mode), 280pt right Instruments rail (square WindCompass, pure telemetry), and the new `Sentences -> Overview` page passed user smoke tests and are committed. Remaining open items: per-page last scroll-position restoration, GPS `retainedMapResource`, and later page polish.
-**Last updated:** 2026-11-14
+**Status:** Direct single-chat workflow active. File-split audit Steps 1+2 passed `PagePresentationTests`, `ResponsiveLayoutTests`, `SemanticFormTests`, and user smoke test, and are committed (dead `TopControlBar.swift` / `LeadingSidePanel.swift` removed; `ConfigurationChrome.swift` split into `ConsoleScrollTracking.swift`, `ConfigurationChrome.swift`, `ConnectionChrome.swift`, and `SimulationChrome.swift`). Remaining open items: file-split Steps 3–5 (`MainView.swift`, `BoatProfileEditor.swift`, `NMEASimulator.swift`, `SimulationEngine.swift`), per-page last scroll-position restoration, atmospheric NMEA sentences (`MDA`/`XDR` for barometer, humidity, air temperature), and GPS `retainedMapResource`.
+**Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
 
@@ -39,8 +39,10 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Fix per-page last scroll-position restoration.
-- Next feature item after regression cleanup: GPS `retainedMapResource`. No retained GPS map exists.
+- Continue file-split cleanup (`Views/MainView.swift`, `Views/BoatProfileEditor.swift`, `NMEA/NMEASimulator.swift`, `NMEA/SimulationEngine.swift`) with focused regression tests and user smoke checks.
+- Fix per-page last scroll-position restoration (`Views/ConsoleScrollTracking.swift`).
+- Add atmospheric NMEA sentences (air temp, humidity, barometer — after file-split / scroll cleanup settles).
+- Next feature item after cleanup: GPS `retainedMapResource`. No retained GPS map exists.
 - Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).
 - Shared master-detail for Boat Profile and other selection-detail pages stays deferred (do not force master-detail onto single-form pages).
 - One non-blocking resize glitch across the one-column/two-column threshold stays deferred.
