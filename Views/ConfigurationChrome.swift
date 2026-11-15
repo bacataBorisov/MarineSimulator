@@ -314,6 +314,7 @@ enum FormTextInputMode: Equatable {
     case plain
     case wholeNumber
     case decimal
+    case signedDecimal
 
     func sanitize(_ raw: String) -> String {
         switch self {
@@ -322,18 +323,9 @@ enum FormTextInputMode: Equatable {
         case .wholeNumber:
             return String(raw.filter(\.isNumber))
         case .decimal:
-            var seenSeparator = false
-            var result = ""
-            result.reserveCapacity(raw.count)
-            for character in raw {
-                if character.isNumber {
-                    result.append(character)
-                } else if (character == "." || character == ",") && !seenSeparator {
-                    seenSeparator = true
-                    result.append(".")
-                }
-            }
-            return result
+            return sanitizeDecimal(raw, allowNegative: false)
+        case .signedDecimal:
+            return sanitizeDecimal(raw, allowNegative: true)
         }
     }
 
@@ -342,7 +334,25 @@ enum FormTextInputMode: Equatable {
         case .plain: return nil
         case .wholeNumber: return "Whole numbers only (0–9)."
         case .decimal: return "Numbers only (e.g. 12.5)."
+        case .signedDecimal: return "Numbers only (e.g. -2.5 or 12.5)."
         }
+    }
+
+    private func sanitizeDecimal(_ raw: String, allowNegative: Bool) -> String {
+        var seenSeparator = false
+        var result = ""
+        result.reserveCapacity(raw.count)
+        for character in raw {
+            if allowNegative && character == "-" && result.isEmpty {
+                result.append("-")
+            } else if character.isNumber {
+                result.append(character)
+            } else if (character == "." || character == ",") && !seenSeparator {
+                seenSeparator = true
+                result.append(".")
+            }
+        }
+        return result
     }
 }
 

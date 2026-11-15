@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Step A UI/HIG pass (migrated Sentence pages `Wind`/`Compass`/`Hydro`/`GPS` and `SentencePage`/`ViewKit` to `DesignToken` & `SettingsCard`, raised window minimum width to `1080pt` and `SentencePage` split breakpoint to `900pt`, added inline `SensorEnablePrompt` actions, simplified `ConnectionStatusPill` to `"Idle"`/`"Transmitting"`, and fixed GPS map scroll-wheel trap + `MKZoomControl`) passed user smoke tests and is committed. Next: Step B (`ExperimentDiagnosticsView` `DesignToken`/HIG alignment).
+**Status:** Direct single-chat workflow active. Step B UI/HIG pass (`ExperimentDiagnosticsView` migrated to `DesignToken`, `SettingsCard`, adaptive `ViewThatFits` controls/error rows, focus-loss commit, and `FormTextInputMode` + popover validation matching Boat Profile) passed user smoke tests and is committed. Next: await user choice (Keyboard/VoiceOver check, custom proprietary NMEA sentences, or M3/M4 research roadmap).
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
