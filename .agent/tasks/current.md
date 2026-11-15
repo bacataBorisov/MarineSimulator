@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5), per-page scroll-position restoration, Weather GPS-off glance hint, Boat numeric-field UX, and atmospheric NMEA sentences (`MDA` & `XDR`) passed user smoke tests and are committed. Next: GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5), per-page scroll-position restoration, Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences (`MDA` & `XDR`), and GPS `retainedMapResource` passed user smoke tests and are committed. Next: Dashboard map flash on revisit.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -20,7 +20,7 @@ Historical traces and measurements remain in `../architecture/ui-performance-aud
 - Boat Profile is lazy `retainedSessionView`. After first visit, one destination root and one `VesselLibrarySession` persist. Valid Boat Profile edits autosave. Selection and the latest persisted profile survive navigation. Invalid intermediate text is not persisted.
 - Manual remains `ephemeral`. Keep its accepted 320-point `HStack`, native `List`, and original anchors. Parking a scrolled topics list reproducibly traps in SwiftUI `DynamicContainerInfo.tryRemovingItem` with `DynamicPreferenceCombiner`; do not retain it or inject an AppKit anchor without a separately reviewed design.
 - Diagnostics, Wind, Hydro, and Compass remain `ephemeral`. Do not add inactive 10 Hz observation for low-cost sentence pages.
-- GPS is metadata-only `retainedMapResource` future work. No retained GPS map exists yet; page recreation still resets its camera.
+- GPS uses `retainedMapResource` (`GPSSelectorMapResource` in `Views/GPS/MapWithRightClick.swift`): `GPSConfig` remains `ephemeral`, while its `MKMapView`, pin, and camera survive sidebar navigation.
 - Keep Dashboard's specialized retained-map lifecycle, one-console ownership, automatic key-view handling, scroll anchors, keyboard, VoiceOver, and operator/experiment isolation.
 - Runtime UI validation of the lifecycle slice remains outstanding; do not claim it complete from hosted tests alone.
 - Runtime VoiceOver and full keyboard/focus traversal remain open. Automated tests do not traverse focus.
@@ -39,7 +39,6 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Next lifecycle item after cleanup: GPS `retainedMapResource`. No retained GPS map exists.
 - Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).
 - Shared master-detail for Boat Profile and other selection-detail pages stays deferred (do not force master-detail onto single-form pages).
 - One non-blocking resize glitch across the one-column/two-column threshold stays deferred.

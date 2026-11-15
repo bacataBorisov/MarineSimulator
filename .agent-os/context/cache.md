@@ -4,7 +4,7 @@ Last updated: 2026-11-15
 
 ## Current Objective
 
-Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). File-split cleanup (Steps 1–5), per-page scroll restoration, Weather GPS-off glance hint, Boat numeric-field UX, and atmospheric NMEA sentences (`MDA` & `XDR`) passed user smoke tests and are committed.
+Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). File-split cleanup (Steps 1–5), per-page scroll restoration, Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences (`MDA` & `XDR`), and GPS `retainedMapResource` passed user smoke tests and are committed.
 
 ## Constraints
 
@@ -12,4 +12,4 @@ Boat Profile stays lazy `retainedSessionView`. Manual stays ephemeral. Connectio
 
 ## Next
 
-1. Return to GPS `retainedMapResource`.
+1. Investigate and fix Dashboard map flash when switching back to Dashboard.

@@ -7,6 +7,7 @@ struct MainView: View {
     @State private var diagnostics = ExperimentDiagnosticsSession()
     @State private var consoleDrag = ConsoleDragTracking()
     @State private var pagePresentation = PagePresentationSession()
+    @State private var gpsMapResource = GPSSelectorMapResource()
     /// Set on the first visit and then left true, so a later selection does not rebuild the root.
     @State private var retainedConnection = false
     @State private var retainedSimulation = false
@@ -124,6 +125,7 @@ struct MainView: View {
         .environment(\.consoleDragTracking, consoleDrag)
         .environment(\.pagePresentation, pagePresentation)
         .environment(\.sidebarNavigation, sidebarNavigation)
+        .environment(\.gpsMapResource, gpsMapResource)
         .onAppear {
             NSLog("[MarineSim] MainView.onAppear panel=%@", selectedPanelRawValue)
             ConsoleHeightStorage.migrateIfNeeded()
