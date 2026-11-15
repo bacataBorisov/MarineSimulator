@@ -338,12 +338,12 @@ private struct VesselLibraryDetail: View {
             if let message = session.validationMessage {
                 Text(message)
                     .font(DesignToken.Typography.supporting)
-                    .foregroundStyle(DesignToken.Status.error)
+                    .foregroundStyle(DesignToken.Status.warning)
                     .accessibilityIdentifier("Vessel editor status")
             } else if let message = session.failureMessage {
                 Text(message)
                     .font(DesignToken.Typography.supporting)
-                    .foregroundStyle(DesignToken.Status.error)
+                    .foregroundStyle(DesignToken.Status.warning)
                     .accessibilityIdentifier("Vessel editor status")
             } else if session.lastChangeSucceeded {
                 Text("Saved")
@@ -357,10 +357,14 @@ private struct VesselLibraryDetail: View {
     private func identitySection(_ profile: VesselProfile) -> some View {
         let editable = profile.origin == .custom
         return profileBlock("Identity") {
-            field("Name", text: $session.buffer.name, editable: editable, stored: profile.name)
+            field("Name", text: $session.buffer.name, editable: editable, stored: profile.name) { raw in
+                raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "A vessel name is required." : nil
+            }
             field("Builder", text: $session.buffer.manufacturer, editable: editable, stored: profile.manufacturer ?? "Not recorded")
             field("Model", text: $session.buffer.modelName, editable: editable, stored: profile.modelName ?? "Not recorded")
-            field("Construction year", text: $session.buffer.yearText, editable: editable, stored: yearLabel(profile.constructionYear))
+            field("Construction year", text: $session.buffer.yearText, editable: editable, stored: yearLabel(profile.constructionYear), inputMode: .wholeNumber) { raw in
+                Self.validateYearText(raw, label: "Construction year")
+            }
             field("Sail number", text: $session.buffer.sailNumber, editable: editable, stored: profile.sailNumber ?? "Not recorded")
             field("Registration", text: $session.buffer.registration, editable: editable, stored: profile.registration ?? "Not recorded")
         }
@@ -369,21 +373,21 @@ private struct VesselLibraryDetail: View {
     private func hullSection(_ profile: VesselProfile) -> some View {
         let editable = profile.origin == .custom
         return profileBlock("Hull") {
-            measure("LOA", text: $session.buffer.lengthOverall, unit: "m", editable: editable, stored: profile.hull.lengthOverallMeters)
-            measure("LWL", text: $session.buffer.waterlineLength, unit: "m", editable: editable, stored: profile.hull.waterlineLengthMeters)
-            measure("Beam", text: $session.buffer.beam, unit: "m", editable: editable, stored: profile.hull.beamMeters)
-            measure("Draft", text: $session.buffer.draft, unit: "m", editable: editable, stored: profile.hull.draftMeters)
-            measure("Displacement", text: $session.buffer.displacement, unit: "kg", editable: editable, stored: profile.hull.displacementKilograms)
+            measure("LOA", text: $session.buffer.lengthOverall, unit: "m", editable: editable, stored: profile.hull.lengthOverallMeters, validationLabel: "Length overall", validationUnit: "metres")
+            measure("LWL", text: $session.buffer.waterlineLength, unit: "m", editable: editable, stored: profile.hull.waterlineLengthMeters, validationLabel: "Waterline length", validationUnit: "metres")
+            measure("Beam", text: $session.buffer.beam, unit: "m", editable: editable, stored: profile.hull.beamMeters, validationLabel: "Beam", validationUnit: "metres")
+            measure("Draft", text: $session.buffer.draft, unit: "m", editable: editable, stored: profile.hull.draftMeters, validationLabel: "Draft", validationUnit: "metres")
+            measure("Displacement", text: $session.buffer.displacement, unit: "kg", editable: editable, stored: profile.hull.displacementKilograms, validationLabel: "Displacement", validationUnit: "kilograms")
         }
     }
 
     private func rigSection(_ profile: VesselProfile) -> some View {
         let editable = profile.origin == .custom
         return profileBlock("Rig") {
-            measure("I", text: $session.buffer.foretriangleHeight, unit: "m", editable: editable, stored: profile.rig.foretriangleHeightMeters)
-            measure("J", text: $session.buffer.foretriangleBase, unit: "m", editable: editable, stored: profile.rig.foretriangleBaseMeters)
-            measure("P", text: $session.buffer.mainsailLuff, unit: "m", editable: editable, stored: profile.rig.mainsailLuffMeters)
-            measure("E", text: $session.buffer.mainsailFoot, unit: "m", editable: editable, stored: profile.rig.mainsailFootMeters)
+            measure("I", text: $session.buffer.foretriangleHeight, unit: "m", editable: editable, stored: profile.rig.foretriangleHeightMeters, validationLabel: "I", validationUnit: "metres")
+            measure("J", text: $session.buffer.foretriangleBase, unit: "m", editable: editable, stored: profile.rig.foretriangleBaseMeters, validationLabel: "J", validationUnit: "metres")
+            measure("P", text: $session.buffer.mainsailLuff, unit: "m", editable: editable, stored: profile.rig.mainsailLuffMeters, validationLabel: "P", validationUnit: "metres")
+            measure("E", text: $session.buffer.mainsailFoot, unit: "m", editable: editable, stored: profile.rig.mainsailFootMeters, validationLabel: "E", validationUnit: "metres")
             Text("I is foretriangle height. J is foretriangle base. P is mainsail luff. E is mainsail foot. A blank value is unknown.")
                 .font(DesignToken.Typography.supporting)
                 .foregroundStyle(DesignToken.Status.neutral)
@@ -414,9 +418,16 @@ private struct VesselLibraryDetail: View {
     }
 
     @ViewBuilder
-    private func field(_ title: String, text: Binding<String>, editable: Bool, stored: String) -> some View {
+    private func field(
+        _ title: String,
+        text: Binding<String>,
+        editable: Bool,
+        stored: String,
+        inputMode: FormTextInputMode = .plain,
+        validationError: ((String) -> String?)? = nil
+    ) -> some View {
         if editable {
-            FormTextRow(title: title, text: text)
+            FormTextRow(title: title, text: text, inputMode: inputMode, validationError: validationError)
         } else {
             CompactFormRow(title: title) {
                 Text(stored)
@@ -429,9 +440,19 @@ private struct VesselLibraryDetail: View {
     }
 
     @ViewBuilder
-    private func measure(_ title: String, text: Binding<String>, unit: String, editable: Bool, stored: Double?) -> some View {
+    private func measure(
+        _ title: String,
+        text: Binding<String>,
+        unit: String,
+        editable: Bool,
+        stored: Double?,
+        validationLabel: String,
+        validationUnit: String
+    ) -> some View {
         if editable {
-            FormTextRow(title: title, text: text, unit: unit)
+            FormTextRow(title: title, text: text, unit: unit, inputMode: .decimal) { raw in
+                Self.validatePositiveDecimal(raw, label: validationLabel, unit: validationUnit)
+            }
         } else {
             CompactFormRow(title: title) {
                 if let stored {
@@ -449,6 +470,25 @@ private struct VesselLibraryDetail: View {
                         .accessibilityLabel("Not recorded")
                 }
             }
+        }
+    }
+
+    private static func validateYearText(_ raw: String, label: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        guard let year = Int(trimmed) else { return "\(label) must be a whole number." }
+        guard (1800...2100).contains(year) else { return "\(label) must be from 1800 through 2100." }
+        return nil
+    }
+
+    private static func validatePositiveDecimal(_ raw: String, label: String, unit: String) -> String? {
+        switch VesselEditBuffer.token(raw) {
+        case .empty:
+            return nil
+        case .invalid:
+            return "\(label) must be a number in \(unit)."
+        case .value(let value):
+            return value > 0 ? nil : "\(label) must be greater than zero."
         }
     }
 

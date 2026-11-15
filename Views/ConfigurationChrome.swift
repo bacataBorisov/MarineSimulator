@@ -310,39 +310,201 @@ struct SetupColumns<Compact: View, Wide: View>: View {
     }
 }
 
+enum FormTextInputMode: Equatable {
+    case plain
+    case wholeNumber
+    case decimal
+
+    func sanitize(_ raw: String) -> String {
+        switch self {
+        case .plain:
+            return raw
+        case .wholeNumber:
+            return String(raw.filter(\.isNumber))
+        case .decimal:
+            var seenSeparator = false
+            var result = ""
+            result.reserveCapacity(raw.count)
+            for character in raw {
+                if character.isNumber {
+                    result.append(character)
+                } else if (character == "." || character == ",") && !seenSeparator {
+                    seenSeparator = true
+                    result.append(".")
+                }
+            }
+            return result
+        }
+    }
+
+    var hintMessage: String? {
+        switch self {
+        case .plain: return nil
+        case .wholeNumber: return "Whole numbers only (0–9)."
+        case .decimal: return "Numbers only (e.g. 12.5)."
+        }
+    }
+}
+
 /// Text field with one persistent external label. An optional unit stays beside the value.
 struct FormTextRow: View {
     var title: String
     @Binding var text: String
     var accessibilityLabel: String?
     var unit: String?
+    var inputMode: FormTextInputMode = .plain
+    var validationError: ((String) -> String?)? = nil
+
+    @FocusState private var isFocused: Bool
+    @State private var draftText: String
+    @State private var isRevertingDraft = false
+    @State private var committedMessage: String?
+    @State private var inputHintMessage: String?
+    @State private var showValidationPopover = false
+
+    init(
+        title: String,
+        text: Binding<String>,
+        accessibilityLabel: String? = nil,
+        unit: String? = nil,
+        inputMode: FormTextInputMode = .plain,
+        validationError: ((String) -> String?)? = nil
+    ) {
+        self.title = title
+        self._text = text
+        self.accessibilityLabel = accessibilityLabel
+        self.unit = unit
+        self.inputMode = inputMode
+        self.validationError = validationError
+        self._draftText = State(initialValue: text.wrappedValue)
+    }
 
     private var label: String { accessibilityLabel ?? FormRowAccessibility.editorLabel(title) }
+    private var activePopoverMessage: String? { inputHintMessage ?? committedMessage }
+
+    private var usesCompactFieldWidth: Bool {
+        unit != nil || inputMode != .plain || draftText.isEmpty
+    }
 
     var body: some View {
         CompactFormRow(title: title, editor: true) {
-            if let unit {
+            HStack(spacing: 0) {
                 HStack(spacing: DesignToken.Spacing.related) {
-                    field
-                        .frame(minWidth: DesignToken.Form.editorMinimum, alignment: .leading)
-                        .fixedSize(horizontal: true, vertical: false)
-                    Text(unit)
-                        .font(DesignToken.Typography.field)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
+                    if usesCompactFieldWidth {
+                        field
+                            .frame(
+                                minWidth: unit != nil ? DesignToken.Form.editorMinimum : 56,
+                                alignment: .leading
+                            )
+                            .fixedSize(horizontal: true, vertical: false)
+                    } else {
+                        field
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if let unit {
+                        Text(unit)
+                            .font(DesignToken.Typography.field)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let committedMessage {
+                        Button {
+                            showValidationPopover.toggle()
+                        } label: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.warning)
+                        }
+                        .buttonStyle(.plain)
+                        .help(committedMessage)
+                        .accessibilityLabel("\(title): \(committedMessage)")
+                    }
                 }
+                .popover(isPresented: $showValidationPopover, arrowEdge: .bottom) {
+                    if let message = activePopoverMessage {
+                        Text(message)
+                            .font(DesignToken.Typography.supporting)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(DesignToken.Spacing.inset)
+                            .frame(width: 220, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if usesCompactFieldWidth {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 18)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isFocused = true
+                        }
+                }
+            }
+        }
+        .onChange(of: draftText) { _, newValue in
+            if isRevertingDraft {
+                isRevertingDraft = false
+                return
+            }
+            let sanitized = inputMode.sanitize(newValue)
+            if sanitized != newValue, let hint = inputMode.hintMessage {
+                isRevertingDraft = true
+                draftText = sanitized
+                if text != sanitized {
+                    text = sanitized
+                }
+                NSSound.beep()
+                inputHintMessage = hint
+                showValidationPopover = true
             } else {
-                field
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                inputHintMessage = nil
+                if !isFocused {
+                    committedMessage = validationError?(sanitized)
+                } else {
+                    committedMessage = nil
+                    showValidationPopover = false
+                }
+                if text != sanitized {
+                    text = sanitized
+                }
+            }
+        }
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                committedMessage = nil
+                showValidationPopover = false
+            } else {
+                inputHintMessage = nil
+                let message = validationError?(draftText)
+                committedMessage = message
+                showValidationPopover = message != nil
+            }
+        }
+        .onChange(of: text) { _, newValue in
+            if draftText != newValue {
+                draftText = newValue
+            }
+            if !isFocused {
+                committedMessage = validationError?(newValue)
             }
         }
     }
 
     private var field: some View {
-        TextField("", text: $text)
+        TextField("", text: $draftText)
             .textFieldStyle(.plain)
             .font(DesignToken.Typography.field)
             .labelsHidden()
+            .focused($isFocused)
+            .onSubmit {
+                inputHintMessage = nil
+                let message = validationError?(draftText)
+                committedMessage = message
+                showValidationPopover = message != nil
+            }
             .accessibilityLabel(label)
             .accessibilityIdentifier(label)
             .multilineTextAlignment(.leading)

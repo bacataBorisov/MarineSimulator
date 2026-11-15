@@ -504,7 +504,9 @@ struct SailDraftFields: View {
     private func editor(_ field: SailEditorField) -> some View {
         switch field.id {
         case .name:
-            text(field, text: $draft.name)
+            text(field, text: $draft.name) { raw in
+                raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "A sail name is required." : nil
+            }
         case .category:
             FormMenuRow(title: field.title, accessibilityLabel: field.accessibilityLabel, selection: categorySelection) {
                 ForEach(SailCategory.allCases) { category in
@@ -518,7 +520,12 @@ struct SailDraftFields: View {
         case .model:
             text(field, text: $draft.model)
         case .year:
-            text(field, text: $draft.yearText)
+            text(field, text: $draft.yearText, inputMode: .wholeNumber) { raw in
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty { return nil }
+                guard let year = Int(trimmed) else { return "Sail construction year must be a whole number." }
+                return (1800...2100).contains(year) ? nil : "Sail construction year must be from 1800 through 2100."
+            }
         case .notes:
             text(field, text: $draft.notes)
         case .source:
@@ -543,12 +550,30 @@ struct SailDraftFields: View {
         case .halfWidth:
             measurement(field, text: $draft.halfWidth)
         case .reefCount:
-            text(field, text: $draft.reefCountText)
+            text(field, text: $draft.reefCountText, inputMode: .wholeNumber) { raw in
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty { return nil }
+                guard let count = Int(trimmed), (0...3).contains(count) else {
+                    return "Reef count must be from 0 through 3."
+                }
+                return nil
+            }
         }
     }
 
-    private func text(_ field: SailEditorField, text: Binding<String>) -> some View {
-        FormTextRow(title: field.title, text: text, accessibilityLabel: field.accessibilityLabel)
+    private func text(
+        _ field: SailEditorField,
+        text: Binding<String>,
+        inputMode: FormTextInputMode = .plain,
+        validationError: ((String) -> String?)? = nil
+    ) -> some View {
+        FormTextRow(
+            title: field.title,
+            text: text,
+            accessibilityLabel: field.accessibilityLabel,
+            inputMode: inputMode,
+            validationError: validationError
+        )
     }
 
     private var categorySelection: Binding<SailCategory> {
@@ -563,8 +588,18 @@ struct SailDraftFields: View {
             title: field.title,
             text: text,
             accessibilityLabel: field.accessibilityLabel,
-            unit: field.control.adjacentUnit
-        )
+            unit: field.control.adjacentUnit,
+            inputMode: .decimal
+        ) { raw in
+            switch VesselEditBuffer.token(raw) {
+            case .empty:
+                return nil
+            case .invalid:
+                return "\(field.title) must be a positive number."
+            case .value(let value):
+                return value > 0 ? nil : "\(field.title) must be greater than zero."
+            }
+        }
     }
 }
 
