@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Step 2 UI/performance pass (retaining Diagnostics/Overview/Wind/Compass/Hydro/GPS in `RetainedDestinationHostBox`, keeping `DashboardDocksHost` mounted off-dashboard with map hit-test passthrough, splitting `SidebarColumnList`/`MainDetailColumn`, stabilizing `MainWindowToolbar`, persisting Dashboard & GPS map cameras + flushing `gpsData`, fixing `DeferredNumericField` `onChange` and GPS `Cycle detected`/`CAMetalLayer` warnings) passed user smoke tests and is committed.
+**Status:** Direct single-chat workflow active. Step A UI/HIG pass (migrated Sentence pages `Wind`/`Compass`/`Hydro`/`GPS` and `SentencePage`/`ViewKit` to `DesignToken` & `SettingsCard`, raised window minimum width to `1080pt` and `SentencePage` split breakpoint to `900pt`, added inline `SensorEnablePrompt` actions, simplified `ConnectionStatusPill` to `"Idle"`/`"Transmitting"`, and fixed GPS map scroll-wheel trap + `MKZoomControl`) passed user smoke tests and is committed. Next: Step B (`ExperimentDiagnosticsView` `DesignToken`/HIG alignment).
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -26,7 +26,7 @@ Historical traces and measurements remain in `../architecture/ui-performance-aud
 
 ## Responsive UI Foundation
 
-Implemented, including the semantic-token follow-up. The window minimum stays 960×640 and does not guarantee a 720×600 content area. Width classes classify available page content after the inset: Compact below 720, Regular from 720 until two 440-point cards fit (900), and Wide at 900 and above. There is no fallback content size. Sidebar, toolbar, and console can shrink the page, and pages scroll.
+Implemented, including the semantic-token follow-up. The window minimum is 1080×640 (`DesignToken.Window.minimumWidth`) so sidebar, toolbar, and stacked forms fit cleanly without toolbar collapse. Width classes classify available page content after the inset: Compact below 720, Regular from 720 until two 440-point cards fit (900), and Wide at 900 and above (`SentencePage` uses the same 900-point split breakpoint). There is no fallback content size. Sidebar, toolbar, and console can shrink the page, and pages scroll.
 
 - Boat and sail rows use a 152/14/280–360 grid and stack below 446 points. The 320-point library is unchanged.
 - Connection and Simulation use ordinary stacks chosen by content width. Below 900 points the cards are one column. At 900 and above, paired cards sit in a top-aligned horizontal stack and full-width sections stay outside that pair. Page max for those two pages is 1120. Other pages stay at 920.

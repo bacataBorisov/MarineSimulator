@@ -46,6 +46,7 @@ struct SentencePage<Sentences: View, Preview: View>: View {
                 }
             }
         }
+        .background(DesignToken.Surface.page)
     }
 
     private var sentenceColumn: some View {
@@ -76,7 +77,7 @@ extension SentencePage {
     }
 }
 
-/// Left-column sentence group. Pages supply title + rows only.
+/// Left-column sentence group. Uses `SettingsCard` so visual tokens and accessibility match Setup pages.
 struct SentenceCard<Content: View>: View {
     var title: String
     var systemImage: String?
@@ -89,26 +90,18 @@ struct SentenceCard<Content: View>: View {
     }
 
     var body: some View {
-        GroupBox(label: titleLabel) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+        SettingsCard(title: title) {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
                 content()
             }
             .toggleStyle(.switch)
-        }
-    }
-
-    @ViewBuilder
-    private var titleLabel: some View {
-        if let systemImage {
-            Label(title, systemImage: systemImage)
-        } else {
-            Text(title)
+            .controlSize(.regular)
         }
     }
 }
 
 /// Compact live readout for the right-hand column.
-/// Rendered as a `GroupBox` so its top edge lines up with the sentence cards.
+/// Rendered with `SettingsCard` surface tokens so its top edge lines up with the sentence cards.
 struct SentencePreviewCard<Content: View>: View {
     private let title: String
     private let content: Content
@@ -119,8 +112,8 @@ struct SentencePreviewCard<Content: View>: View {
     }
 
     var body: some View {
-        GroupBox(label: Label(title, systemImage: "waveform.path.ecg")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing * 2) {
+        SettingsCard(title: title) {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.header) {
                 content
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)

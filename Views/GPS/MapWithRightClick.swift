@@ -41,6 +41,16 @@ final class GPSSelectorMapResource {
         }
     }
 
+    final class SelectorMKMapView: MKMapView {
+        override func scrollWheel(with event: NSEvent) {
+            if event.modifierFlags.contains(.command) || event.modifierFlags.contains(.option) {
+                super.scrollWheel(with: event)
+            } else {
+                nextResponder?.scrollWheel(with: event)
+            }
+        }
+    }
+
     final class ContainerView: NSView {
         weak var resource: GPSSelectorMapResource?
         var initialCoordinate: CLLocationCoordinate2D?
@@ -97,7 +107,8 @@ final class GPSSelectorMapResource {
         }
     }
 
-    private(set) var mapView: MKMapView?
+    private(set) var mapView: SelectorMKMapView?
+    private var zoomControl: MKZoomControl?
     private let pin = MKPointAnnotation()
     private let delegateProxy = MapDelegate()
     private var hasAppliedInitialState = false
@@ -132,10 +143,12 @@ final class GPSSelectorMapResource {
         let movedContainers = map.superview !== container
         if movedContainers {
             isAdjustingHierarchy = true
+            zoomControl?.removeFromSuperview()
             map.removeFromSuperview()
             map.frame = container.bounds
             map.autoresizingMask = [.width, .height]
             container.addSubview(map)
+            attachZoomControl(in: container, map: map)
             isAdjustingHierarchy = false
         } else if map.frame != container.bounds {
             map.frame = container.bounds
@@ -171,6 +184,17 @@ final class GPSSelectorMapResource {
                 self.delegateProxy.isApplyingCamera = false
             }
         }
+    }
+
+    private func attachZoomControl(in container: NSView, map: MKMapView) {
+        let control = zoomControl ?? MKZoomControl(mapView: map)
+        control.translatesAutoresizingMaskIntoConstraints = false
+        zoomControl = control
+        container.addSubview(control)
+        NSLayoutConstraint.activate([
+            control.topAnchor.constraint(equalTo: container.topAnchor, constant: 10),
+            control.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10)
+        ])
     }
 
     private func hasNonZeroAncestorChain(for view: NSView) -> Bool {
@@ -222,6 +246,7 @@ final class GPSSelectorMapResource {
                 cameraSaveWorkItem?.cancel()
                 onPersistCamera?(snapshot)
             }
+            zoomControl?.removeFromSuperview()
             mapView.removeFromSuperview()
         }
     }
@@ -235,11 +260,11 @@ final class GPSSelectorMapResource {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
     }
 
-    private func ensureMapView(initialFrame: NSRect) -> MKMapView {
+    private func ensureMapView(initialFrame: NSRect) -> SelectorMKMapView {
         if let mapView {
             return mapView
         }
-        let created = MKMapView(frame: initialFrame)
+        let created = SelectorMKMapView(frame: initialFrame)
         created.delegate = delegateProxy
         let rightClickRecognizer = NSClickGestureRecognizer(
             target: delegateProxy,

@@ -175,14 +175,20 @@ struct FaultInjectionPercentageStepper: View {
     }
 }
 
-struct OpenSimulationSensorsButton: View {
-    @Environment(\.sidebarNavigation) private var sidebarNavigation
+struct SensorEnablePrompt: View {
+    let message: String
+    let actionTitle: String
+    let action: () -> Void
 
     var body: some View {
-        Button("Open Simulation → Sensors") {
-            sidebarNavigation?.select(.simulation)
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
+            Text(message)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.warning)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(actionTitle, action: action)
+                .buttonStyle(.link)
+                .font(DesignToken.Typography.supporting)
         }
-        .buttonStyle(.link)
-        .font(.caption2)
     }
 }

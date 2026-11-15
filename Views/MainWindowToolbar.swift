@@ -6,8 +6,11 @@ struct MainWindowToolbar: ToolbarContent {
     @Binding var selectedPanelRawValue: String
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            DashboardToolbarPanelGroup(sidebarNavigation: sidebarNavigation)
+        let isDashboard = sidebarNavigation.selectedItem == .dashboard
+        if isDashboard {
+            ToolbarItem(placement: .navigation) {
+                DashboardToolbarPanelGroup()
+            }
         }
 
         ToolbarItem(placement: .principal) {
@@ -50,8 +53,6 @@ struct MainWindowToolbar: ToolbarContent {
 }
 
 private struct DashboardToolbarPanelGroup: View {
-    var sidebarNavigation: SidebarNavigation
-
     @AppStorage("dashboard.show_left_dock") private var showLeftDock = true
     @AppStorage("dashboard.show_right_inspector") private var showRightInspector = true
     @AppStorage(ConsoleHeightStorage.key) private var storedLogHeight: Double = 220
@@ -74,7 +75,6 @@ private struct DashboardToolbarPanelGroup: View {
     }
 
     var body: some View {
-        let isDashboard = sidebarNavigation.selectedItem == .dashboard
         HStack(spacing: 6) {
             DashboardPanelToggleButton(
                 title: "Controls",
@@ -92,9 +92,6 @@ private struct DashboardToolbarPanelGroup: View {
                 isOn: showConsoleBinding
             )
         }
-        .opacity(isDashboard ? 1 : 0)
-        .disabled(!isDashboard)
-        .accessibilityHidden(!isDashboard)
     }
 }
 
@@ -126,14 +123,20 @@ private struct ConnectionStatusPill: View {
 
     var body: some View {
         let activity = nmeaManager.isTransmitting ? "Transmitting" : "Idle"
-        let fullDetail = [activity, nmeaManager.latestTransportStatus?.message, PrimaryOutputSummary.label(for: nmeaManager)]
+        let endpointSummary = PrimaryOutputSummary.label(for: nmeaManager)
+        let fullDetail = [activity, nmeaManager.latestTransportStatus?.message, endpointSummary]
             .compactMap { $0 }
             .joined(separator: " · ")
-        let displayText = compact ? activity : fullDetail
+        let displayText = activity
         let systemImage = nmeaManager.isTransmitting
             ? "antenna.radiowaves.left.and.right"
             : "antenna.radiowaves.left.and.right.slash"
-        let tint = nmeaManager.isTransmitting ? DesignToken.Status.success : DesignToken.Status.neutral
+        let tint: Color = {
+            if let status = nmeaManager.latestTransportStatus, status.level == .error {
+                return DesignToken.Status.error
+            }
+            return nmeaManager.isTransmitting ? DesignToken.Status.success : DesignToken.Status.neutral
+        }()
 
         Button(action: action) {
             Label(displayText, systemImage: systemImage)

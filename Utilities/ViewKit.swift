@@ -9,20 +9,24 @@ import SwiftUI
 struct ViewKit {
 
     static func displayLabel(_ label: String, value: Double?, precision: Int? = 0) -> some View {
-        VStack(spacing: 4) {
+        let formatted = value.map { String(format: "%.\(precision ?? 0)f", $0) } ?? "--"
+        return VStack(spacing: DesignToken.Spacing.stacked) {
             Text(label)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.neutral)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
 
-            Text(value.map { String(format: "%.\(precision ?? 0)f", $0) } ?? "--")
+            Text(formatted)
                 .font(.system(.title, design: .monospaced))
                 .fontWeight(.semibold)
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
         }
         .frame(minWidth: 60, maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value == nil ? "Unavailable" : formatted)
     }
 
     // MARK: - Toggle Row with Optional Info
@@ -35,17 +39,20 @@ struct ViewKit {
         showInfo: Binding<Bool>? = nil,
         infoView: (() -> AnyView)? = nil
     ) -> some View {
-        HStack {
+        HStack(spacing: DesignToken.Spacing.row) {
             if let systemImage {
                 Label(title, systemImage: systemImage)
+                    .font(DesignToken.Typography.field)
             } else {
                 Text(title)
+                    .font(DesignToken.Typography.field)
             }
 
             Spacer()
 
-            Toggle("", isOn: isOn)
+            Toggle(title, isOn: isOn)
                 .labelsHidden()
+                .accessibilityLabel(title)
                 .toggleStyle(.switch)
                 .controlSize(.regular)
 
@@ -54,9 +61,12 @@ struct ViewKit {
                     showInfo.wrappedValue = true
                 } label: {
                     Image(systemName: "info.circle")
+                        .foregroundStyle(DesignToken.Status.neutral)
                 }
                 .buttonStyle(.plain)
-                .popover(isPresented: showInfo) {
+                .help("Show \(title) details")
+                .accessibilityLabel("About \(title)")
+                .popover(isPresented: showInfo, arrowEdge: .bottom) {
                     SentenceHelpPopover(content: infoView())
                 }
             }
@@ -67,21 +77,23 @@ struct ViewKit {
     static func SentenceIntervalControl(
         _ title: String = "Interval",
         interval: Binding<Double>,
-        isDisabled: Bool = false
+        isDisabled: Bool = false,
+        accessibilityTitle: String? = nil
     ) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DesignToken.Spacing.related) {
             if !title.isEmpty {
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.neutral)
             }
 
             Stepper(value: interval, in: 0...10, step: 0.1) {
                 Text(interval.wrappedValue == 0 ? "Every tick" : "\(interval.wrappedValue, specifier: "%.1f") s")
-                    .font(.caption)
+                    .font(DesignToken.Typography.supporting)
                     .monospacedDigit()
                     .frame(minWidth: 44, alignment: .trailing)
             }
+            .accessibilityLabel(accessibilityTitle.map { "\($0) send interval" } ?? (title.isEmpty ? "Send interval" : title))
             .disabled(isDisabled)
         }
     }
@@ -96,17 +108,25 @@ struct ViewKit {
         showInfo: Binding<Bool>? = nil,
         infoView: (() -> AnyView)? = nil
     ) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DesignToken.Spacing.inset) {
             Text(title)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .font(DesignToken.Typography.field)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 8) {
-                SentenceIntervalControl("", interval: interval, isDisabled: intervalDisabled || !isOn.wrappedValue)
+            HStack(spacing: DesignToken.Spacing.row) {
+                SentenceIntervalControl(
+                    "",
+                    interval: interval,
+                    isDisabled: intervalDisabled || !isOn.wrappedValue,
+                    accessibilityTitle: title
+                )
 
-                Toggle("", isOn: isOn)
+                Toggle(title, isOn: isOn)
                     .labelsHidden()
+                    .accessibilityLabel(title)
                     .toggleStyle(.switch)
                     .controlSize(.regular)
 
@@ -115,9 +135,12 @@ struct ViewKit {
                         showInfo.wrappedValue = true
                     } label: {
                         Image(systemName: "info.circle")
+                            .foregroundStyle(DesignToken.Status.neutral)
                     }
                     .buttonStyle(.plain)
-                    .popover(isPresented: showInfo) {
+                    .help("Show \(title) format details")
+                    .accessibilityLabel("About \(title)")
+                    .popover(isPresented: showInfo, arrowEdge: .bottom) {
                         SentenceHelpPopover(content: infoView())
                     }
                 }
@@ -139,8 +162,14 @@ struct PersistentDisclosureGroup<Content: View>: View {
     }
 
     var body: some View {
-        DisclosureGroup(title, isExpanded: $isExpanded) {
-            content()
+        DisclosureGroup(isExpanded: $isExpanded) {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                content()
+            }
+            .padding(.top, DesignToken.Spacing.related)
+        } label: {
+            Text(title)
+                .font(DesignToken.Typography.field.weight(.semibold))
         }
     }
 }
@@ -150,7 +179,7 @@ struct SentenceHelpPopover: View {
     let content: AnyView
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.header) {
             content
             Divider()
             Button("Open in Manual") {
@@ -158,7 +187,7 @@ struct SentenceHelpPopover: View {
             }
             .buttonStyle(.link)
         }
-        .padding()
+        .padding(DesignToken.Spacing.card)
         .frame(minWidth: 260, maxWidth: 360)
         .fixedSize(horizontal: false, vertical: true)
     }

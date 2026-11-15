@@ -76,213 +76,220 @@ private struct HydroSentencesSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
-        GroupBox(label: Text("Depth")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                
-                // DBT – Depth Below Transducer
-                ViewKit.SentenceRow(
-                    "DBT - Depth Below Transducer",
-                    isOn: $shouldSendDBT,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .dbt) },
-                        set: { nmeaManager.setInterval($0, for: .dbt) }
-                    ),
-                    intervalDisabled: !HydroUIConditions.isDBTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showDBT,
-                    infoView: { AnyView(DBTHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isDBTEnabled(nmeaManager))
-                
-                
-                // DPT – Depth of Water
-                ViewKit.SentenceRow(
-                    "DPT - Depth of Water",
-                    isOn: $shouldSendDPT,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .dpt) },
-                        set: { nmeaManager.setInterval($0, for: .dpt) }
-                    ),
-                    intervalDisabled: !HydroUIConditions.isDPTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showDPT,
-                    infoView: { AnyView(DPTHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isDPTEnabled(nmeaManager))
-                
-                if HydroUIConditions.showEchoSounderWarning(nmeaManager) {
-                    Text(UIStrings.Warnings.enableEchoSounder)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
-                }
-                if HydroUIConditions.showOffsetInput(nmeaManager) {
-                    // show offset input and help
-                    // Offset input with help
-                    HStack(spacing: 12) {
-                        HStack(spacing: 4) {
-                            Text("Offset (m):")
-                                .font(.caption)
-                            
-                            Button(action: {
-                                withAnimation {
-                                    showOffsetHelp.toggle()
-                                }
-                            }) {
-                                Image(systemName: "questionmark.circle")
-                                    .foregroundColor(.accentColor)
-                            }
-                            .buttonStyle(.plain)
+            SettingsCard(title: "Depth") {
+                VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                    // DBT – Depth Below Transducer
+                    ViewKit.SentenceRow(
+                        "DBT - Depth Below Transducer",
+                        isOn: $shouldSendDBT,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .dbt) },
+                            set: { nmeaManager.setInterval($0, for: .dbt) }
+                        ),
+                        intervalDisabled: !HydroUIConditions.isDBTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showDBT,
+                        infoView: { AnyView(DBTHelpView().font(.caption)) }
+                    )
+                    .disabled(!HydroUIConditions.isDBTEnabled(nmeaManager))
+
+                    // DPT – Depth of Water
+                    ViewKit.SentenceRow(
+                        "DPT - Depth of Water",
+                        isOn: $shouldSendDPT,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .dpt) },
+                            set: { nmeaManager.setInterval($0, for: .dpt) }
+                        ),
+                        intervalDisabled: !HydroUIConditions.isDPTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showDPT,
+                        infoView: { AnyView(DPTHelpView().font(.caption)) }
+                    )
+                    .disabled(!HydroUIConditions.isDPTEnabled(nmeaManager))
+
+                    if HydroUIConditions.showEchoSounderWarning(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: UIStrings.Warnings.enableEchoSounder,
+                            actionTitle: "Enable Echo Sounder"
+                        ) {
+                            nmeaManager.sensorToggles.hasEchoSounder = true
                         }
-                        .frame(width: 110, alignment: .leading)
-                        
-                        DeferredNumericField(
-                            value: $nmeaManager.depthOffsetMeters,
-                            fractionDigits: 2,
-                            width: 70
-                        )
-                        .font(.caption)
                     }
-                    .padding(.leading, 4)
-                    if showOffsetHelp {
-                        Text("Enter the distance between your transducer and the waterline (positive) or the keel (negative).")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 4)
-                            .transition(.opacity)
+                    if HydroUIConditions.showOffsetInput(nmeaManager) {
+                        HStack(spacing: DesignToken.Spacing.header) {
+                            HStack(spacing: DesignToken.Spacing.stacked) {
+                                Text("Offset (m):")
+                                    .font(DesignToken.Typography.supporting)
+                                    .foregroundStyle(DesignToken.Status.neutral)
+
+                                Button {
+                                    withAnimation {
+                                        showOffsetHelp.toggle()
+                                    }
+                                } label: {
+                                    Image(systemName: "questionmark.circle")
+                                        .foregroundStyle(DesignToken.accentPrimary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Explain depth offset")
+                                .accessibilityLabel("Depth offset help")
+                            }
+                            .frame(width: 110, alignment: .leading)
+
+                            DeferredNumericField(
+                                value: $nmeaManager.depthOffsetMeters,
+                                fractionDigits: 2,
+                                width: 70
+                            )
+                            .font(DesignToken.Typography.supporting)
+                            .accessibilityLabel("Depth offset in meters")
+                        }
+                        if showOffsetHelp {
+                            Text("Enter the distance between your transducer and the waterline (positive) or the keel (negative).")
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.neutral)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .transition(.opacity)
+                        }
+                    }
+                    if HydroUIConditions.showInvalidOffsetWarning(nmeaManager) {
+                        Text("Please enter a valid depth offset between -99 m and 99 m.")
+                            .foregroundStyle(DesignToken.Status.warning)
+                            .font(DesignToken.Typography.supporting)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if HydroUIConditions.showInvalidOffsetWarning(nmeaManager) {
-                    Text("Please enter a valid depth offset between -99 m and 99 m.")
-                        .foregroundStyle(AppColors.warning)
-                        .font(.caption2)
-                        .padding(.leading, 4)
-                }
+                .toggleStyle(.switch)
+                .controlSize(.regular)
             }
-            .toggleStyle(.switch)
-            .controlSize(.regular)
-        }
-        GroupBox(label: Text("Sea Water Temperature")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                
-                ViewKit.SentenceRow(
-                    "MTW - Water Temperature",
-                    isOn: $shouldSendMTW,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .mtw) },
-                        set: { nmeaManager.setInterval($0, for: .mtw) }
-                    ),
-                    intervalDisabled: !HydroUIConditions.isMTWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showMTW,
-                    infoView: { AnyView(MTWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isMTWEnabled(nmeaManager))
-                
-                if HydroUIConditions.showMTWWarning(nmeaManager) {
-                    Text(UIStrings.Warnings.enableWaterTempSensor)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
+
+            SettingsCard(title: "Sea Water Temperature") {
+                VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                    ViewKit.SentenceRow(
+                        "MTW - Water Temperature",
+                        isOn: $shouldSendMTW,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .mtw) },
+                            set: { nmeaManager.setInterval($0, for: .mtw) }
+                        ),
+                        intervalDisabled: !HydroUIConditions.isMTWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showMTW,
+                        infoView: { AnyView(MTWHelpView().font(.caption)) }
+                    )
+                    .disabled(!HydroUIConditions.isMTWEnabled(nmeaManager))
+
+                    if HydroUIConditions.showMTWWarning(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: UIStrings.Warnings.enableWaterTempSensor,
+                            actionTitle: "Enable Water Temperature"
+                        ) {
+                            nmeaManager.sensorToggles.hasWaterTempSensor = true
+                        }
+                    }
                 }
+                .toggleStyle(.switch)
+                .controlSize(.regular)
             }
-        }
-        GroupBox(label: Text("Speed")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                // MARK: - VHW – Water Speed and Heading
-                ViewKit.SentenceRow(
-                    "VHW - Water Speed and Heading",
-                    isOn: $shouldSendVHW,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .vhw) },
-                        set: { nmeaManager.setInterval($0, for: .vhw) }
-                    ),
-                    intervalDisabled: !HydroUIConditions.isVHWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showVHW,
-                    infoView: { AnyView(VHWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isVHWEnabled(nmeaManager))
-                
-                if HydroUIConditions.showVHWMissingBothNote(nmeaManager) {
-                    Text("Activate Speed Log, Magnetic Compass, or Gyro to enable the sentence.")
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
-                } else {
-                    if HydroUIConditions.showVHWSpeedLogNote(nmeaManager) {
-                        Text(UIStrings.InfoMessage.speedLogInfoNote)
-                            .font(.caption2)
-                            .foregroundStyle(AppColors.info)
-                            .padding(.leading, 4)
+
+            SettingsCard(title: "Speed") {
+                VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                    // MARK: - VHW – Water Speed and Heading
+                    ViewKit.SentenceRow(
+                        "VHW - Water Speed and Heading",
+                        isOn: $shouldSendVHW,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .vhw) },
+                            set: { nmeaManager.setInterval($0, for: .vhw) }
+                        ),
+                        intervalDisabled: !HydroUIConditions.isVHWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showVHW,
+                        infoView: { AnyView(VHWHelpView().font(.caption)) }
+                    )
+                    .disabled(!HydroUIConditions.isVHWEnabled(nmeaManager))
+
+                    if HydroUIConditions.showVHWMissingBothNote(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: "Speed Log, Magnetic Compass, or Gyro Compass is required to enable VHW.",
+                            actionTitle: "Enable Speed Log"
+                        ) {
+                            nmeaManager.sensorToggles.hasSpeedLog = true
+                        }
+                    } else {
+                        if HydroUIConditions.showVHWSpeedLogNote(nmeaManager) {
+                            Text(UIStrings.InfoMessage.speedLogInfoNote)
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.info)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if HydroUIConditions.showVHWCompassNote(nmeaManager) {
+                            Text(UIStrings.InfoMessage.compassInfoNote)
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.info)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    if HydroUIConditions.showVHWCompassNote(nmeaManager) {
-                        Text(UIStrings.InfoMessage.compassInfoNote)
-                            .font(.caption2)
-                            .foregroundStyle(AppColors.info)
-                            .padding(.leading, 4)
+
+                    // MARK: - VBW – Dual Ground/Water Speed
+                    ViewKit.SentenceRow(
+                        "VBW - Dual Ground/Water Speed",
+                        isOn: $shouldSendVBW,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .vbw) },
+                            set: { nmeaManager.setInterval($0, for: .vbw) }
+                        ),
+                        intervalDisabled: !HydroUIConditions.isVBWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showVBW,
+                        infoView: { AnyView(VBWHelpView().font(.caption)) }
+                    )
+                    .disabled(!HydroUIConditions.isVBWEnabled(nmeaManager))
+
+                    if HydroUIConditions.showVBWMissingBothNote(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: "Speed Log or GPS is required to enable VBW.",
+                            actionTitle: "Enable Speed Log"
+                        ) {
+                            nmeaManager.sensorToggles.hasSpeedLog = true
+                        }
+                    } else {
+                        if HydroUIConditions.showVBWSpeedLogNote(nmeaManager) {
+                            Text(UIStrings.InfoMessage.speedLogInfoNote)
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.info)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if HydroUIConditions.showVBWGPSNote(nmeaManager) {
+                            Text(UIStrings.InfoMessage.sogInfoNote)
+                                .font(DesignToken.Typography.supporting)
+                                .foregroundStyle(DesignToken.Status.info)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    // MARK: - VLW – Distance Traveled Through Water
+                    ViewKit.SentenceRow(
+                        "VLW - Distance Traveled Through Water",
+                        isOn: $shouldSendVLW,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .vlw) },
+                            set: { nmeaManager.setInterval($0, for: .vlw) }
+                        ),
+                        intervalDisabled: !HydroUIConditions.isVLWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showVLW,
+                        infoView: { AnyView(VLWHelpView().font(.caption)) }
+                    )
+                    .disabled(!HydroUIConditions.isVLWEnabled(nmeaManager))
+
+                    if HydroUIConditions.showVLWSpeedLogNote(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: UIStrings.Warnings.enableSpeedLog,
+                            actionTitle: "Enable Speed Log"
+                        ) {
+                            nmeaManager.sensorToggles.hasSpeedLog = true
+                        }
                     }
                 }
-                
-                // MARK: - VBW – Dual Ground/Water Speed
-                ViewKit.SentenceRow(
-                    "VBW - Dual Ground/Water Speed",
-                    isOn: $shouldSendVBW,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .vbw) },
-                        set: { nmeaManager.setInterval($0, for: .vbw) }
-                    ),
-                    intervalDisabled: !HydroUIConditions.isVBWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showVBW,
-                    infoView: { AnyView(VBWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isVBWEnabled(nmeaManager))
-                
-                if HydroUIConditions.showVBWMissingBothNote(nmeaManager) {
-                    Text("Activate Speed Log or GPS to enable the sentence.")
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
-                } else {
-                    if HydroUIConditions.showVBWSpeedLogNote(nmeaManager) {
-                        Text(UIStrings.InfoMessage.speedLogInfoNote)
-                            .font(.caption2)
-                            .foregroundStyle(AppColors.info)
-                            .padding(.leading, 4)
-                    }
-                    if HydroUIConditions.showVBWGPSNote(nmeaManager) {
-                        Text(UIStrings.InfoMessage.sogInfoNote)
-                            .font(.caption2)
-                            .foregroundStyle(AppColors.info)
-                            .padding(.leading, 4)
-                    }
-                }
-                
-                // MARK: - VLW – Distance Traveled Through Water
-                ViewKit.SentenceRow(
-                    "VLW - Distance Traveled Through Water",
-                    isOn: $shouldSendVLW,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .vlw) },
-                        set: { nmeaManager.setInterval($0, for: .vlw) }
-                    ),
-                    intervalDisabled: !HydroUIConditions.isVLWEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showVLW,
-                    infoView: { AnyView(VLWHelpView().font(.caption)) }
-                )
-                .disabled(!HydroUIConditions.isVLWEnabled(nmeaManager))
-                
-                if HydroUIConditions.showVLWSpeedLogNote(nmeaManager) {
-                    Text(UIStrings.Warnings.enableSpeedLog)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
-                }
+                .toggleStyle(.switch)
+                .controlSize(.regular)
             }
-            .toggleStyle(.switch)
-            .controlSize(.regular)
-        }
         }
     }
 }

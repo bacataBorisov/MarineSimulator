@@ -125,7 +125,7 @@ enum DesignToken {
 
     /// The window minimum. It is not a content-size guarantee.
     enum Window {
-        static let minimumWidth: CGFloat = 960
+        static let minimumWidth: CGFloat = 1080
         static let minimumHeight: CGFloat = 640
         static let defaultWidth: CGFloat = 1180
         static let defaultHeight: CGFloat = 760
@@ -150,7 +150,7 @@ enum PageChrome {
     static let padding = DesignToken.Spacing.page
     static let maxWidth = DesignToken.Width.readable
     static let stackSpacing = DesignToken.Spacing.section
-    static let splitBreakpoint = DesignToken.Breakpoint.regular
+    static let splitBreakpoint = DesignToken.Breakpoint.wide
     static let previewColumnWidth: CGFloat = 320
     static let sentenceCardMaxWidth = DesignToken.Width.sentenceCard
 }
@@ -159,15 +159,15 @@ public enum UIStrings {
 
     enum Warnings {
         
-        static let enableAnemometer = "Enable Anemometer in Configuration to activate sentences."
-        static let enableEchoSounder = "Enable Echo Sounder in Configuration to activate sentences."
+        static let enableAnemometer = "Anemometer is off."
+        static let enableEchoSounder = "Echo Sounder is off."
         static let invalidDepthOffset = "Please enter a valid non-zero depth offset (e.g., 0.30 or -0.70) to activate DPT."
-        static let enableWaterTempSensor = "Enable Water Temp Sensor in Configuration to activate sentences."
-        static let enableMagneticCompass = "Enable Compass in Configuration to activate sentences."
-        static let enableGyroCompass = "Enable Gyro Compass in Configuration to activate sentences."
-        static let enableSpeedLog = "Enable Speed Log in Configuration to activate sentences."
-        static let enableGPS = "Enable GPS in Configuration to activate sentences."
-        static let enableAtmosphericSensor = "Enable Air Temperature, Humidity, or Barometer in Simulation to activate sentences."
+        static let enableWaterTempSensor = "Water Temperature sensor is off."
+        static let enableMagneticCompass = "Magnetic Compass is off."
+        static let enableGyroCompass = "Gyro Compass is off."
+        static let enableSpeedLog = "Speed Log is off."
+        static let enableGPS = "GPS is off."
+        static let enableAtmosphericSensor = "Air Temperature, Humidity, and Barometer are all off."
 
     }
     

@@ -53,75 +53,77 @@ private struct HeadingSentencesSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
-        GroupBox(label: Text("Magnetic Compass")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                
-                // HDG – Magnetic Heading
-                ViewKit.SentenceRow(
-                    "HDG - Heading, Deviation, Variation",
-                    isOn: $shouldSendHDG,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .hdg) },
-                        set: { nmeaManager.setInterval($0, for: .hdg) }
-                    ),
-                    intervalDisabled: !HeadingUIConditions.isHDGEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showHDG,
-                    infoView: { AnyView(HDGHelpView().font(.caption)) }
-                )
-                .disabled(!HeadingUIConditions.isHDGEnabled(nmeaManager))
-                
-                if HeadingUIConditions.showHDGWarning(nmeaManager) {
-                    Text(UIStrings.Warnings.enableMagneticCompass)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
+            SettingsCard(title: "Magnetic Compass") {
+                VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                    // HDG – Magnetic Heading
+                    ViewKit.SentenceRow(
+                        "HDG - Heading, Deviation, Variation",
+                        isOn: $shouldSendHDG,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .hdg) },
+                            set: { nmeaManager.setInterval($0, for: .hdg) }
+                        ),
+                        intervalDisabled: !HeadingUIConditions.isHDGEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showHDG,
+                        infoView: { AnyView(HDGHelpView().font(.caption)) }
+                    )
+                    .disabled(!HeadingUIConditions.isHDGEnabled(nmeaManager))
+
+                    if HeadingUIConditions.showHDGWarning(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: UIStrings.Warnings.enableMagneticCompass,
+                            actionTitle: "Enable Magnetic Compass"
+                        ) {
+                            nmeaManager.sensorToggles.hasCompass = true
+                        }
+                    }
                 }
+                .toggleStyle(.switch)
+                .controlSize(.regular)
             }
-            .toggleStyle(.switch)
-            .controlSize(.regular)
-        }
-        GroupBox(label: Text("Gyro Compass")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
-                // HDT – True Heading
-                ViewKit.SentenceRow(
-                    "HDT - Heading, True",
-                    isOn: $shouldSendHDT,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .hdt) },
-                        set: { nmeaManager.setInterval($0, for: .hdt) }
-                    ),
-                    intervalDisabled: !HeadingUIConditions.isHDTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showHDT,
-                    infoView: { AnyView(HDTHelpView().font(.caption)) }
-                )
-                .disabled(!HeadingUIConditions.isHDTEnabled(nmeaManager))
-                
-                // ROT – Rate of Turn
-                ViewKit.SentenceRow(
-                    "ROT - Rate of Turn",
-                    isOn: $shouldSendROT,
-                    interval: Binding(
-                        get: { nmeaManager.sentenceInterval(for: .rot) },
-                        set: { nmeaManager.setInterval($0, for: .rot) }
-                    ),
-                    intervalDisabled: !HeadingUIConditions.isROTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
-                    showInfo: $showROT,
-                    infoView: { AnyView(ROTHelpView().font(.caption)) }
-                )
-                .disabled(!HeadingUIConditions.isROTEnabled(nmeaManager))
-                
-                if HeadingUIConditions.showGyroWarning(nmeaManager) {
-                    Text(UIStrings.Warnings.enableGyroCompass)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
+
+            SettingsCard(title: "Gyro Compass") {
+                VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                    // HDT – True Heading
+                    ViewKit.SentenceRow(
+                        "HDT - Heading, True",
+                        isOn: $shouldSendHDT,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .hdt) },
+                            set: { nmeaManager.setInterval($0, for: .hdt) }
+                        ),
+                        intervalDisabled: !HeadingUIConditions.isHDTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showHDT,
+                        infoView: { AnyView(HDTHelpView().font(.caption)) }
+                    )
+                    .disabled(!HeadingUIConditions.isHDTEnabled(nmeaManager))
+
+                    // ROT – Rate of Turn
+                    ViewKit.SentenceRow(
+                        "ROT - Rate of Turn",
+                        isOn: $shouldSendROT,
+                        interval: Binding(
+                            get: { nmeaManager.sentenceInterval(for: .rot) },
+                            set: { nmeaManager.setInterval($0, for: .rot) }
+                        ),
+                        intervalDisabled: !HeadingUIConditions.isROTEnabled(nmeaManager) || !nmeaManager.isSentenceIntervalEditable,
+                        showInfo: $showROT,
+                        infoView: { AnyView(ROTHelpView().font(.caption)) }
+                    )
+                    .disabled(!HeadingUIConditions.isROTEnabled(nmeaManager))
+
+                    if HeadingUIConditions.showGyroWarning(nmeaManager) {
+                        SensorEnablePrompt(
+                            message: UIStrings.Warnings.enableGyroCompass,
+                            actionTitle: "Enable Gyro Compass"
+                        ) {
+                            nmeaManager.sensorToggles.hasGyro = true
+                        }
+                    }
                 }
+                .toggleStyle(.switch)
+                .controlSize(.regular)
             }
-            .toggleStyle(.switch)
-            .controlSize(.regular)
-        }
         }
     }
 }

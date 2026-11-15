@@ -62,8 +62,8 @@ private struct WindSentencesSection: View {
     @Bindable var nmeaManager: NMEASimulator
     
     var body: some View {
-        GroupBox(label: Label("Wind Sentences", systemImage: "list.bullet.rectangle")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+        SettingsCard(title: "Wind Sentences") {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
                 Picker("MWV Reference", selection: $nmeaManager.mwvReferenceMode) {
                     Text("Relative").tag(MWVReferenceMode.relative)
                     Text("True").tag(MWVReferenceMode.trueReference)
@@ -72,8 +72,9 @@ private struct WindSentencesSection: View {
                 .pickerStyle(.segmented)
 
                 Text("Use Relative for most receiver compatibility. Auto alternates between relative and true when both exist.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.neutral)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 // MWV – Wind Speed & Angle
                 ViewKit.SentenceRow(
@@ -90,11 +91,12 @@ private struct WindSentencesSection: View {
                 .disabled(!WindUIConditions.isMWVEnabled(nmeaManager))
                 
                 if !WindUIConditions.isMWVEnabled(nmeaManager) {
-                    Text(UIStrings.Warnings.enableAnemometer)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
+                    SensorEnablePrompt(
+                        message: UIStrings.Warnings.enableAnemometer,
+                        actionTitle: "Enable Anemometer"
+                    ) {
+                        nmeaManager.sensorToggles.hasAnemometer = true
+                    }
                 }
                 
                 // MWD – Wind Direction & Speed
@@ -112,10 +114,7 @@ private struct WindSentencesSection: View {
                 .disabled(!WindUIConditions.isMWDEnabled(nmeaManager))
 
                 if WindUIConditions.showMWDDependencyWarning(nmeaManager) {
-                    Text("Enable Compass / Gyro and Speed Log or GPS to activate MWD.")
-                        .foregroundStyle(AppColors.warning)
-                        .font(.caption2)
-                        .padding(.leading, 4)
+                    windDependencyPrompt(sentence: "MWD")
                 }
 
                 // VPW – Speed Parallel to Wind
@@ -133,14 +132,37 @@ private struct WindSentencesSection: View {
                 .disabled(!WindUIConditions.isVPWEnabled(nmeaManager))
 
                 if WindUIConditions.showVPWDependencyWarning(nmeaManager) {
-                    Text("Enable Compass / Gyro and Speed Log or GPS to activate VPW.")
-                        .foregroundStyle(AppColors.warning)
-                        .font(.caption2)
-                        .padding(.leading, 4)
+                    windDependencyPrompt(sentence: "VPW")
                 }
             }
             .toggleStyle(.switch)
             .controlSize(.regular)
+        }
+    }
+
+    @ViewBuilder
+    private func windDependencyPrompt(sentence: String) -> some View {
+        VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
+            Text("Compass or Gyro and Speed Log or GPS are required to activate \(sentence).")
+                .foregroundStyle(DesignToken.Status.warning)
+                .font(DesignToken.Typography.supporting)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: DesignToken.Spacing.header) {
+                if !nmeaManager.hasTrueHeading {
+                    Button("Enable Magnetic Compass") {
+                        nmeaManager.sensorToggles.hasCompass = true
+                    }
+                    .buttonStyle(.link)
+                    .font(DesignToken.Typography.supporting)
+                }
+                if !nmeaManager.hasBoatSpeed {
+                    Button("Enable Speed Log") {
+                        nmeaManager.sensorToggles.hasSpeedLog = true
+                    }
+                    .buttonStyle(.link)
+                    .font(DesignToken.Typography.supporting)
+                }
+            }
         }
     }
 }
@@ -157,8 +179,8 @@ private struct AtmosphericSentencesSection: View {
     var body: some View {
         let hasSensor = nmeaManager.hasAtmosphericSensor
 
-        GroupBox(label: Label("Atmospheric Sentences", systemImage: "barometer")) {
-            VStack(alignment: .leading, spacing: UIConstants.spacing) {
+        SettingsCard(title: "Atmospheric Sentences") {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
                 ViewKit.SentenceRow(
                     "MDA - Meteorological Composite",
                     isOn: $shouldSendMDA,
@@ -186,11 +208,14 @@ private struct AtmosphericSentencesSection: View {
                 .disabled(!hasSensor)
 
                 if !hasSensor {
-                    Text(UIStrings.Warnings.enableAtmosphericSensor)
-                        .font(.caption2)
-                        .foregroundStyle(AppColors.warning)
-                        .padding(.leading, 4)
-                    OpenSimulationSensorsButton()
+                    SensorEnablePrompt(
+                        message: UIStrings.Warnings.enableAtmosphericSensor,
+                        actionTitle: "Enable Atmospheric Sensors"
+                    ) {
+                        nmeaManager.sensorToggles.hasAirTempSensor = true
+                        nmeaManager.sensorToggles.hasHumidtySensor = true
+                        nmeaManager.sensorToggles.hasBarometer = true
+                    }
                 }
             }
             .toggleStyle(.switch)

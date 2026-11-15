@@ -8,7 +8,7 @@ struct ResponsiveLayoutTests {
 
     @Test
     func widthClassesFollowAvailableContentWidth() {
-        #expect(DesignToken.Window.minimumWidth == 960)
+        #expect(DesignToken.Window.minimumWidth == 1080)
         #expect(DesignToken.Window.minimumHeight == 640)
         #expect(ResponsiveLayout.targetMinimumContentWidth == 720)
         #expect(DesignToken.Breakpoint.regular == 720)
