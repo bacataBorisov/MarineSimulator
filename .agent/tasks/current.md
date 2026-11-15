@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5), per-page scroll-position restoration, Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences (`MDA` & `XDR`), and GPS `retainedMapResource` passed user smoke tests and are committed. Next: Dashboard map flash on revisit.
+**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5), per-page scroll-position restoration, Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences (`MDA` & `XDR`), GPS `retainedMapResource`, and warm Dashboard map retention (pre-loaded, no revisit flash) passed user smoke tests and are committed. Next: remaining UI/lifecycle checks or next user-requested task.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -21,7 +21,7 @@ Historical traces and measurements remain in `../architecture/ui-performance-aud
 - Manual remains `ephemeral`. Keep its accepted 320-point `HStack`, native `List`, and original anchors. Parking a scrolled topics list reproducibly traps in SwiftUI `DynamicContainerInfo.tryRemovingItem` with `DynamicPreferenceCombiner`; do not retain it or inject an AppKit anchor without a separately reviewed design.
 - Diagnostics, Wind, Hydro, and Compass remain `ephemeral`. Do not add inactive 10 Hz observation for low-cost sentence pages.
 - GPS uses `retainedMapResource` (`GPSSelectorMapResource` in `Views/GPS/MapWithRightClick.swift`): `GPSConfig` remains `ephemeral`, while its `MKMapView`, pin, and camera survive sidebar navigation.
-- Keep Dashboard's specialized retained-map lifecycle, one-console ownership, automatic key-view handling, scroll anchors, keyboard, VoiceOver, and operator/experiment isolation.
+- Keep Dashboard's specialized retained-map lifecycle (full-size `DashboardPageHost` kept warm and hidden via AppKit `isHidden` off-dashboard so `MKMapView` never tears down its Metal surface or flashes on revisit), one-console ownership, automatic key-view handling, scroll anchors, keyboard, VoiceOver, and operator/experiment isolation.
 - Runtime UI validation of the lifecycle slice remains outstanding; do not claim it complete from hosted tests alone.
 - Runtime VoiceOver and full keyboard/focus traversal remain open. Automated tests do not traverse focus.
 

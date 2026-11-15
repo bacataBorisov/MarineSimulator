@@ -38,7 +38,12 @@ struct BoatMapView: NSViewRepresentable {
 
     func updateNSView(_ nsView: BoatMapContainerView, context: Context) {
         nsView.syncMapAttachment()
-        guard isActive else { return }
+        let becameActive = isActive && !context.coordinator.wasActive
+        context.coordinator.wasActive = isActive
+        if becameActive {
+            context.coordinator.resetApplyThrottle()
+        }
+        guard isActive || !context.coordinator.hasPlacedInitialCamera else { return }
         context.coordinator.update(
             container: nsView,
             gpsData: nmeaManager.gpsData,
@@ -52,7 +57,8 @@ struct BoatMapView: NSViewRepresentable {
     final class Coordinator: NSObject, MKMapViewDelegate {
         private weak var container: BoatMapContainerView?
         private var boatAnnotation = MKPointAnnotation()
-        private var hasPlacedInitialCamera = false
+        private(set) var hasPlacedInitialCamera = false
+        var wasActive = false
         private var lastBearingDegrees: Double = 0
         private var lastAppliedCameraHeading: CGFloat = .nan
         private var lastMapApplyTime: CFAbsoluteTime = 0
@@ -62,6 +68,10 @@ struct BoatMapView: NSViewRepresentable {
         private var pendingGPS: GPSData?
         private var pendingBearing: Double = 0
         private var pendingTack = false
+
+        func resetApplyThrottle() {
+            lastMapApplyTime = 0
+        }
 
         func attach(to container: BoatMapContainerView) {
             self.container = container

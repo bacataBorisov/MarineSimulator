@@ -90,10 +90,12 @@ extension SidebarItem: RawRepresentable {
         }
     }
 
-    /// Full detail size on the dashboard. Zero on every other page so the retained
-    /// dashboard and its map stay mounted without joining that page's layout.
+    /// Full detail size for the retained dashboard host across all pages so `MKMapView`
+    /// keeps its Metal drawable and tiles warm without flashing on revisit.
+    /// Host visibility, alpha, hit-testing, and accessibility hide it off the dashboard.
     func retainedDashboardSize(fitting detail: CGSize) -> CGSize {
-        self == .dashboard ? detail : .zero
+        _ = self
+        return detail
     }
 
     var rawValue: String {

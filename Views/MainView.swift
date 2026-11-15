@@ -89,12 +89,12 @@ struct MainView: View {
                 GeometryReader { geometry in
                     let dashboardSize = selected.retainedDashboardSize(fitting: geometry.size)
                     ZStack {
-                        // One dashboard identity stays mounted. Other pages propose it
-                        // no size, so its map is not laid out across the detail column.
+                        // One dashboard identity stays mounted at full detail size behind
+                        // the shell so its MKMapView keeps its Metal surface and tiles warm
+                        // (no flash on revisit). Off the dashboard it is hidden via AppKit.
                         DashboardPageHost(nmeaManager: nmeaManager, isVisible: selected == .dashboard)
                             .frame(width: dashboardSize.width, height: dashboardSize.height)
                             .clipped()
-                            .opacity(selected == .dashboard ? 1 : 0)
                             .allowsHitTesting(selected == .dashboard)
                             .accessibilityHidden(selected != .dashboard)
 

@@ -10,7 +10,7 @@ import Testing
 struct DashboardDetailLayoutTests {
 
     @Test
-    func theRetainedDashboardFillsOnlyTheDashboard() {
+    func theRetainedDashboardStaysFullDetailSizeAcrossDestinations() {
         let detail = CGSize(width: 960, height: 640)
         #expect(SidebarItem.dashboard.retainedDashboardSize(fitting: detail) == detail)
         #expect(SidebarItem.dashboard.placesConsoleInTheShell == false)
@@ -21,15 +21,15 @@ struct DashboardDetailLayoutTests {
         ]
         for page in pages {
             let size = page.retainedDashboardSize(fitting: detail)
-            #expect(size == .zero)
+            #expect(size == detail)
             #expect(page.placesConsoleInTheShell)
         }
     }
 
-    /// Mounts the real detail column. A non-dashboard page must not keep the dashboard
-    /// map at the detail size, and returning must reuse that same map host.
+    /// Mounts the real detail column. A non-dashboard page hides the retained dashboard
+    /// map host while keeping its MKMapView warm at detail size, and returning reveals that same host.
     @Test(.timeLimit(.minutes(2)))
-    func leavingTheDashboardCollapsesItsMapAndReturningKeepsTheSameHost() throws {
+    func leavingTheDashboardHidesItsMapWhileKeepingItWarmAndReturningKeepsTheSameHost() throws {
         let suite = "DashboardDetailLayoutTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
@@ -80,29 +80,29 @@ struct DashboardDetailLayoutTests {
         let hidden = waitUntil(host: host) {
             let maps = mapHosts(in: host)
             guard maps.count == 1, maps[0] === dashboardMap else { return false }
-            return maps[0].bounds.width <= 1 && maps[0].bounds.height <= 1
+            return maps[0].isHiddenOrHasHiddenAncestor
         }
-        try #require(hidden, "connection still lays the dashboard map out at \(dashboardMap.bounds) \(describe(host))")
+        try #require(hidden, "connection left dashboard map visible \(describe(host))")
         #expect(consoleHosts(in: host).count == 1, "connection consoles: \(describe(host))")
-        #expect(largeMapViews(in: host).isEmpty, "a full-size map is still in the connection column: \(describe(host))")
-        #expect(mapKitViews(in: host).isEmpty, "the retained map stayed in the window at connection: \(describe(host))")
+        #expect(visibleLargeMapViews(in: host).isEmpty, "a visible map is still in the connection column: \(describe(host))")
+        #expect(mapKitViews(in: host).first === retainedMapKit, "leaving dashboard destroyed its retained MKMapView")
 
         select(.simulation, defaults: defaults, host: host)
         let stillHidden = waitUntil(host: host) {
             let maps = mapHosts(in: host)
             guard maps.count == 1, maps[0] === dashboardMap else { return false }
-            return maps[0].bounds.width <= 1 && maps[0].bounds.height <= 1
+            return maps[0].isHiddenOrHasHiddenAncestor
         }
-        try #require(stillHidden, "simulation lays the dashboard map out at \(dashboardMap.bounds) \(describe(host))")
+        try #require(stillHidden, "simulation left dashboard map visible \(describe(host))")
         #expect(consoleHosts(in: host).count == 1)
 
         select(.dashboard, defaults: defaults, host: host)
         let returned = waitUntil(host: host) {
             let maps = mapHosts(in: host)
             guard maps.count == 1, maps[0] === dashboardMap else { return false }
-            return maps[0].bounds.width > 400 && maps[0].bounds.height > 300
+            return !maps[0].isHiddenOrHasHiddenAncestor && maps[0].bounds.width > 400 && maps[0].bounds.height > 300
         }
-        try #require(returned, "returning created another map or left it collapsed: \(describe(host))")
+        try #require(returned, "returning created another map or left it hidden: \(describe(host))")
         #expect(mapHosts(in: host)[0] === dashboardMap)
         #expect(mapKitViews(in: host).first === retainedMapKit, "returning created another MKMapView")
         #expect(consoleHosts(in: host).count == 1, "dashboard consoles after return: \(describe(host))")
@@ -134,9 +134,12 @@ struct DashboardDetailLayoutTests {
         views(in: root).compactMap { $0 as? MKMapView }
     }
 
-    private func largeMapViews(in root: NSView) -> [MKMapView] {
+    private func visibleLargeMapViews(in root: NSView) -> [MKMapView] {
         views(in: root).compactMap { view in
-            guard let map = view as? MKMapView, map.bounds.width > 2, map.bounds.height > 2 else { return nil }
+            guard let map = view as? MKMapView,
+                  !map.isHiddenOrHasHiddenAncestor,
+                  map.bounds.width > 2,
+                  map.bounds.height > 2 else { return nil }
             return map
         }
     }
@@ -152,7 +155,7 @@ struct DashboardDetailLayoutTests {
     private func describe(_ root: NSView) -> String {
         let maps = mapHosts(in: root).map { "map \($0.bounds.size)" }
         let consoles = consoleHosts(in: root).map { "console \($0.bounds.size)" }
-        let largeMaps = largeMapViews(in: root).map { "mk \($0.bounds.size)" }
+        let largeMaps = visibleLargeMapViews(in: root).map { "mk \($0.bounds.size)" }
         return (maps + consoles + largeMaps).joined(separator: "; ")
     }
 }

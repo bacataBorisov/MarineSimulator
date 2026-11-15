@@ -31,11 +31,19 @@ struct DashboardPageHost: NSViewRepresentable {
             rootView: DashboardMount(visibility: context.coordinator.visibility, nmeaManager: nmeaManager)
         )
         host.sizingOptions = []
+        applyVisibility(isVisible, to: host)
         return host
     }
 
     func updateNSView(_ host: NSHostingView<DashboardMount>, context: Context) {
         context.coordinator.visibility.isVisible = isVisible
+        applyVisibility(isVisible, to: host)
+    }
+
+    private func applyVisibility(_ visible: Bool, to host: NSHostingView<DashboardMount>) {
+        host.isHidden = !visible
+        host.alphaValue = visible ? 1 : 0
+        host.setAccessibilityHidden(!visible)
     }
 
     final class Coordinator {

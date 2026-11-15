@@ -17,12 +17,12 @@ struct RetainedDestinationLifecycleTests {
             #expect(page.lifecycle == .retainedForm)
             #expect(page.retainsDestinationTree)
             #expect(page.placesConsoleInTheShell)
-            #expect(page.retainedDashboardSize(fitting: detail) == .zero)
+            #expect(page.retainedDashboardSize(fitting: detail) == detail)
         }
         #expect(SidebarItem.boat.lifecycle == .retainedSessionView)
         #expect(SidebarItem.boat.retainsDestinationTree)
         #expect(SidebarItem.boat.placesConsoleInTheShell)
-        #expect(SidebarItem.boat.retainedDashboardSize(fitting: detail) == .zero)
+        #expect(SidebarItem.boat.retainedDashboardSize(fitting: detail) == detail)
 
         #expect(SidebarItem.dashboard.lifecycle == .retainedDashboardMap)
         #expect(SidebarItem.dashboard.retainsDestinationTree == false)
@@ -32,14 +32,14 @@ struct RetainedDestinationLifecycleTests {
         #expect(SidebarItem.gps.lifecycle == .retainedMapResource)
         #expect(SidebarItem.gps.retainsDestinationTree == false)
         #expect(SidebarItem.gps.placesConsoleInTheShell)
-        #expect(SidebarItem.gps.retainedDashboardSize(fitting: detail) == .zero)
+        #expect(SidebarItem.gps.retainedDashboardSize(fitting: detail) == detail)
 
         let ephemeral: [SidebarItem] = [.diagnostics, .wind, .hydro, .compass, .manual]
         for page in ephemeral {
             #expect(page.lifecycle == .ephemeral)
             #expect(page.retainsDestinationTree == false)
             #expect(page.placesConsoleInTheShell)
-            #expect(page.retainedDashboardSize(fitting: detail) == .zero)
+            #expect(page.retainedDashboardSize(fitting: detail) == detail)
         }
     }
 
@@ -61,7 +61,8 @@ struct RetainedDestinationLifecycleTests {
         let connectionRoot = connectionHost.root
         let dashboardMap = try #require(harness.mapHosts().first)
         let shellConsole = try #require(harness.consoleHosts().first)
-        #expect(dashboardMap.bounds.width <= 1)
+        #expect(dashboardMap.isHiddenOrHasHiddenAncestor)
+        #expect(dashboardMap.bounds.width > 400)
         #expect(harness.boundAnchors(in: connectionScroll).count == 1)
 
         harness.select(.simulation)
@@ -156,7 +157,8 @@ struct RetainedDestinationLifecycleTests {
 
         harness.select(.dashboard)
         let dashboardReady = harness.waitUntil {
-            dashboardMap.bounds.width > 400
+            !dashboardMap.isHiddenOrHasHiddenAncestor
+                && dashboardMap.bounds.width > 400
                 && dashboardMap.bounds.height > 300
                 && harness.isParked(connectionScroll)
                 && harness.isParked(simulationScroll)
@@ -176,7 +178,7 @@ struct RetainedDestinationLifecycleTests {
             simulationScroll.bounds.width > 300
                 && simulationScroll.bounds.height > 200
                 && harness.isParked(connectionScroll)
-                && dashboardMap.bounds.width <= 1
+                && dashboardMap.isHiddenOrHasHiddenAncestor
                 && harness.consoleHosts().count == 1
                 && harness.largeMapViews().isEmpty
                 && harness.boundAnchors(in: simulationScroll).count == 1
@@ -687,7 +689,8 @@ struct RetainedDestinationLifecycleTests {
 
         harness.select(.dashboard)
         let dashboardReady = harness.waitUntil {
-            dashboardMap.bounds.width > 400
+            !dashboardMap.isHiddenOrHasHiddenAncestor
+                && dashboardMap.bounds.width > 400
                 && harness.isHostParked(.boat)
                 && harness.destinationHost(.manual) == nil
                 && harness.manualSearchFields().isEmpty
@@ -700,7 +703,7 @@ struct RetainedDestinationLifecycleTests {
         harness.select(.diagnostics)
         let diagnosticsReady = harness.waitUntil {
             harness.showsDiagnosticsPage()
-                && dashboardMap.bounds.width <= 1
+                && dashboardMap.isHiddenOrHasHiddenAncestor
                 && harness.isHostParked(.boat)
                 && harness.destinationHost(.manual) == nil
                 && harness.looseMapViews().isEmpty
@@ -1633,7 +1636,10 @@ private final class DestinationHarness {
 
     func largeMapViews() -> [MKMapView] {
         views(in: host).compactMap { view in
-            guard let map = view as? MKMapView, map.bounds.width > 2, map.bounds.height > 2 else { return nil }
+            guard let map = view as? MKMapView,
+                  !map.isHiddenOrHasHiddenAncestor,
+                  map.bounds.width > 2,
+                  map.bounds.height > 2 else { return nil }
             return map
         }
     }

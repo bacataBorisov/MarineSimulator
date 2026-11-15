@@ -525,7 +525,10 @@ struct ConsoleToggleLayoutTests {
 
     private func largeMapViews(in root: NSView) -> [MKMapView] {
         views(in: root).compactMap { view in
-            guard let map = view as? MKMapView, map.bounds.width > 2, map.bounds.height > 2 else { return nil }
+            guard let map = view as? MKMapView,
+                  !map.isHiddenOrHasHiddenAncestor,
+                  map.bounds.width > 2,
+                  map.bounds.height > 2 else { return nil }
             return map
         }
     }
