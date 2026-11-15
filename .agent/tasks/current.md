@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5) and per-page scroll-position restoration (`Views/ConsoleScrollTracking.swift`) passed focused tests and user smoke tests, and are committed. Next: Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences, and GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5), per-page scroll-position restoration, and the Weather GPS-off glance hint (`Live Weather · Enable GPS` pill + direct `Enable GPS` popover + auto-refresh) passed user smoke tests and are committed. Next: Boat numeric-field UX, atmospheric NMEA sentences, and GPS `retainedMapResource`.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -39,8 +39,7 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Add GPS-off glance hint to `WeatherModeToolbarPill` (`Views/MainWindowToolbar.swift`).
-- Add numeric input restriction / inline feedback on Boat Profile numeric fields (`Views/BoatProfileEditor.swift`).
+- Add numeric input restriction / inline feedback on Boat Profile numeric fields (`Views/BoatProfileEditor.swift`, `Views/SailInventoryEditor.swift`).
 - Add atmospheric NMEA sentences (air temp, humidity, barometer).
 - Next lifecycle item after cleanup: GPS `retainedMapResource`. No retained GPS map exists.
 - Runtime VoiceOver and full keyboard/focus traversal remain open (manual user checks).

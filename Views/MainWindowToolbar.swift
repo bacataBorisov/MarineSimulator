@@ -132,11 +132,15 @@ private struct ConnectionStatusPill: View {
 private struct WeatherModeToolbarPill: View {
     @Bindable var nmeaManager: NMEASimulator
     var compact: Bool
+    @State private var showIssuePopover = false
 
     var body: some View {
         let isLive = nmeaManager.weatherSourceMode == .liveWeather
+        let gpsMissing = isLive && !nmeaManager.sensorToggles.hasGPS
+        let hasFailure = isLive && nmeaManager.liveWeatherStatus.state == .failed
         let title: String = {
             if !isLive { return "Manual" }
+            if gpsMissing { return compact ? "GPS Off" : "Live Weather · Enable GPS" }
             switch nmeaManager.liveWeatherStatus.state {
             case .fetching: return compact ? "Live" : "Fetching…"
             case .failed: return compact ? "Live!" : "Weather Error"
@@ -146,6 +150,7 @@ private struct WeatherModeToolbarPill: View {
         }()
         let systemImage: String = {
             if !isLive { return "slider.horizontal.3" }
+            if gpsMissing { return "location.slash" }
             switch nmeaManager.liveWeatherStatus.state {
             case .idle: return "cloud.sun.fill"
             case .fetching: return "arrow.triangle.2.circlepath"
@@ -155,6 +160,7 @@ private struct WeatherModeToolbarPill: View {
         }()
         let tint: Color = {
             if !isLive { return DesignToken.Status.neutral }
+            if gpsMissing { return DesignToken.Status.warning }
             switch nmeaManager.liveWeatherStatus.state {
             case .idle: return DesignToken.Status.info
             case .fetching: return DesignToken.Status.warning
@@ -166,13 +172,20 @@ private struct WeatherModeToolbarPill: View {
             if !isLive {
                 return "Manual weather controls active. Click to switch to Live Weather."
             }
+            if gpsMissing {
+                return "GPS is disabled in Simulation, so live weather cannot determine the boat's position."
+            }
             let provider = nmeaManager.latestLiveWeather?.sourceName
             let details = [provider, nmeaManager.liveWeatherStatus.message].compactMap { $0 }.joined(separator: " — ")
             return "\(details). Click to switch to Manual weather."
         }()
 
         Button {
-            nmeaManager.weatherSourceMode = isLive ? .manual : .liveWeather
+            if gpsMissing || hasFailure {
+                showIssuePopover = true
+            } else {
+                nmeaManager.weatherSourceMode = isLive ? .manual : .liveWeather
+            }
         } label: {
             Label(title, systemImage: systemImage)
                 .labelStyle(.titleAndIcon)
@@ -186,6 +199,44 @@ private struct WeatherModeToolbarPill: View {
         .buttonStyle(.plain)
         .help(helpText)
         .accessibilityLabel(helpText)
+        .popover(isPresented: $showIssuePopover, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.header) {
+                Text(gpsMissing ? "GPS Required for Live Weather" : "Live Weather Unavailable")
+                    .font(.headline)
+
+                Text(
+                    gpsMissing
+                        ? "GPS is disabled in Simulation, so live weather cannot determine the boat's position."
+                        : nmeaManager.liveWeatherStatus.message
+                )
+                .font(DesignToken.Typography.supporting)
+                .foregroundStyle(DesignToken.Status.neutral)
+                .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: DesignToken.Spacing.row) {
+                    if gpsMissing {
+                        Button("Enable GPS") {
+                            showIssuePopover = false
+                            nmeaManager.sensorToggles.hasGPS = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Retry Fetch") {
+                            showIssuePopover = false
+                            nmeaManager.refreshLiveWeather(force: true)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+
+                    Button("Switch to Manual") {
+                        showIssuePopover = false
+                        nmeaManager.weatherSourceMode = .manual
+                    }
+                }
+            }
+            .padding(DesignToken.Spacing.card)
+            .frame(width: 280)
+        }
     }
 }
 

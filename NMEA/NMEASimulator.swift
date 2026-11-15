@@ -36,7 +36,22 @@ class NMEASimulator {
         didSet { persistSettingsIfNeeded() }
     }
     var sensorToggles = SensorToggleStates() {
-        didSet { persistSettingsIfNeeded() }
+        didSet {
+            if !isRestoringSettings, weatherSourceMode == .liveWeather {
+                if !oldValue.hasGPS && sensorToggles.hasGPS {
+                    refreshLiveWeather(force: true)
+                } else if oldValue.hasGPS && !sensorToggles.hasGPS {
+                    liveWeatherTask?.cancel()
+                    liveWeatherTask = nil
+                    liveWeatherStatus = LiveWeatherStatus(
+                        state: .failed,
+                        message: "Enable GPS to use live weather.",
+                        lastUpdated: latestLiveWeather?.fetchedAt
+                    )
+                }
+            }
+            persistSettingsIfNeeded()
+        }
     }
 
     // MARK: - Network & Connectivity
