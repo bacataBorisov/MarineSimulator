@@ -595,6 +595,32 @@ struct PagePresentationTests {
         expectNear(session.storedOffset(page: .simulation, slot: "primary") ?? -1, 340)
         #expect(connection.tracking.isDragging == false)
     }
+
+    @Test
+    func postRestoreResetToZeroAndLateDocumentGrowthDoNotEraseStoredOffset() {
+        let session = PagePresentationSession()
+        session.remember(640, page: .diagnostics, slot: "primary")
+
+        // Initial layout reports a short document (clamped to 200), then resets origin to 0, then expands to 2400.
+        let page = PageScrollMemoryRig(
+            session: session,
+            page: .diagnostics,
+            contentHeight: 700,
+            viewport: 500
+        )
+        expectNear(page.offset, 200)
+        expectNear(session.storedOffset(page: .diagnostics, slot: "primary") ?? -1, 640)
+
+        page.setViewport(500, offset: 0)
+        page.anchor.followViewport()
+        expectNear(page.offset, 200)
+        expectNear(session.storedOffset(page: .diagnostics, slot: "primary") ?? -1, 640)
+
+        page.setContentHeight(2400)
+        page.anchor.followViewport()
+        expectNear(page.offset, 640)
+        expectNear(session.storedOffset(page: .diagnostics, slot: "primary") ?? -1, 640)
+    }
 }
 
 private func expectNear(_ value: CGFloat, _ expected: CGFloat) {

@@ -243,6 +243,131 @@ struct RetainedDestinationLifecycleTests {
         )
     }
 
+    @Test(.timeLimit(.minutes(2)))
+    func retainedSimulationScrollPreservedAcrossDiagnosticsAtMidAndZero() throws {
+        ScrollRuntimeTrace.shared.start()
+        defer { ScrollRuntimeTrace.shared.resetForTest() }
+        let harness = try DestinationHarness(selection: .simulation, consoleHeight: 200)
+        defer { harness.close() }
+
+        let simReady = harness.waitUntil {
+            guard let scroll = harness.marker(.simulation)?.enclosingScrollView else { return false }
+            let room = (scroll.documentView?.bounds.height ?? 0) - scroll.contentView.bounds.height
+            return scroll.bounds.width > 300 && room > 120 && harness.boundAnchors(in: scroll).count == 1
+        }
+        try #require(simReady, "simulation not ready")
+        let simScroll = try #require(harness.marker(.simulation)?.enclosingScrollView)
+        let insets = simScroll.contentView.contentInsets
+        let docHeight = simScroll.documentView?.bounds.height ?? 0
+        let viewHeight = simScroll.contentView.bounds.height
+        let mid: CGFloat = 150
+        harness.scroll(simScroll, to: mid)
+        NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: simScroll)
+        #expect(harness.waitUntil { abs(simScroll.contentView.bounds.origin.y - mid) < 2 })
+
+        harness.select(.diagnostics)
+        let diagReady = harness.waitUntil {
+            harness.showsDiagnosticsPage() && harness.isParked(simScroll)
+        }
+        try #require(diagReady)
+
+        harness.select(.simulation)
+        let backMid = harness.waitUntil {
+            simScroll.bounds.width > 300 && harness.boundAnchors(in: simScroll).count == 1
+        }
+        try #require(backMid)
+        // Wait until async restore settle expires
+        let deadline = Date().addingTimeInterval(0.2)
+        while Date() < deadline {
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
+        let afterMid = simScroll.contentView.bounds.origin.y
+        try #require(abs(afterMid - mid) < 2, "mid shifted to \(afterMid) insets=(\(insets.top),\(insets.bottom)) doc=\(docHeight) view=\(viewHeight)")
+
+        // Now simulate real trackpad scroll back to minimum (didLiveScroll fires after origin change)
+        let minBefore = ConsoleScrollLimits.reading(simScroll.contentView, viewportHeight: simScroll.contentView.bounds.height).minimum
+        NotificationCenter.default.post(name: NSScrollView.willStartLiveScrollNotification, object: simScroll)
+        harness.scroll(simScroll, to: minBefore)
+        NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: simScroll)
+        NotificationCenter.default.post(name: NSScrollView.didEndLiveScrollNotification, object: simScroll)
+        let reachedZero = harness.waitUntil { abs(simScroll.contentView.bounds.origin.y - minBefore) < 2 }
+        try #require(reachedZero, "scroll to min=\(minBefore) stayed at \(simScroll.contentView.bounds.origin.y): trace=\n\(ScrollRuntimeTrace.shared.text())")
+
+        harness.select(.diagnostics)
+        try #require(harness.waitUntil { harness.showsDiagnosticsPage() && harness.isParked(simScroll) })
+
+        harness.select(.simulation)
+        try #require(harness.waitUntil { simScroll.bounds.width > 300 && harness.boundAnchors(in: simScroll).count == 1 })
+        let deadline2 = Date().addingTimeInterval(0.2)
+        while Date() < deadline2 {
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
+        let afterZero = simScroll.contentView.bounds.origin.y
+        try #require(abs(afterZero - minBefore) < 2, "min=\(minBefore) shifted to \(afterZero) insets=(\(insets.top),\(insets.bottom)): trace=\n\(ScrollRuntimeTrace.shared.text())")
+    }
+
+    @Test(.timeLimit(.minutes(2)))
+    func retainedSimulationScrollPreservedAcrossConnectionAtMidAndNearBottom() throws {
+        ScrollRuntimeTrace.shared.start()
+        defer { ScrollRuntimeTrace.shared.resetForTest() }
+        let harness = try DestinationHarness(selection: .simulation, consoleHeight: 200)
+        defer { harness.close() }
+
+        let simReady = harness.waitUntil {
+            guard let scroll = harness.marker(.simulation)?.enclosingScrollView else { return false }
+            let room = (scroll.documentView?.bounds.height ?? 0) - scroll.contentView.bounds.height
+            return scroll.bounds.width > 300 && room > 200 && harness.boundAnchors(in: scroll).count == 1
+        }
+        try #require(simReady, "simulation not ready")
+        let simScroll = try #require(harness.marker(.simulation)?.enclosingScrollView)
+        let limits = ConsoleScrollLimits.reading(simScroll.contentView, viewportHeight: simScroll.contentView.bounds.height)
+        let mid = (limits.minimum + limits.maximum) * 0.5
+        NotificationCenter.default.post(name: NSScrollView.willStartLiveScrollNotification, object: simScroll)
+        harness.scroll(simScroll, to: mid)
+        NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: simScroll)
+        NotificationCenter.default.post(name: NSScrollView.didEndLiveScrollNotification, object: simScroll)
+        #expect(harness.waitUntil { abs(simScroll.contentView.bounds.origin.y - mid) < 2 })
+
+        harness.select(.connection)
+        let connReady = harness.waitUntil {
+            guard let connScroll = harness.marker(.connection)?.enclosingScrollView else { return false }
+            return connScroll.bounds.width > 300 && harness.isParked(simScroll)
+        }
+        try #require(connReady)
+
+        harness.select(.simulation)
+        try #require(harness.waitUntil { simScroll.bounds.width > 300 && harness.boundAnchors(in: simScroll).count == 1 })
+        let deadline = Date().addingTimeInterval(0.6)
+        while Date() < deadline {
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
+        let afterMid = simScroll.contentView.bounds.origin.y
+        try #require(abs(afterMid - mid) < 2, "mid=\(mid) shifted to \(afterMid): trace=\n\(ScrollRuntimeTrace.shared.text())")
+
+        // Also test near bottom (maximum)
+        let maxPos = ConsoleScrollLimits.reading(simScroll.contentView, viewportHeight: simScroll.contentView.bounds.height).maximum
+        NotificationCenter.default.post(name: NSScrollView.willStartLiveScrollNotification, object: simScroll)
+        harness.scroll(simScroll, to: maxPos)
+        NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: simScroll)
+        NotificationCenter.default.post(name: NSScrollView.didEndLiveScrollNotification, object: simScroll)
+        #expect(harness.waitUntil { abs(simScroll.contentView.bounds.origin.y - maxPos) < 2 })
+
+        harness.select(.connection)
+        try #require(harness.waitUntil {
+            guard let connScroll = harness.marker(.connection)?.enclosingScrollView else { return false }
+            return connScroll.bounds.width > 300 && harness.isParked(simScroll)
+        })
+
+        harness.select(.simulation)
+        try #require(harness.waitUntil { simScroll.bounds.width > 300 && harness.boundAnchors(in: simScroll).count == 1 })
+        let deadline2 = Date().addingTimeInterval(0.6)
+        while Date() < deadline2 {
+            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
+        }
+        let afterMax = simScroll.contentView.bounds.origin.y
+        try #require(abs(afterMax - maxPos) < 2, "max=\(maxPos) shifted to \(afterMax): trace=\n\(ScrollRuntimeTrace.shared.text())")
+    }
+
     /// The active page is in the key-view loop. Parking hides that host, so traversal skips it
     /// without rewriting each field's own focus policy.
     @Test(.timeLimit(.minutes(2)))

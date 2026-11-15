@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. All 5 file-split cleanup steps passed focused tests and user smoke tests, and are committed (`TopControlBar.swift`/`LeadingSidePanel.swift` removed; `ConfigurationChrome.swift`, `MainView.swift`, `BoatProfileEditor.swift`, `VesselProfile.swift`, `NMEASimulator.swift`, and `SimulationEngine.swift` split so zero production files exceed 1,000 lines). Next: fix per-page last scroll-position restoration, then Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences, and GPS `retainedMapResource`.
+**Status:** Direct single-chat workflow active. File-split cleanup (Steps 1–5) and per-page scroll-position restoration (`Views/ConsoleScrollTracking.swift`) passed focused tests and user smoke tests, and are committed. Next: Weather GPS-off glance hint, Boat numeric-field UX, atmospheric NMEA sentences, and GPS `retainedMapResource`.
 **Last updated:** 2026-11-15
 
 ## Accepted navigation outcome
@@ -39,7 +39,6 @@ Implemented, including the semantic-token follow-up. The window minimum stays 96
 
 ## Still outstanding
 
-- Fix per-page last scroll-position restoration (`Views/ConsoleScrollTracking.swift`).
 - Add GPS-off glance hint to `WeatherModeToolbarPill` (`Views/MainWindowToolbar.swift`).
 - Add numeric input restriction / inline feedback on Boat Profile numeric fields (`Views/BoatProfileEditor.swift`).
 - Add atmospheric NMEA sentences (air temp, humidity, barometer).

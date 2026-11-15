@@ -227,6 +227,10 @@ final class ConsoleEdgeAnchorView: NSView {
     private var echoViewport: CGFloat?
     private var echoOrigin: CGFloat?
     private var didRestore = false
+    /// Stored non-zero target held across SwiftUI's initial mount/activation layout passes
+    /// so a post-restore `origin.y = 0` reset or two-pass content growth does not wipe it.
+    private var pendingRestoreTarget: CGFloat?
+    private var restoreSettleGeneration: UInt64 = 0
     private var isDetaching = false
     private var retired = false
     private var participates = true
@@ -302,6 +306,8 @@ final class ConsoleEdgeAnchorView: NSView {
             participates = true
             isDetaching = false
             didRestore = false
+            pendingRestoreTarget = nil
+            restoreSettleGeneration &+= 1
             previous = nil
             dragBaseline = nil
             echoViewport = nil
@@ -310,8 +316,10 @@ final class ConsoleEdgeAnchorView: NSView {
             lastProgrammaticViewport = nil
             bindIfNeeded()
         } else {
-            rememberVisibleOffset()
+            rememberCurrentOriginForSuspension()
             participates = false
+            pendingRestoreTarget = nil
+            restoreSettleGeneration &+= 1
             unregisterConsoleEdgeObservers()
             #if DEBUG
             scrollTrace.unbindAnchor(self)
@@ -332,6 +340,7 @@ final class ConsoleEdgeAnchorView: NSView {
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(viewportChanged), name: NSView.boundsDidChangeNotification, object: found.contentView)
         center.addObserver(self, selector: #selector(viewportChanged), name: NSView.frameDidChangeNotification, object: found)
+        center.addObserver(self, selector: #selector(userWillStartLiveScroll), name: NSScrollView.willStartLiveScrollNotification, object: found)
         center.addObserver(self, selector: #selector(userDidLiveScroll), name: NSScrollView.didLiveScrollNotification, object: found)
         observersInstalled = true
         #if DEBUG
@@ -354,11 +363,17 @@ final class ConsoleEdgeAnchorView: NSView {
         followViewport()
     }
 
+    @objc private func userWillStartLiveScroll(_ notification: Notification) {
+        guard participates, !retired, !isDetaching else { return }
+        guard let scrollView, (notification.object as AnyObject?) === scrollView else { return }
+        cancelPendingRestoreSettle()
+    }
+
     /// Posted after a user event changes the clip origin. Legacy scroll wheels post this without a
     /// `willStart`/`didEnd` pair. Those session notifications also stay active for a whole trackpad
     /// gesture, so a layout callback in between must not use them.
     @objc private func userDidLiveScroll(_ notification: Notification) {
-        guard participates, dragTracking.isDragging, !isApplying, !retired, !isDetaching else { return }
+        guard participates, !isApplying, !retired, !isDetaching else { return }
         guard let scrollView, (notification.object as AnyObject?) === scrollView else { return }
         guard let document = scrollView.documentView else { return }
         let clip = scrollView.contentView
@@ -373,6 +388,7 @@ final class ConsoleEdgeAnchorView: NSView {
            abs(raw.viewportHeight - lastProgrammaticViewport) <= 0.5 {
             return
         }
+        cancelPendingRestoreSettle()
         freezeIdentityIfNeeded()
         let limits = ConsoleScrollLimits.reading(clip, matching: raw)
         let legal = limits.clamped(raw.offsetY)
@@ -381,8 +397,12 @@ final class ConsoleEdgeAnchorView: NSView {
             viewportHeight: raw.viewportHeight,
             contentHeight: raw.contentHeight
         )
-        dragBaseline = ConsoleScrollTracking.baseline(from: sample, limits: limits)
         previous = sample
+        guard dragTracking.isDragging else {
+            remember(legal, note: "liveScroll")
+            return
+        }
+        dragBaseline = ConsoleScrollTracking.baseline(from: sample, limits: limits)
         echoViewport = nil
         echoOrigin = nil
         lastProgrammaticOrigin = nil
@@ -461,6 +481,7 @@ final class ConsoleEdgeAnchorView: NSView {
                 if abs(target - next.offsetY) > 0.5 {
                     apply(target, to: clip)
                 }
+                armPendingRestoreSettle(target: stored)
                 previous = snapshot(clip.bounds.origin.y, next)
                 #if DEBUG
                 trace(
@@ -506,6 +527,7 @@ final class ConsoleEdgeAnchorView: NSView {
         #endif
 
         if dragTracking.isDragging {
+            cancelPendingRestoreSettle()
             followDrag(from: previous, to: next, clip: clip)
             return
         }
@@ -516,6 +538,17 @@ final class ConsoleEdgeAnchorView: NSView {
         let originChanged = abs(next.offsetY - previous.offsetY) > 0.5
         let viewportChanged = abs(next.viewportHeight - previous.viewportHeight) > 0.5
         let contentChanged = abs(next.contentHeight - previous.contentHeight) > 0.5
+
+        if let pendingStored = pendingRestoreTarget {
+            let limits = ConsoleScrollLimits.reading(clip, viewportHeight: next.viewportHeight)
+            let desired = PageScrollRestoration.clampedOffset(pendingStored, limits: limits)
+            if abs(desired - next.offsetY) > 0.5 {
+                apply(desired, to: clip)
+            }
+            self.previous = snapshot(clip.bounds.origin.y, next)
+            return
+        }
+
         let jumpedHome = next.offsetY < 0.5 && previous.offsetY > 1
         if jumpedHome && window == nil { return }
         self.previous = next
@@ -543,6 +576,54 @@ final class ConsoleEdgeAnchorView: NSView {
                 note: "layout"
             )
             #endif
+        }
+    }
+
+    private func armPendingRestoreSettle(target: CGFloat) {
+        pendingRestoreTarget = target
+        restoreSettleGeneration &+= 1
+        let generation = restoreSettleGeneration
+        DispatchQueue.main.async { [weak self] in
+            self?.reapplyPendingRestoreIfNeeded(generation: generation)
+        }
+        for delay in [0.08, 0.20] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.reapplyPendingRestoreIfNeeded(generation: generation)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let self, self.restoreSettleGeneration == generation else { return }
+            self.reapplyPendingRestoreIfNeeded(generation: generation)
+            if self.restoreSettleGeneration == generation {
+                self.pendingRestoreTarget = nil
+            }
+        }
+    }
+
+    private func cancelPendingRestoreSettle() {
+        pendingRestoreTarget = nil
+        restoreSettleGeneration &+= 1
+    }
+
+    private func reapplyPendingRestoreIfNeeded(generation: UInt64) {
+        guard restoreSettleGeneration == generation,
+              let pendingStored = pendingRestoreTarget,
+              participates, !retired, !isDetaching, !dragTracking.isDragging,
+              retainedPageIsActive,
+              let scrollView, let document = scrollView.documentView else { return }
+        let clip = scrollView.contentView
+        let viewportHeight = clip.bounds.height
+        let contentHeight = document.bounds.height
+        guard contentHeight > 1, viewportHeight > 1 else { return }
+        let limits = ConsoleScrollLimits.reading(clip, viewportHeight: viewportHeight)
+        let desired = PageScrollRestoration.clampedOffset(pendingStored, limits: limits)
+        if abs(desired - clip.bounds.origin.y) > 0.5 {
+            apply(desired, to: clip)
+            previous = ConsoleViewport(
+                offsetY: clip.bounds.origin.y,
+                viewportHeight: viewportHeight,
+                contentHeight: contentHeight
+            )
         }
     }
 
@@ -625,6 +706,7 @@ final class ConsoleEdgeAnchorView: NSView {
         #endif
         guard !isDetaching else { return }
         isDetaching = true
+        cancelPendingRestoreSettle()
         rememberVisibleOffset()
     }
 
@@ -644,6 +726,12 @@ final class ConsoleEdgeAnchorView: NSView {
         } else {
             remember(visible)
         }
+    }
+
+    private func rememberCurrentOriginForSuspension() {
+        guard let clip = scrollView?.contentView else { return }
+        let limits = ConsoleScrollLimits.reading(clip, viewportHeight: clip.bounds.height)
+        remember(limits.clamped(clip.bounds.origin.y), note: "suspend")
     }
 
     private func apply(_ y: CGFloat, to clip: NSClipView) {
