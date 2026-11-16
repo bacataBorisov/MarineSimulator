@@ -11,18 +11,18 @@ struct ConnectionView: View {
             SetupColumns {
                 connectionHealth
                 outputsOffNotice
-                primaryOutput
                 transmission
+                Divider()
+                primaryOutput
                 additionalOutputs
             } wide: {
                 connectionHealth
                 outputsOffNotice
+                transmission
+                Divider()
                 HStack(alignment: .top, spacing: ResponsiveLayout.configurationGutter) {
-                    VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
-                        primaryOutput
-                        transmission
-                    }
-                    .frame(maxWidth: ResponsiveLayout.configurationCardMaximum, alignment: .topLeading)
+                    primaryOutput
+                        .frame(maxWidth: ResponsiveLayout.configurationCardMaximum, alignment: .topLeading)
                     additionalOutputs
                         .frame(maxWidth: ResponsiveLayout.configurationCardMaximum, alignment: .topLeading)
                 }
