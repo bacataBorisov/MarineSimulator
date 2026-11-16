@@ -1,56 +1,43 @@
 # MarineSimulator
 
-MarineSimulator is a macOS SwiftUI app for simulating marine instrument data and transmitting NMEA 0183 output to external navigation software over IP.
+MarineSimulator is a macOS SwiftUI app for simulating marine instrument data, transmitting NMEA 0183 output over IP, and running isolated controlled polar-research experiments.
 
-It is built as a practical bench tool: something you can run beside a charting or instrument app, drive with believable values, and use to inspect exactly what is being sent.
+It is built both as a practical NMEA bench tool—something you can run beside charting or instrument apps like `ExtasyCompleteNavigation`—and as a deterministic experiment generator with strict separation between physical truth, sensor measurements, and wire output.
 
 ## What It Does
 
-- Simulates common onboard data sources:
-  - wind
-  - heading
-  - hydro / speed / depth / water temperature
-  - GPS position and motion
-- Transmits NMEA 0183 over:
-  - UDP
-  - TCP
-- Supports multiple output endpoints at the same time
-- Provides a map-first dashboard for live control and monitoring
-- Shows raw NMEA output and transport diagnostics in an in-app console drawer
-- Persists the last-used simulator state for faster repeated testing
+- **Simulates onboard marine sensors:**
+  - **Wind:** true/apparent wind speed and direction (`MWV`, `MWD`, `VPW`) plus atmospheric weather (`MDA`, `XDR`: air temperature, humidity, barometric pressure)
+  - **Heading:** magnetic compass, gyro heading, variation/deviation, and rate of turn (`HDG`, `HDT`, `ROT`)
+  - **Hydro:** speed through water, depth, water temperature, distance logs (`DBT`, `DPT`, `MTW`, `VHW`, `VBW`, `VLW`)
+  - **GPS & Navigation:** position, SOG/COG, synthetic satellite fix/DOP, active waypoints (`RMC`, `GGA`, `VTG`, `GLL`, `GSA`, `GSV`, `ZDA`, `RMB`, `XTE`)
+- **Transmits NMEA 0183 over UDP and TCP** to one or multiple concurrent endpoints
+- **Models realistic boat & weather behavior:**
+  - Beneteau First 40.7 (*Extasy*) Farr Design #354 VPP speed polar with pinching roll-off, plus vessel library (*Extasy*, *Nimana*, custom hulls/rigs/sails)
+  - Live weather integration (MET Norway primary atmospheric + Open-Meteo marine sea temperature, with Ornstein–Uhlenbeck wind smoothing) or deterministic manual controls
+  - Hardware profiles (`B&G Triton 2`, `Furuno FI-70`, `Garmin GMI 20`, `Yacht Devices YDNG-03`, `GPS Only`) with realistic per-sentence rates and multi-talker IDs (`GP`, `HC`, `SD`, `II`)
+- **Provides a map-first Dashboard** with warm retained MapKit surface, nautical seamark overlay, persisted camera state, live control rails, and a shared bottom `NMEA` / `Transport` console drawer
+- **Isolated Experiment Diagnostics (`Diagnostics`):**
+  - Strictly separated `EnvironmentTruth` / `VesselTruth` vs. seeded `ExperimentSensorModel` measurements and `ExperimentOutputContract`
+  - Hidden polar overrides and `PerformanceParameters` (first-order speed lag, hull/sail/trim/sea-state multipliers), sinusoidal wind swing/amplitude, continuous course sweep, and `ExperimentCurrentProgram` set/drift motion
+  - Two-file CSV export (`Export CSV…` for estimator-permitted measurements only; `Export Truth…` separately for offline evaluation)
 
-## Current Dashboard
+## Architecture & UI Approach
 
-The current dashboard is centered around a live map with overlay tooling:
-
-- top command bar for panel toggles and presets
-- leading control rail for live simulator adjustments
-- trailing instrument rail for live values and sentence enable/disable pills
-- bottom console drawer for `NMEA` and `Transport` views
-
-The console drawer includes timestamps for NMEA lines and can be collapsed or expanded during testing.
-
-## UI and design approach
-
-The app is built **primarily in SwiftUI** and is intended to stay aligned with **Apple Human Interface Guidelines** and **Swift API Design Guidelines**: standard SwiftUI controls and materials, clear hierarchy, and accessibility-friendly labels where it matters.
-
-Prefer **SwiftUI components** for new and refactored UI. Use **AppKit** or **`NSViewRepresentable`** only when SwiftUI does not reasonably expose the capability or when a **first-party** view owns the feature (for example, MapKit on the dashboard). Keep any bridge small and intentional.
+- Built **primarily in SwiftUI** on **macOS 26.0+** using native `NavigationSplitView`, shared `DesignToken` / `PageChrome` responsive layouts (`1080×640` minimum, `900 pt` split breakpoint), validation popovers, and VoiceOver labels.
+- Small, localized AppKit / `NSViewRepresentable` bridges are used only where required by platform behavior (`MKMapView` / `MKZoomControl`, `NSTextView` console log + drag handle, and `RetainedDestinationHostBox` for smooth sidebar navigation).
+- **20 Hz** physics tick (`SimulationEngine`), **1 Hz** environment redraw, **per-sentence** emission intervals, and **10 Hz** UI publish.
 
 ## Current Capabilities
 
-- Coherent snapshot-based simulation tick
-- Sentence-level scheduling with configurable intervals
-- Sensor toggles versus sentence toggles
-- Sensor interlocks in dashboard controls
-- Gyro-priority heading behavior when both gyro and magnetic heading exist
-- Transport diagnostics and event history
-- Fault injection for:
-  - dropped sentences
-  - delayed sentences
-  - corrupted checksums
-  - invalid data/status mutations
-- Named presets for repeatable setups
-- Auto-restored live values between launches
+- Coherent snapshot-based simulation tick (`SimulationSnapshot`)
+- Sentence-level scheduling with Realistic vs. Custom rates and per-sentence talker IDs
+- Sensor toggles vs. sentence toggles and live dashboard interlocks
+- Gyro-priority heading resolution and automatic tack/gybe maneuvers
+- Transport diagnostics and live event history
+- Fault injection (drop, delay, checksum corruption, invalid data/status)
+- Named presets, settings JSON import/export, and persisted state across launches
+- Isolated deterministic experiment runner (`ExperimentScenarioRunner`), CSV dataset exporter (`ExperimentDatasetExporter`), and geometry-based cold-start VPP prior (`ParametricPolarGenerator`)
 
 ## Screenshots
 
@@ -66,92 +53,44 @@ Prefer **SwiftUI components** for new and refactored UI. Use **AppKit** or **`NS
 
 ![Sentence Setup](assets/media/sentence_page.png)
 
-## NMEA Coverage
+## NMEA 0183 Coverage
 
-Current implemented sentence families include:
-
-- Wind
-  - `MWV`
-  - `MWD`
-  - `VPW`
-- Heading
-  - `HDG`
-  - `HDT`
-  - `ROT`
-- GPS
-  - `RMC`
-  - `GGA`
-  - `VTG`
-  - `GLL`
-  - `GSA`
-  - `GSV`
-  - `ZDA`
-- Hydro
-  - `DBT`
-  - `DPT`
-  - `MTW`
-  - `VHW`
-  - `VBW`
-  - `VLW`
-
-## Testing Focus
-
-The current engineering priority is external-reader interoperability, not feature expansion for its own sake.
-
-The next validation step is to run the manual checklist against the target reader and confirm:
-
-- wind sentence interpretation
-- heading and course agreement
-- GPS sentence acceptance
-- UDP and TCP endpoint behavior
-- fault-handling behavior in the receiver
+- **Wind & Atmosphere:** `MWV`, `MWD`, `VPW`, `MDA`, `XDR`
+- **Heading:** `HDG`, `HDT`, `ROT`
+- **GPS & Navigation:** `RMC`, `GGA`, `VTG`, `GLL`, `GSA`, `GSV`, `ZDA`, `RMB`, `XTE`
+- **Hydro:** `DBT`, `DPT`, `MTW`, `VHW`, `VBW`, `VLW`
 
 ## Project Docs
-
-User-facing project docs live in:
 
 - [`Docs/ProjectOverview.md`](Docs/ProjectOverview.md)
 - [`Docs/CurrentTasks.md`](Docs/CurrentTasks.md)
 - [`Docs/CompletedTasks.md`](Docs/CompletedTasks.md)
+- [`Docs/FutureTasks.md`](Docs/FutureTasks.md)
 - [`Docs/InstructionManual.md`](Docs/InstructionManual.md)
 - [`Docs/ManualTestChecklist.md`](Docs/ManualTestChecklist.md)
+- [`SIMULATOR_ACCURACY.md`](SIMULATOR_ACCURACY.md)
+- [`.agent/ROADMAP.md`](.agent/ROADMAP.md) & [`.agent/architecture/implementation-status.md`](.agent/architecture/implementation-status.md)
 
 ## Getting Started
 
 ### Requirements
 
-- macOS
+- macOS 26.0+
 - Xcode
 
 ### Run
 
 1. Clone the repository.
 2. Open `MarineSimulator.xcodeproj` in Xcode.
-3. Select `My Mac`.
-4. Build and run.
+3. Select the `MarineSimulator` scheme and `My Mac`.
+4. Build and run (`⌘R`).
 
-## Current Limitations
+## Known Limitations
 
-- Sentence fidelity still needs more edge-case validation against real external readers
-- Some sentence implementations are still intentionally conservative or simplified
-- UI automation is still limited
-- NMEA 2000 is not implemented
-- Environment-driven realism such as live weather/current ingestion is not implemented
-
-## Roadmap Direction
-
-Near-term priority:
-
-1. prove compatibility against the external reader
-2. fix any mismatches found there
-3. lock those fixes down with targeted regression tests
-
-Longer-term direction:
-
-- richer realism
-- more protocol depth
-- read/ingest mode
-- broader transport and device interoperability
+- Serial hardware baud-rate throttling (4800/38400 baud), UART byte-timing jitter, and per-talker clock drift are not simulated (see [`SIMULATOR_ACCURACY.md`](SIMULATOR_ACCURACY.md))
+- Sensor delay, drift, and dropout models (beyond boolean availability and bias/noise) are planned for M4
+- NMEA 2000 and Signal K output protocols are not implemented yet
+- `BoatProfile.nimana` ORC polar table is stored as a reference PDF and not yet parsed into `PolarTable`
 
 ## Author
 
