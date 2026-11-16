@@ -277,7 +277,8 @@ struct BoatControls: View {
                     Button("Cancel") {
                         nmea.cancelManeuver()
                     }
-                    .controlSize(.small)
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
                     .disabled(nmea.vesselObservation.maneuverPhase == .idle && !nmea.isTackInProgress)
 
                     if let reason = tackDisabledReason ?? nmea.maneuverRejectionReason ?? nmea.sailingPolicyExplanation {
@@ -287,26 +288,25 @@ struct BoatControls: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    DisclosureGroup("Duration and speed loss") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            durationRow(
-                                title: "Tack duration",
-                                enabled: $nmea.maneuverSettings.usesTackDuration,
-                                seconds: $nmea.maneuverSettings.tackDurationSeconds
-                            )
-                            durationRow(
-                                title: "Gybe duration",
-                                enabled: $nmea.maneuverSettings.usesGybeDuration,
-                                seconds: $nmea.maneuverSettings.gybeDurationSeconds
-                            )
-                            retentionRow(title: "Tack keeps", value: $nmea.maneuverSettings.tackSpeedRetention)
-                            retentionRow(title: "Gybe keeps", value: $nmea.maneuverSettings.gybeSpeedRetention)
-                            Text("Off means duration follows the turn. Recovery uses the existing speed model. The heading eases on a smooth step.")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.top, 6)
+                    RailDivider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        durationRow(
+                            title: "Tack duration",
+                            enabled: $nmea.maneuverSettings.usesTackDuration,
+                            seconds: $nmea.maneuverSettings.tackDurationSeconds
+                        )
+                        durationRow(
+                            title: "Gybe duration",
+                            enabled: $nmea.maneuverSettings.usesGybeDuration,
+                            seconds: $nmea.maneuverSettings.gybeDurationSeconds
+                        )
+                        retentionRow(title: "Tack keeps", value: $nmea.maneuverSettings.tackSpeedRetention)
+                        retentionRow(title: "Gybe keeps", value: $nmea.maneuverSettings.gybeSpeedRetention)
+                        Text("Off means duration follows the turn. Recovery uses the existing speed model. The heading eases on a smooth step.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .font(.caption)
                 }
@@ -322,15 +322,30 @@ struct BoatControls: View {
 
     private func maneuverButton(_ command: ManeuverCommand, title: String) -> some View {
         let active = nmea.isTackInProgress && nmea.activeManeuver?.kind == command.kind && nmea.activeManeuver?.side == command.side
+        let disabled = nmea.selectedVesselID == nil || !nmea.canExecuteTackManeuver || !nmea.maneuverCommandIsAvailable(command)
+        let fill: Color = active
+            ? DesignToken.Status.warning.opacity(0.28)
+            : (disabled ? Color.white.opacity(0.05) : DesignToken.accentPrimary.opacity(0.22))
+        let stroke: Color = active
+            ? DesignToken.Status.warning.opacity(0.75)
+            : (disabled ? Color.white.opacity(0.12) : DesignToken.accentPrimary.opacity(0.60))
+
         return Button {
             nmea.beginManeuver(command)
         } label: {
             Text(active ? "In progress" : title)
-                .frame(maxWidth: .infinity)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(disabled ? .secondary : .primary)
+                .frame(maxWidth: .infinity, minHeight: 28)
+                .background(fill, in: RoundedRectangle(cornerRadius: DesignToken.Radius.status, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignToken.Radius.status, style: .continuous)
+                        .stroke(stroke)
+                )
         }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .disabled(nmea.selectedVesselID == nil || !nmea.canExecuteTackManeuver || !nmea.maneuverCommandIsAvailable(command))
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.55 : 1)
     }
 
     private func durationRow(title: String, enabled: Binding<Bool>, seconds: Binding<Double>) -> some View {
