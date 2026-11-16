@@ -104,6 +104,8 @@ extension NMEASimulator {
             selectedPreset: selectedPreset,
             selectedProfile: selectedProfile,
             sentenceRateMode: sentenceRateMode,
+            serialBaudRate: serialBaudRate,
+            fragmentTCPStream: fragmentTCPStream,
             perSentenceTalkerID: Dictionary(uniqueKeysWithValues: perSentenceTalkerID.map { ($0.key.rawValue, $0.value) }),
             boatProfile: boatProfile,
             boatSpeedMode: boatSpeedMode,
@@ -131,6 +133,9 @@ extension NMEASimulator {
         )
         selectedProfile = settings.selectedProfile
         sentenceRateMode = settings.sentenceRateMode
+        serialBaudRate = settings.serialBaudRate
+        fragmentTCPStream = settings.fragmentTCPStream
+        transportManager.setTCPStreamFragmentation(settings.fragmentTCPStream)
         perSentenceTalkerID = Dictionary(
             uniqueKeysWithValues: NMEASentenceType.allCases.map { type in
                 (type, settings.perSentenceTalkerID[type.rawValue] ?? Self.defaultTalkerIDs[type] ?? settings.talkerID)

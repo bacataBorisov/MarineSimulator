@@ -40,6 +40,69 @@ enum SentenceScheduler {
         var faultEvents: [FaultEvent] = []
     }
 
+    /// Result of pacing sentences through an optional serial baud-rate budget.
+    struct BaudPaceResult: Equatable {
+        var transmitted: [String] = []
+        var droppedCount: Int = 0
+    }
+
+    /// Paces `incoming` sentences against an 8N1 serial byte budget for `baudRate`.
+    /// Unlimited mode flushes any queued backlog + `incoming` immediately.
+    static func paceSentencesByBaudRate(
+        _ incoming: [String],
+        queue: inout [String],
+        carryBytes: inout Double,
+        lastTickDate: inout Date?,
+        baudRate: SerialBaudRate,
+        at timestamp: Date,
+        defaultTickInterval: TimeInterval = 0.05
+    ) -> BaudPaceResult {
+        guard let bytesPerSecond = baudRate.bytesPerSecond, bytesPerSecond > 0 else {
+            let all = queue + incoming
+            queue.removeAll(keepingCapacity: false)
+            carryBytes = 0
+            lastTickDate = timestamp
+            return BaudPaceResult(transmitted: all, droppedCount: 0)
+        }
+
+        let dt: TimeInterval
+        if let lastTickDate {
+            dt = max(0, min(timestamp.timeIntervalSince(lastTickDate), 1.0))
+        } else {
+            dt = max(0.01, defaultTickInterval)
+        }
+        lastTickDate = timestamp
+
+        queue.append(contentsOf: incoming)
+
+        // Bound backlog to ~2 seconds of wire time to mimic multiplexer buffer overflow.
+        let maxBacklogBytes = max(256, Int(bytesPerSecond * 2.0))
+        var totalQueuedBytes = queue.reduce(0) { $0 + $1.utf8.count }
+        var droppedCount = 0
+        while totalQueuedBytes > maxBacklogBytes, !queue.isEmpty {
+            let dropped = queue.removeFirst()
+            totalQueuedBytes -= dropped.utf8.count
+            droppedCount += 1
+        }
+
+        let maxCarryBytes = max(128.0, bytesPerSecond * 0.25)
+        var budget = min(carryBytes, maxCarryBytes) + bytesPerSecond * dt
+        var transmitted: [String] = []
+
+        while let next = queue.first {
+            let cost = Double(next.utf8.count)
+            if cost <= budget {
+                budget -= cost
+                transmitted.append(queue.removeFirst())
+            } else {
+                break
+            }
+        }
+
+        carryBytes = queue.isEmpty ? min(budget, maxCarryBytes) : budget
+        return BaudPaceResult(transmitted: transmitted, droppedCount: droppedCount)
+    }
+
     // MARK: - Stagger + build + fault-inject pipeline
 
     /// Computes the full scheduling output for one simulation cycle.

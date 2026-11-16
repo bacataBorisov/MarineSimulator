@@ -43,3 +43,34 @@ enum SentenceRateMode: String, Codable, CaseIterable, Identifiable {
         }
     }
 }
+
+enum SerialBaudRate: Int, CaseIterable, Codable, Identifiable, Sendable {
+    case unlimited = 0
+    case baud4800 = 4800
+    case baud38400 = 38400
+
+    var id: Int { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .unlimited:
+            return "Unlimited"
+        case .baud4800:
+            return "4800 baud"
+        case .baud38400:
+            return "38400 baud"
+        }
+    }
+
+    /// Effective 8N1 serial throughput (10 bits per byte), nil when unlimited.
+    var bytesPerSecond: Double? {
+        switch self {
+        case .unlimited:
+            return nil
+        case .baud4800:
+            return 480
+        case .baud38400:
+            return 3_840
+        }
+    }
+}

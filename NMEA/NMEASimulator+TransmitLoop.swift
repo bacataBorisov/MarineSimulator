@@ -49,7 +49,8 @@ extension NMEASimulator {
             depthOffsetMeters: mirror.depthOffsetMeters,
             faultInjection: mirror.faultInjection,
             mwvReferenceMode: mirror.mwvReferenceMode,
-            enabledOutputEndpoints: mirror.outputEndpoints.filter(\.isEnabled)
+            enabledOutputEndpoints: mirror.outputEndpoints.filter(\.isEnabled),
+            serialBaudRate: mirror.serialBaudRate
         )
     }
 
@@ -308,7 +309,7 @@ extension NMEASimulator {
         let tickDateBefore = runtime.lastSimulationTickDate
         let context = captureSimulationConfig()
 
-        performSimulationCycle(runtime: &runtime, context: context, at: timestamp)
+        performSimulationCycle(runtime: &runtime, context: context, at: timestamp, applyBaudPacing: false)
 
         applyIdleRuntimeToSelf(runtime, persist: runtime.lastSimulationTickDate != tickDateBefore)
     }
@@ -324,7 +325,7 @@ extension NMEASimulator {
             resetTransportConnectionsIfEndpointTargetsChangedWhileTransmitting()
         }
 
-        performSimulationCycle(runtime: &runtime, context: context, at: timestamp)
+        performSimulationCycle(runtime: &runtime, context: context, at: timestamp, applyBaudPacing: true)
 
         transmitRuntime = runtime
         scheduleApplyRuntimeToMain(runtime)
@@ -335,9 +336,15 @@ extension NMEASimulator {
     private func performSimulationCycle(
         runtime: inout SimulationState,
         context: SimulationConfig,
-        at timestamp: Date
+        at timestamp: Date,
+        applyBaudPacing: Bool
     ) {
-        flushPendingTransmissions(runtime: &runtime, at: timestamp, context: context)
+        flushPendingTransmissions(
+            runtime: &runtime,
+            at: timestamp,
+            context: context,
+            applyBaudPacing: applyBaudPacing
+        )
 
         // Position integrates on every fast tick with wall dt. Sentence emission
         // stays on its own intervals; do not gate physics on the NMEA send interval.
@@ -349,7 +356,18 @@ extension NMEASimulator {
             snapshot: snapshot,
             context: context
         )
-        guard !dueSentences.isEmpty else { return }
+        guard !dueSentences.isEmpty else {
+            if applyBaudPacing, !runtime.baudQueue.isEmpty {
+                emitThroughBaudPacer(
+                    [],
+                    runtime: &runtime,
+                    context: context,
+                    at: timestamp,
+                    applyBaudPacing: true
+                )
+            }
+            return
+        }
 
         var mwvToggle = runtime.sendRelativeWind
         let schedule = SentenceScheduler.scheduleSentences(
@@ -375,7 +393,9 @@ extension NMEASimulator {
             schedule,
             runtime: &runtime,
             endpoints: context.enabledOutputEndpoints,
-            at: timestamp
+            at: timestamp,
+            context: context,
+            applyBaudPacing: applyBaudPacing
         )
 
         if let flushTime = SentenceScheduler.staggerFlushTimestamp(
@@ -383,7 +403,12 @@ extension NMEASimulator {
             interval: context.interval,
             cycleTimestamp: timestamp
         ) {
-            flushPendingTransmissions(runtime: &runtime, at: flushTime, context: context)
+            flushPendingTransmissions(
+                runtime: &runtime,
+                at: flushTime,
+                context: context,
+                applyBaudPacing: applyBaudPacing
+            )
         }
     }
 
@@ -448,14 +473,18 @@ extension NMEASimulator {
         _ result: SentenceScheduler.ScheduleResult,
         runtime: inout SimulationState,
         endpoints: [OutputEndpoint],
-        at timestamp: Date
+        at timestamp: Date,
+        context: SimulationConfig,
+        applyBaudPacing: Bool
     ) {
-        for (sentence, _) in result.immediateSentences {
-            for endpoint in endpoints {
-                send(sentence, to: endpoint)
-            }
-            recordOutputMessage(sentence, timestamp: timestamp)
-        }
+        _ = endpoints
+        emitThroughBaudPacer(
+            result.immediateSentences.map(\.sentence),
+            runtime: &runtime,
+            context: context,
+            at: timestamp,
+            applyBaudPacing: applyBaudPacing
+        )
 
         for delayed in result.delayedSentences {
             runtime.pendingTransmissions.append(PendingTransmission(sentence: delayed.sentence, dueDate: delayed.dueDate))
@@ -473,14 +502,56 @@ extension NMEASimulator {
     private func flushPendingTransmissions(
         runtime: inout SimulationState,
         at timestamp: Date,
-        context: SimulationConfig
+        context: SimulationConfig,
+        applyBaudPacing: Bool
     ) {
         let due = SimulationEngine.flushPendingTransmissions(state: &runtime, at: timestamp)
-        for pending in due {
+        guard !due.isEmpty || (applyBaudPacing && !runtime.baudQueue.isEmpty) else { return }
+        emitThroughBaudPacer(
+            due.map(\.sentence),
+            runtime: &runtime,
+            context: context,
+            at: timestamp,
+            applyBaudPacing: applyBaudPacing
+        )
+    }
+
+    private func emitThroughBaudPacer(
+        _ incoming: [String],
+        runtime: inout SimulationState,
+        context: SimulationConfig,
+        at timestamp: Date,
+        applyBaudPacing: Bool
+    ) {
+        let effectiveBaudRate = applyBaudPacing ? context.serialBaudRate : .unlimited
+        let paced = SentenceScheduler.paceSentencesByBaudRate(
+            incoming,
+            queue: &runtime.baudQueue,
+            carryBytes: &runtime.baudCarryBytes,
+            lastTickDate: &runtime.lastBaudTickDate,
+            baudRate: effectiveBaudRate,
+            at: timestamp,
+            defaultTickInterval: Self.simulationFastTickInterval
+        )
+
+        for sentence in paced.transmitted {
             for endpoint in context.enabledOutputEndpoints {
-                send(pending.sentence, to: endpoint)
+                send(sentence, to: endpoint)
             }
-            recordOutputMessage(pending.sentence, timestamp: timestamp)
+            recordOutputMessage(sentence, timestamp: timestamp)
+        }
+
+        if paced.droppedCount > 0 {
+            let shouldLog = runtime.lastBaudOverflowLogDate.map { timestamp.timeIntervalSince($0) >= 2.0 } ?? true
+            if shouldLog {
+                runtime.lastBaudOverflowLogDate = timestamp
+                appendHistoryEventOnMain(
+                    level: .warning,
+                    category: .fault,
+                    message: "Serial buffer overflow at \(effectiveBaudRate.rawValue) baud: dropped \(paced.droppedCount) queued sentence(s)",
+                    timestamp: timestamp
+                )
+            }
         }
     }
 

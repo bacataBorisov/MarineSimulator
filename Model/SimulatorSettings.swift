@@ -74,6 +74,8 @@ struct SimulatorSettings: Codable {
     var selectedPreset: SimulationPreset?
     var selectedProfile: HardwareProfile
     var sentenceRateMode: SentenceRateMode
+    var serialBaudRate: SerialBaudRate
+    var fragmentTCPStream: Bool
     var perSentenceTalkerID: [String: String]
     var boatProfile: BoatProfile
     var boatSpeedMode: BoatSpeedMode
@@ -114,6 +116,8 @@ struct SimulatorSettings: Codable {
         case selectedPreset
         case selectedProfile
         case sentenceRateMode
+        case serialBaudRate
+        case fragmentTCPStream
         case perSentenceTalkerID
         case boatProfile
         case boatSpeedMode
@@ -153,6 +157,8 @@ struct SimulatorSettings: Codable {
         selectedPreset: SimulationPreset?,
         selectedProfile: HardwareProfile = .bngTriton2,
         sentenceRateMode: SentenceRateMode = .realistic,
+        serialBaudRate: SerialBaudRate = .unlimited,
+        fragmentTCPStream: Bool = false,
         perSentenceTalkerID: [String: String] = [:],
         boatProfile: BoatProfile,
         boatSpeedMode: BoatSpeedMode,
@@ -190,6 +196,8 @@ struct SimulatorSettings: Codable {
         self.selectedPreset = selectedPreset
         self.selectedProfile = selectedProfile
         self.sentenceRateMode = sentenceRateMode
+        self.serialBaudRate = serialBaudRate
+        self.fragmentTCPStream = fragmentTCPStream
         self.perSentenceTalkerID = perSentenceTalkerID
         self.boatProfile = boatProfile
         self.boatSpeedMode = boatSpeedMode
@@ -232,6 +240,8 @@ struct SimulatorSettings: Codable {
         selectedPreset = try container.decodeIfPresent(SimulationPreset.self, forKey: .selectedPreset)
         selectedProfile = try container.decodeIfPresent(HardwareProfile.self, forKey: .selectedProfile) ?? .bngTriton2
         sentenceRateMode = try container.decodeIfPresent(SentenceRateMode.self, forKey: .sentenceRateMode) ?? .realistic
+        serialBaudRate = try container.decodeIfPresent(SerialBaudRate.self, forKey: .serialBaudRate) ?? .unlimited
+        fragmentTCPStream = try container.decodeIfPresent(Bool.self, forKey: .fragmentTCPStream) ?? false
         perSentenceTalkerID = try container.decodeIfPresent([String: String].self, forKey: .perSentenceTalkerID) ?? [:]
         if container.contains(.activeVesselID) {
             activeVesselID = try container.decodeIfPresent(String.self, forKey: .activeVesselID) ?? ""

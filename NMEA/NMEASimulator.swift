@@ -200,6 +200,15 @@ class NMEASimulator {
             persistSettingsIfNeeded()
         }
     }
+    var serialBaudRate: SerialBaudRate = .unlimited {
+        didSet { persistSettingsIfNeeded() }
+    }
+    var fragmentTCPStream: Bool = false {
+        didSet {
+            transportManager.setTCPStreamFragmentation(fragmentTCPStream)
+            persistSettingsIfNeeded()
+        }
+    }
     var perSentenceTalkerID: [NMEASentenceType: String] = [:] {
         didSet { persistSettingsIfNeeded() }
     }
@@ -589,6 +598,7 @@ class NMEASimulator {
         // Capture initial runtime state and input mirror on the main thread
         // to avoid reading @Observable properties from the simulation queue (data race).
         syncInputMirror()
+        transportManager.setTCPStreamFragmentation(fragmentTCPStream)
         let initialRuntime = SimulationState(from: self)
         simulationQueue.async { [weak self] in
             guard let self else { return }

@@ -1736,6 +1736,85 @@ struct NMEASimulatorEngineTests {
         #expect(NMEANumericFormatting.formatCoordinateMinutes(minutes) == "11.7252")
         #expect(FormatKit.formatLatitude(lat) == "4311.7252,N")
     }
+
+    @Test
+    func baudRateLimiterPaces4800BaudAndHandlesOverflow() {
+        let sample = "$IIMWV,045,R,12.0,N,A*00\r\n" // 26 bytes -> ~2 ticks at 480 B/s (24 B per 50ms tick)
+        var queue: [String] = []
+        var carry: Double = 0
+        var lastTick: Date?
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
+        let first = SentenceScheduler.paceSentencesByBaudRate(
+            [sample, sample],
+            queue: &queue,
+            carryBytes: &carry,
+            lastTickDate: &lastTick,
+            baudRate: .baud4800,
+            at: t0
+        )
+        #expect(first.transmitted.isEmpty) // 24 bytes < 26 bytes
+        #expect(queue.count == 2)
+
+        let second = SentenceScheduler.paceSentencesByBaudRate(
+            [],
+            queue: &queue,
+            carryBytes: &carry,
+            lastTickDate: &lastTick,
+            baudRate: .baud4800,
+            at: t0.addingTimeInterval(0.05)
+        )
+        #expect(second.transmitted.count == 1) // 48 bytes >= 26 bytes -> 1 transmitted, 22 bytes left
+        #expect(queue.count == 1)
+
+        // Overload > 2 seconds of 4800 baud buffer (> 960 bytes)
+        let burst = Array(repeating: String(repeating: "A", count: 80), count: 20)
+        let overflow = SentenceScheduler.paceSentencesByBaudRate(
+            burst,
+            queue: &queue,
+            carryBytes: &carry,
+            lastTickDate: &lastTick,
+            baudRate: .baud4800,
+            at: t0.addingTimeInterval(0.10)
+        )
+        #expect(overflow.droppedCount > 0)
+
+        // Unlimited flushes immediately
+        let flushed = SentenceScheduler.paceSentencesByBaudRate(
+            [sample],
+            queue: &queue,
+            carryBytes: &carry,
+            lastTickDate: &lastTick,
+            baudRate: .unlimited,
+            at: t0.addingTimeInterval(0.15)
+        )
+        #expect(flushed.droppedCount == 0)
+        #expect(queue.isEmpty)
+        #expect(flushed.transmitted.last == sample)
+    }
+
+    @Test
+    func tcpStreamFragmentationPreservesExactSentenceBytesAcrossChunks() {
+        let sentence = "$IIMWD,135.0,T,131.0,M,12.0,N,6.2,M*55\r\n"
+        let data = Data(sentence.utf8)
+        let chunks = TCPClient.fragmentedChunks(from: data)
+
+        #expect(chunks.count == 3)
+        #expect(chunks.reduce(Data(), +) == data)
+    }
+
+    @Test
+    func hardwareRealismSettingsRoundTripAndDefaultSafely() throws {
+        let defaults = isolatedDefaults()
+        let simulator = configuredSimulatorForDeterministicOutput(userDefaults: defaults)
+        simulator.serialBaudRate = .baud4800
+        simulator.fragmentTCPStream = true
+
+        let encoded = try JSONEncoder().encode(simulator.makeSettingsSnapshotForExport())
+        let decoded = try JSONDecoder().decode(SimulatorSettings.self, from: encoded)
+        #expect(decoded.serialBaudRate == .baud4800)
+        #expect(decoded.fragmentTCPStream == true)
+    }
 }
 
 private func configuredSimulatorForDeterministicOutput(userDefaults: UserDefaults? = nil) -> NMEASimulator {

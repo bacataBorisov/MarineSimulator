@@ -104,6 +104,24 @@ struct SimulationView: View {
                             .font(DesignToken.Typography.help)
                             .foregroundStyle(DesignToken.Status.warning)
                     }
+
+                    Divider()
+
+                    LabeledContent("Bus Speed") {
+                        Picker("Bus Speed", selection: $nmeaManager.serialBaudRate) {
+                            ForEach(SerialBaudRate.allCases) { baud in
+                                Text(baud.displayName).tag(baud)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 180, alignment: .trailing)
+                        .accessibilityLabel("Serial bus speed")
+                    }
+
+                    Text("4800 baud caps wire output at ~480 bytes/s (8–14 sentences/s) and drops excess backlog like a real NMEA 0183 multiplexer.")
+                        .font(DesignToken.Typography.help)
+                        .foregroundStyle(DesignToken.Status.neutral)
                 }
 
     }
@@ -273,6 +291,12 @@ private struct AdvancedSimulationControls: View {
             .disabled(true)
 
             RecentTransportEventsSection(nmeaManager: nmeaManager)
+            Toggle("Fragment TCP Stream", isOn: $nmeaManager.fragmentTCPStream)
+                .toggleStyle(.switch)
+                .controlSize(.regular)
+            Text("Split outgoing TCP sentences into small staggered packets to verify receiver stream framing.")
+                .font(DesignToken.Typography.help)
+                .foregroundStyle(DesignToken.Status.neutral)
             FaultInjectionSection(nmeaManager: nmeaManager)
         }
     }

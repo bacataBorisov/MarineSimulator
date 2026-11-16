@@ -57,6 +57,10 @@ struct SimulationState {
     var lastAppliedGPSCoordinateGeneration: UInt64 = 0
     var lastEmissionDates: [NMEASentenceType: Date] = [:]
     var pendingTransmissions: [PendingTransmission] = []
+    var baudQueue: [String] = []
+    var baudCarryBytes: Double = 0
+    var lastBaudTickDate: Date?
+    var lastBaudOverflowLogDate: Date?
     var previousTurnReferenceHeading: Double?
     var sendRelativeWind = true
     var totalLogDistanceNm: Double = 0

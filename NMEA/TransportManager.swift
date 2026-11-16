@@ -30,6 +30,10 @@ final class TransportManager {
 
     // MARK: - Sending
 
+    func setTCPStreamFragmentation(_ enabled: Bool) {
+        tcpClient.setStreamFragmentationEnabled(enabled)
+    }
+
     func send(_ sentence: String, to endpoint: OutputEndpoint) {
         switch endpoint.transport {
         case .udp:

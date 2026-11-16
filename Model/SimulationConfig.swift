@@ -22,6 +22,47 @@ struct SimulationConfig {
     let faultInjection: FaultInjectionSettings
     let mwvReferenceMode: MWVReferenceMode
     let enabledOutputEndpoints: [OutputEndpoint]
+    let serialBaudRate: SerialBaudRate
+
+    init(
+        sensorToggles: SensorToggleStates,
+        sentenceToggles: SentenceToggleStates,
+        interval: Double,
+        sentenceIntervals: [NMEASentenceType: TimeInterval],
+        weatherSourceMode: WeatherSourceMode,
+        latestLiveWeather: LiveWeatherSnapshot?,
+        boatSpeedMode: BoatSpeedMode,
+        boatProfile: BoatProfile,
+        waypointNavigation: WaypointNavigation,
+        tackAnimationInProgress: Bool,
+        maneuverSettings: ManeuverOperatorSettings,
+        talkerID: String,
+        perSentenceTalkerID: [NMEASentenceType: String],
+        depthOffsetMeters: Double,
+        faultInjection: FaultInjectionSettings,
+        mwvReferenceMode: MWVReferenceMode,
+        enabledOutputEndpoints: [OutputEndpoint],
+        serialBaudRate: SerialBaudRate = .unlimited
+    ) {
+        self.sensorToggles = sensorToggles
+        self.sentenceToggles = sentenceToggles
+        self.interval = interval
+        self.sentenceIntervals = sentenceIntervals
+        self.weatherSourceMode = weatherSourceMode
+        self.latestLiveWeather = latestLiveWeather
+        self.boatSpeedMode = boatSpeedMode
+        self.boatProfile = boatProfile
+        self.waypointNavigation = waypointNavigation
+        self.tackAnimationInProgress = tackAnimationInProgress
+        self.maneuverSettings = maneuverSettings
+        self.talkerID = talkerID
+        self.perSentenceTalkerID = perSentenceTalkerID
+        self.depthOffsetMeters = depthOffsetMeters
+        self.faultInjection = faultInjection
+        self.mwvReferenceMode = mwvReferenceMode
+        self.enabledOutputEndpoints = enabledOutputEndpoints
+        self.serialBaudRate = serialBaudRate
+    }
 
     /// A copy with the fields an in-memory experiment is allowed to select.
     /// The original config is left unchanged.
@@ -47,7 +88,8 @@ struct SimulationConfig {
             depthOffsetMeters: depthOffsetMeters,
             faultInjection: faultInjection,
             mwvReferenceMode: mwvReferenceMode,
-            enabledOutputEndpoints: enabledOutputEndpoints
+            enabledOutputEndpoints: enabledOutputEndpoints,
+            serialBaudRate: serialBaudRate
         )
     }
 }
@@ -95,6 +137,7 @@ struct SimulationInputMirror {
     var faultInjection: FaultInjectionSettings
     var mwvReferenceMode: MWVReferenceMode
     var outputEndpoints: [OutputEndpoint]
+    var serialBaudRate: SerialBaudRate
     var sailConfiguration: SailConfiguration
 
     init(from sim: NMEASimulator) {
@@ -128,6 +171,7 @@ struct SimulationInputMirror {
         faultInjection = sim.faultInjection
         mwvReferenceMode = sim.mwvReferenceMode
         outputEndpoints = sim.outputEndpoints
+        serialBaudRate = sim.serialBaudRate
         sailConfiguration = sim.sailConfiguration
     }
 }

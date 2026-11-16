@@ -57,6 +57,40 @@ struct EngineIntegrationTests {
         #expect(result.sentence.contains("RMC"))
     }
 
+    @Test @MainActor
+    func fragmentedTCPSendsStaySerializedWithoutInterleaving() throws {
+        let listener = try TCPTestListener.bind()
+        defer { listener.close() }
+
+        let sentences = [
+            "$GPHDG,359.0,1.0,W,9.8,E*4B\r\n",
+            "$GPHDT,360.0,T*30\r\n",
+            "$GPROT,0.0,V*26\r\n",
+            "$GPMWV,045,R,12.0,N,A*00\r\n",
+            "$GPMWD,135.0,T,125.2,M,12.0,N,6.2,M*58\r\n",
+            "$GPVHW,360.0,T,350.2,M,6.0,N,11.1,K*75\r\n"
+        ]
+        let expected = sentences.joined()
+
+        let receiveBox = AsyncResultBox<String>()
+        DispatchQueue.global(qos: .userInitiated).async {
+            receiveBox.complete(with: Result {
+                try listener.acceptAndReceiveBytes(expectedCount: expected.utf8.count, timeout: 5.0)
+            })
+        }
+
+        let client = TCPClient()
+        client.setStreamFragmentationEnabled(true)
+        let endpoint = OutputEndpoint(host: "127.0.0.1", port: listener.port, transport: .tcp, isEnabled: true)
+        for sentence in sentences {
+            client.send(sentence, to: endpoint) { _ in }
+        }
+        defer { client.resetConnections() }
+
+        let received = try waitForAsyncResult(receiveBox, timeout: 6.0)
+        #expect(received == expected)
+    }
+
     // MARK: - Timer-driven fast rate (P0 regression)
 
     @Test @MainActor
@@ -419,6 +453,57 @@ private final class TCPTestListener: @unchecked Sendable {
         }
 
         return TCPReceiveResult(connectionAccepted: true, sentence: sentence)
+    }
+
+    func acceptAndReceiveBytes(expectedCount: Int, timeout: TimeInterval) throws -> String {
+        var timeoutVal = timeval(
+            tv_sec: Int(timeout),
+            tv_usec: Int32((timeout.truncatingRemainder(dividingBy: 1)) * 1_000_000)
+        )
+        _ = Darwin.setsockopt(
+            listenFD,
+            SOL_SOCKET,
+            SO_RCVTIMEO,
+            &timeoutVal,
+            socklen_t(MemoryLayout<timeval>.size)
+        )
+
+        var clientAddr = sockaddr_in()
+        var clientAddrLen = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let clientFD = withUnsafeMutablePointer(to: &clientAddr) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddr in
+                Darwin.accept(listenFD, sockaddr, &clientAddrLen)
+            }
+        }
+        guard clientFD >= 0 else {
+            throw IntegrationTestError.receiveTimedOut
+        }
+        defer { Darwin.close(clientFD) }
+
+        _ = Darwin.setsockopt(
+            clientFD,
+            SOL_SOCKET,
+            SO_RCVTIMEO,
+            &timeoutVal,
+            socklen_t(MemoryLayout<timeval>.size)
+        )
+
+        var collected = Data()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        while collected.count < expectedCount {
+            let received = buffer.withUnsafeMutableBytes { rawBuffer in
+                Darwin.recv(clientFD, rawBuffer.baseAddress, rawBuffer.count, 0)
+            }
+            guard received > 0 else {
+                throw IntegrationTestError.receiveTimedOut
+            }
+            collected.append(contentsOf: buffer.prefix(received))
+        }
+
+        guard let text = String(data: collected, encoding: .utf8) else {
+            throw IntegrationTestError.invalidPayload
+        }
+        return text
     }
 
     func close() {
