@@ -85,6 +85,7 @@ final class ExperimentDiagnosticsSession {
     private var appliedErrors = SensorErrorConfiguration.zero
     private var appliedScenario = ExperimentScenario.extasyBaseline
     private var appliedBoatHeadingDegrees: Double = 90
+    private(set) var datasetRecorder = ExperimentDatasetRecorder(sampleIntervalSeconds: 1)
     private var loop: Task<Void, Never>?
     private var loopGeneration = 0
     @ObservationIgnored private var sentenceFormatter: NMEASimulator?
@@ -101,6 +102,18 @@ final class ExperimentDiagnosticsSession {
 
     var elapsedSeconds: TimeInterval {
         Double(stepCount) * Self.physicsInterval
+    }
+
+    var recordedSampleCount: Int {
+        datasetRecorder.rows.count
+    }
+
+    func exportEstimatorCSV() -> String {
+        datasetRecorder.estimatorCSV(contract: appliedScenario.outputContract)
+    }
+
+    func exportEvaluationTruthCSV() -> String {
+        datasetRecorder.evaluationTruthCSV()
     }
 
     var configurationChangesArePending: Bool {
@@ -325,6 +338,7 @@ final class ExperimentDiagnosticsSession {
         appliedErrors = errors
         appliedScenario = scenario
         appliedBoatHeadingDegrees = headingTrue
+        datasetRecorder.reset(sampleIntervalSeconds: scenario.sampleIntervalSeconds)
         stepCount = 0
         phase = .prepared
         validationMessage = nil
@@ -377,6 +391,11 @@ final class ExperimentDiagnosticsSession {
         )
         runtime = current
         stepCount += 1
+        datasetRecorder.recordIfDue(
+            elapsedSeconds: elapsedSeconds,
+            state: current.state,
+            config: current.config
+        )
         if Double(stepCount) * Self.physicsInterval + Self.physicsInterval > durationSeconds + 1e-6 {
             phase = .complete
             stopLoop()

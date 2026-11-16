@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Step M3-B (`PerformanceParameters` hidden polar factors, time-varying wind swing/amplitude/period, continuous course sweep, reference polar STW readout, single-line `NMEA Output`, tick-0 `SOG`/`COG` fix, `Diagnostics` input persistence, and math/physics unit tests) passed user smoke tests and is committed. Next: proof-of-concept CSV export (`ExperimentOutputContract`) + offline polar-recovery test, then professor proposal plan.
+**Status:** Direct single-chat workflow active. Proof-of-concept CSV export (`Model/ExperimentDatasetExporter.swift`, `Export CSV…` / `Export Truth…` in `Diagnostics`, `readwrite` sandbox entitlement for `NSSavePanel`) and offline polar-recovery validation (`PolarRecoveryProofOfConceptTests`, reducing degraded polar RMSE from `> 1.5 kn` to `< 0.15 kn` from estimator-only CSV) passed tests and user smoke-testing and are committed. Next: professor proposal review, then M4 (JSON scenario library, replay tests, and thesis methodology).
 **Last updated:** 2026-11-16
 
 ## Accepted navigation outcome

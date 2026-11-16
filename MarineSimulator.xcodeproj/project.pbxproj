@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		06212DC52E024F9E007A4537 /* VPWHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DC42E024F9E007A4537 /* VPWHelpView.swift */; };
-		06MDA0122F901200005DE47D /* MDAHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06MDA0112F901200005DE47D /* MDAHelpView.swift */; };
-		06XDR0122F901200005DE47D /* XDRHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06XDR0112F901200005DE47D /* XDRHelpView.swift */; };
 		06212DD22E0B65D2007A4537 /* SentenceToggleStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */; };
 		06212DD42E0B66FD007A4537 /* SensorToggleStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */; };
 		06212DD72E0B6B1C007A4537 /* HDGHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06212DD62E0B6B1C007A4537 /* HDGHelpView.swift */; };
@@ -80,10 +78,6 @@
 		06B4B2952DF50AB6005DC523 /* MarineSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2942DF50AB6005DC523 /* MarineSimulator.swift */; };
 		06B4B2972DF50AB6005DC523 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2962DF50AB6005DC523 /* MainView.swift */; };
 		06B4B2C32DF50EA2005DC523 /* NMEASimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */; };
-		06NMA0012F901001005DE47D /* NMEASimulator+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */; };
-		06NMA0022F901001005DE47D /* NMEASimulator+VesselLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */; };
-		06NMA0032F901001005DE47D /* SimulationEngine+Maneuvers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */; };
-		06NMA0042F901001005DE47D /* SimulationEngine+Environment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */; };
 		06B4B2CA2DF513BB005DC523 /* UDPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2C92DF51286005DC523 /* UDPClient.swift */; };
 		06B4B2CE2DF52F8F005DC523 /* WindConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */; };
 		06B4B2D02DF52FCD005DC523 /* HydroConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */; };
@@ -107,23 +101,28 @@
 		06FCB44C2FF5E60B00F36D33 /* XTEHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FCB44B2FF5E60B00F36D33 /* XTEHelpView.swift */; };
 		06HIG0012F901001005DE47D /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0112F901001005DE47D /* ConnectionView.swift */; };
 		06HIG0022F901001005DE47D /* SimulationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0122F901001005DE47D /* SimulationView.swift */; };
-		06SEN0012F901001005DE47D /* SentenceOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SEN0112F901001005DE47D /* SentenceOverviewView.swift */; };
 		06HIG0032F901001005DE47D /* ConfigurationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0132F901001005DE47D /* ConfigurationChrome.swift */; };
-		06SPL0012F901001005DE47D /* ConsoleScrollTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */; };
-		06SPL0022F901001005DE47D /* ConnectionChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0122F901001005DE47D /* ConnectionChrome.swift */; };
-		06SPL0032F901001005DE47D /* SimulationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0132F901001005DE47D /* SimulationChrome.swift */; };
-		06SPL0042F901001005DE47D /* SidebarItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0142F901001005DE47D /* SidebarItem.swift */; };
-		06SPL0052F901001005DE47D /* MainWindowToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0152F901001005DE47D /* MainWindowToolbar.swift */; };
-		06SPL0062F901001005DE47D /* RetainedDestinationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */; };
 		06HIG0042F901001005DE47D /* SidebarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0142F901001005DE47D /* SidebarNavigation.swift */; };
 		06HIG0052F901001005DE47D /* SentencePanelLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0152F901001005DE47D /* SentencePanelLayout.swift */; };
 		06HIG0062F901001005DE47D /* ConsoleHeightStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */; };
 		06HIG0072F901001005DE47D /* SettingsDocumentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0172F901001005DE47D /* SettingsDocumentController.swift */; };
 		06HIG0082F901001005DE47D /* MarineSimulatorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06HIG0182F901001005DE47D /* MarineSimulatorCommands.swift */; };
 		06LW00112F901003005DE47D /* NMEASimulator+LiveWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06LW00102F901003005DE47D /* NMEASimulator+LiveWeather.swift */; };
+		06MDA0122F901200005DE47D /* MDAHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06MDA0112F901200005DE47D /* MDAHelpView.swift */; };
+		06NMA0012F901001005DE47D /* NMEASimulator+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */; };
+		06NMA0022F901001005DE47D /* NMEASimulator+VesselLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */; };
+		06NMA0032F901001005DE47D /* SimulationEngine+Maneuvers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */; };
+		06NMA0042F901001005DE47D /* SimulationEngine+Environment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */; };
 		06SAI0122F901030005DE47D /* SailInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SAI0112F901030005DE47D /* SailInventory.swift */; };
 		06SAI0222F901030005DE47D /* SailInventoryEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SAI0212F901030005DE47D /* SailInventoryEditor.swift */; };
 		06SCR022F901100005DE47D /* ScrollRuntimeTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SCR012F901100005DE47D /* ScrollRuntimeTrace.swift */; };
+		06SEN0012F901001005DE47D /* SentenceOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SEN0112F901001005DE47D /* SentenceOverviewView.swift */; };
+		06SPL0012F901001005DE47D /* ConsoleScrollTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */; };
+		06SPL0022F901001005DE47D /* ConnectionChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0122F901001005DE47D /* ConnectionChrome.swift */; };
+		06SPL0032F901001005DE47D /* SimulationChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0132F901001005DE47D /* SimulationChrome.swift */; };
+		06SPL0042F901001005DE47D /* SidebarItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0142F901001005DE47D /* SidebarItem.swift */; };
+		06SPL0052F901001005DE47D /* MainWindowToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0152F901001005DE47D /* MainWindowToolbar.swift */; };
+		06SPL0062F901001005DE47D /* RetainedDestinationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */; };
 		06TK00112F901004005DE47D /* NMEASimulator+Tack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06TK00102F901004005DE47D /* NMEASimulator+Tack.swift */; };
 		06TL00112F901002005DE47D /* NMEASimulator+TransmitLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */; };
 		06V6F1022F901010005DE47D /* VesselProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06V6F1012F901010005DE47D /* VesselProfile.swift */; };
@@ -131,11 +130,13 @@
 		06V6F1062F901010005DE47D /* VesselLibrarySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06V6F1052F901010005DE47D /* VesselLibrarySession.swift */; };
 		06V6F2022F901020005DE47D /* BoatProfileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06V6F2012F901020005DE47D /* BoatProfileEditor.swift */; };
 		06V6F2042F901020005DE47D /* BoatLibraryAppKitControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06V6F2032F901020005DE47D /* BoatLibraryAppKitControls.swift */; };
+		06XDR0122F901200005DE47D /* XDRHelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06XDR0112F901200005DE47D /* XDRHelpView.swift */; };
 		0A5C3EAA2FA0000000000002 /* ExperimentScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAA2FA0000000000001 /* ExperimentScenario.swift */; };
 		0A5C3EAB2FA0000000000002 /* ExperimentScenarioRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAB2FA0000000000001 /* ExperimentScenarioRunner.swift */; };
 		0A5C3EAC2FA0000000000002 /* ExperimentSensorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */; };
 		0A5C3EAD2FA0000000000002 /* ExperimentDiagnosticsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */; };
 		0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */; };
+		0A5C3EAF2FA0000000000002 /* ExperimentDatasetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAF2FA0000000000001 /* ExperimentDatasetExporter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -157,8 +158,6 @@
 
 /* Begin PBXFileReference section */
 		06212DC42E024F9E007A4537 /* VPWHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPWHelpView.swift; sourceTree = "<group>"; };
-		06MDA0112F901200005DE47D /* MDAHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MDAHelpView.swift; sourceTree = "<group>"; };
-		06XDR0112F901200005DE47D /* XDRHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XDRHelpView.swift; sourceTree = "<group>"; };
 		06212DD12E0B65D2007A4537 /* SentenceToggleStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceToggleStates.swift; sourceTree = "<group>"; };
 		06212DD32E0B66F8007A4537 /* SensorToggleStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorToggleStates.swift; sourceTree = "<group>"; };
 		06212DD62E0B6B1C007A4537 /* HDGHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HDGHelpView.swift; sourceTree = "<group>"; };
@@ -227,10 +226,6 @@
 		06B4B2A42DF50AB8005DC523 /* MarineSimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2AE2DF50AB8005DC523 /* MarineSimulatorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarineSimulatorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B4B2C22DF50EA2005DC523 /* NMEASimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMEASimulator.swift; sourceTree = "<group>"; };
-		06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+Persistence.swift"; sourceTree = "<group>"; };
-		06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+VesselLibrary.swift"; sourceTree = "<group>"; };
-		06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimulationEngine+Maneuvers.swift"; sourceTree = "<group>"; };
-		06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimulationEngine+Environment.swift"; sourceTree = "<group>"; };
 		06B4B2C92DF51286005DC523 /* UDPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPClient.swift; sourceTree = "<group>"; };
 		06B4B2CD2DF52F8A005DC523 /* WindConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindConfig.swift; sourceTree = "<group>"; };
 		06B4B2CF2DF52FC8005DC523 /* HydroConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HydroConfig.swift; sourceTree = "<group>"; };
@@ -260,23 +255,28 @@
 		06FCB44B2FF5E60B00F36D33 /* XTEHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XTEHelpView.swift; sourceTree = "<group>"; };
 		06HIG0112F901001005DE47D /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		06HIG0122F901001005DE47D /* SimulationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationView.swift; sourceTree = "<group>"; };
-		06SEN0112F901001005DE47D /* SentenceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceOverviewView.swift; sourceTree = "<group>"; };
 		06HIG0132F901001005DE47D /* ConfigurationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationChrome.swift; sourceTree = "<group>"; };
-		06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleScrollTracking.swift; sourceTree = "<group>"; };
-		06SPL0122F901001005DE47D /* ConnectionChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionChrome.swift; sourceTree = "<group>"; };
-		06SPL0132F901001005DE47D /* SimulationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationChrome.swift; sourceTree = "<group>"; };
-		06SPL0142F901001005DE47D /* SidebarItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItem.swift; sourceTree = "<group>"; };
-		06SPL0152F901001005DE47D /* MainWindowToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowToolbar.swift; sourceTree = "<group>"; };
-		06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetainedDestinationHost.swift; sourceTree = "<group>"; };
 		06HIG0142F901001005DE47D /* SidebarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarNavigation.swift; sourceTree = "<group>"; };
 		06HIG0152F901001005DE47D /* SentencePanelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePanelLayout.swift; sourceTree = "<group>"; };
 		06HIG0162F901001005DE47D /* ConsoleHeightStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleHeightStorage.swift; sourceTree = "<group>"; };
 		06HIG0172F901001005DE47D /* SettingsDocumentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDocumentController.swift; sourceTree = "<group>"; };
 		06HIG0182F901001005DE47D /* MarineSimulatorCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineSimulatorCommands.swift; sourceTree = "<group>"; };
 		06LW00102F901003005DE47D /* NMEASimulator+LiveWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+LiveWeather.swift"; sourceTree = "<group>"; };
+		06MDA0112F901200005DE47D /* MDAHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MDAHelpView.swift; sourceTree = "<group>"; };
+		06NMA0112F901001005DE47D /* NMEASimulator+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+Persistence.swift"; sourceTree = "<group>"; };
+		06NMA0122F901001005DE47D /* NMEASimulator+VesselLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+VesselLibrary.swift"; sourceTree = "<group>"; };
+		06NMA0132F901001005DE47D /* SimulationEngine+Maneuvers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimulationEngine+Maneuvers.swift"; sourceTree = "<group>"; };
+		06NMA0142F901001005DE47D /* SimulationEngine+Environment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SimulationEngine+Environment.swift"; sourceTree = "<group>"; };
 		06SAI0112F901030005DE47D /* SailInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SailInventory.swift; sourceTree = "<group>"; };
 		06SAI0212F901030005DE47D /* SailInventoryEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SailInventoryEditor.swift; sourceTree = "<group>"; };
 		06SCR012F901100005DE47D /* ScrollRuntimeTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollRuntimeTrace.swift; sourceTree = "<group>"; };
+		06SEN0112F901001005DE47D /* SentenceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceOverviewView.swift; sourceTree = "<group>"; };
+		06SPL0112F901001005DE47D /* ConsoleScrollTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleScrollTracking.swift; sourceTree = "<group>"; };
+		06SPL0122F901001005DE47D /* ConnectionChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionChrome.swift; sourceTree = "<group>"; };
+		06SPL0132F901001005DE47D /* SimulationChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationChrome.swift; sourceTree = "<group>"; };
+		06SPL0142F901001005DE47D /* SidebarItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarItem.swift; sourceTree = "<group>"; };
+		06SPL0152F901001005DE47D /* MainWindowToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowToolbar.swift; sourceTree = "<group>"; };
+		06SPL0162F901001005DE47D /* RetainedDestinationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetainedDestinationHost.swift; sourceTree = "<group>"; };
 		06TK00102F901004005DE47D /* NMEASimulator+Tack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+Tack.swift"; sourceTree = "<group>"; };
 		06TL00102F901002005DE47D /* NMEASimulator+TransmitLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NMEASimulator+TransmitLoop.swift"; sourceTree = "<group>"; };
 		06V6F1012F901010005DE47D /* VesselProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VesselProfile.swift; sourceTree = "<group>"; };
@@ -284,11 +284,13 @@
 		06V6F1052F901010005DE47D /* VesselLibrarySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VesselLibrarySession.swift; sourceTree = "<group>"; };
 		06V6F2012F901020005DE47D /* BoatProfileEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatProfileEditor.swift; sourceTree = "<group>"; };
 		06V6F2032F901020005DE47D /* BoatLibraryAppKitControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatLibraryAppKitControls.swift; sourceTree = "<group>"; };
+		06XDR0112F901200005DE47D /* XDRHelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XDRHelpView.swift; sourceTree = "<group>"; };
 		0A5C3EAA2FA0000000000001 /* ExperimentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentScenario.swift; sourceTree = "<group>"; };
 		0A5C3EAB2FA0000000000001 /* ExperimentScenarioRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentScenarioRunner.swift; sourceTree = "<group>"; };
 		0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentSensorModel.swift; sourceTree = "<group>"; };
 		0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDiagnosticsSession.swift; sourceTree = "<group>"; };
 		0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDiagnosticsView.swift; sourceTree = "<group>"; };
+		0A5C3EAF2FA0000000000001 /* ExperimentDatasetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDatasetExporter.swift; sourceTree = "<group>"; };
 		33962C04C5CB6F13174882D6 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
 		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -586,6 +588,7 @@
 				0A5C3EAB2FA0000000000001 /* ExperimentScenarioRunner.swift */,
 				0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */,
 				0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */,
+				0A5C3EAF2FA0000000000001 /* ExperimentDatasetExporter.swift */,
 				06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */,
 			);
 			path = Model;
@@ -927,6 +930,7 @@
 				0A5C3EAC2FA0000000000002 /* ExperimentSensorModel.swift in Sources */,
 				0A5C3EAD2FA0000000000002 /* ExperimentDiagnosticsSession.swift in Sources */,
 				0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */,
+				0A5C3EAF2FA0000000000002 /* ExperimentDatasetExporter.swift in Sources */,
 				06F0F9512FF9F42C002F752C /* SentenceScheduler.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
 				06B4B2DC2DFCFEBA005DC523 /* GPSData.swift in Sources */,
@@ -1118,7 +1122,7 @@
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1151,7 +1155,7 @@
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";

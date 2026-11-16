@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Engineering view of one isolated experiment. Opening it does not prepare a run.
 struct ExperimentDiagnosticsView: View {
@@ -32,7 +33,7 @@ struct ExperimentDiagnosticsView: View {
                 .font(DesignToken.Typography.supporting)
                 .foregroundStyle(DesignToken.Status.neutral)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Simulation time \(quantity(readout.elapsedSeconds, digits: 2)) / \(quantity(readout.durationSeconds, digits: 0)) s")
+            Text("Simulation time \(quantity(readout.elapsedSeconds, digits: 2)) / \(quantity(readout.durationSeconds, digits: 0)) s · Recorded samples \(session.recordedSampleCount)")
                 .font(DesignToken.Typography.supporting.monospacedDigit())
                 .foregroundStyle(.primary)
             if session.configurationChangesArePending {
@@ -79,6 +80,29 @@ struct ExperimentDiagnosticsView: View {
                     .font(DesignToken.Typography.supporting)
                     .foregroundStyle(DesignToken.Status.neutral)
                     .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: DesignToken.Spacing.row) {
+                    Button("Export CSV…") {
+                        saveCSV(
+                            defaultName: "experiment-measurements.csv",
+                            title: "Export Experiment Measurements",
+                            contents: session.exportEstimatorCSV()
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
+                    .disabled(session.recordedSampleCount == 0)
+
+                    Button("Export Truth…") {
+                        saveCSV(
+                            defaultName: "experiment-truth.csv",
+                            title: "Export Evaluation Truth",
+                            contents: session.exportEvaluationTruthCSV()
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
+                    .disabled(session.recordedSampleCount == 0)
+                }
                 DiagnosticValueField(
                     title: "Seed",
                     unit: "",
@@ -302,6 +326,25 @@ struct ExperimentDiagnosticsView: View {
         NSApp.keyWindow?.makeFirstResponder(nil)
         DispatchQueue.main.async {
             action()
+        }
+    }
+
+    private func saveCSV(defaultName: String, title: String, contents: String) {
+        let panel = NSSavePanel()
+        panel.title = title
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = defaultName
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                try contents.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Export failed"
+                alert.informativeText = error.localizedDescription
+                alert.alertStyle = .warning
+                alert.runModal()
+            }
         }
     }
 
