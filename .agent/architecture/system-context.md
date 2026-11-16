@@ -1,6 +1,6 @@
 # System context
 
-Status: **documentation of the repository as of 2026-11-11.** Planned boxes are not code in this repository.
+Status: **documentation of the repository as of 2026-11-16.** Planned boxes are not code in this repository.
 
 This diagram places MarineSimulator among the systems a controlled polar-estimation study would use. A box is **implemented** only when this repository contains the behavior. **Partially implemented** means a real type or path exists and a stated part of the responsibility does not. **Planned** means the responsibility is a target and this repository does not contain it.
 
@@ -8,30 +8,29 @@ This diagram places MarineSimulator among the systems a controlled polar-estimat
 flowchart LR
   operator["Operator UI"]
   sim["MarineSimulator\nIMPLEMENTED"]
-  scenario["Scenario and dataset pipeline\nPARTIAL"]
-  core["PolarResearchCore\nPLANNED"]
-  viz["Research visualization\nPLANNED"]
+  scenario["Scenario and dataset pipeline\nPARTIAL (PoC CSV implemented)"]
+  core["PolarResearchCore\nPoC in tests / library PLANNED"]
+  viz["Research visualization\nPLANNED (M4)"]
   extasy["Extasy Complete Navigation\nseparate product"]
 
   operator --> sim
   scenario -->|"in-memory prepare"| sim
-  sim -->|"NMEA 0183 UDP/TCP"| extasy
-  sim -.->|"no dataset export yet"| scenario
-  scenario -.-> core
+  sim -->|"Estimator & Truth CSV"| scenario
+  scenario --> core
   core -.-> viz
   extasy -.-> viz
 ```
 
-Read the solid arrows as data that exists today. Read the dotted arrows as intended exchanges that this repository does not perform. Extasy Complete Navigation is a separate application. Its internal architecture was not available in this workspace and is **unverified**.
+Read the solid arrows as data that exists today (including PoC CSV export and test-suite estimator checks). Read the dotted arrows as intended UI/library exchanges not yet built into an interactive studio. Extasy Complete Navigation is a separate application. Its internal architecture was not available in this workspace and is **unverified**.
 
 ## Responsibilities and exchanges
 
 | System | Status | Responsibility | Data it should exchange |
 |---|---|---|---|
-| MarineSimulator | Implemented | Generate a coherent NMEA 0183 session from a physical state, instrument readings, and sentence rules. | Sentences on UDP or TCP. It does not export a research table. |
-| Operator UI | Implemented | Setpoints, sensor switches, vessel selection, endpoints, and a separate Experiment Diagnostics window. | The operator pages write `SimulatorSettings` and the live `NMEASimulator`. Diagnostics owns an isolated runtime and does not see the hidden polar. Opening the window does not start an experiment. |
-| Scenario and dataset pipeline | Partial | Describe one controlled run and apply it in memory. | `ExperimentScenario` carries seed, reference polar, hidden polar, steady wind, an inert current declaration, duration, sample interval, and an output contract. There is no saved scenario file and no CSV of truth against measurements. |
-| PolarResearchCore | Planned | Estimate a polar from measurements the chart plotter could have seen, and score it against a hidden polar the plotter never received. | Should receive the reference polar and the permitted measurements. It must not receive the hidden polar as if it were an observation. Not present in this repository. |
+| MarineSimulator | Implemented | Generate a coherent NMEA 0183 session from a physical state, instrument readings, and sentence rules. | Sentences on UDP or TCP, plus isolated Diagnostics CSV export. |
+| Operator UI | Implemented | Setpoints, sensor switches, vessel selection, endpoints, and a separate Experiment Diagnostics window. | The operator pages write `SimulatorSettings` and the live `NMEASimulator`. Diagnostics owns an isolated runtime, persists its own form inputs (`experiment_diagnostics.inputs`), and hides the hidden polar from NMEA/estimator CSV. Opening the window does not start an experiment. |
+| Scenario and dataset pipeline | Partial (PoC CSV implemented) | Describe one controlled run, apply it in memory, and export separated CSVs. | `ExperimentScenario` carries seed, reference polar, hidden polar, `PerformanceParameters`, sinusoidal `ExperimentWindProgram`, `ExperimentCurrentProgram` (active in `simulatedCurrent`), `courseSweepDegreesPerSecond`, duration, sample interval, and `ExperimentOutputContract`. `ExperimentDatasetExporter` writes `experiment-measurements.csv` and `experiment-truth.csv`; saved JSON scenario files remain M4. |
+| PolarResearchCore | PoC in tests / library planned | Estimate a polar from measurements the chart plotter could have seen, and score it against a hidden polar or geometry prior. | Receives the reference polar (or `ParametricPolarGenerator` prior) and permitted estimator CSV. Validated in `PolarRecoveryProofOfConceptTests` and `ParametricPolarComparisonTests`; standalone module/M4 integration planned. |
 | Research visualization | Planned | Show estimated polars, residuals, and experiment runs. | Should read research outputs, not the simulator's live UI state. Not present in this repository. |
 | Extasy Complete Navigation | Separate product | Chart plotter under study. This simulator can be aimed at it. | NMEA 0183. Whether Extasy stores, filters, or drops sentences is **unverified** here. |
 

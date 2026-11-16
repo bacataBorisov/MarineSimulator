@@ -1,6 +1,6 @@
 # Marine instruments
 
-Status: **inventory of the instruments this repository already represents, plus the standalone measurement model.** The model is not on the physics tick or the NMEA path. Do not start M3.4.2 from this note.
+Status: **inventory of the instruments this repository represents, plus the measurement model.** In prepared experiments, `ExperimentInstrumentRuntime` calls `ExperimentSensorModel.measure` on each new simulation timestamp and `NMEASimulator+SentenceBuilder` reads `snapshot.experimentPublication`. Normal operator sessions leave `experimentPublication` nil.
 
 A physical instrument senses one quantity. A derived value is computed from other readings. A communication flag only chooses whether a sentence is sent. The uniform error law below is an experiment bound. **Literature reference required** before a thesis treats it as a transducer specification. No manufacturer accuracy is stated here.
 
@@ -128,7 +128,7 @@ No settling time or accuracy number is invented. The live gyro field still copie
 
 1. A GNSS receiver solves position from satellite ranges. Course over ground and speed over ground are receiver outputs, not a heading sensor.
 2. The quantities are latitude, longitude, speed over ground, and course over ground, plus a synthetic satellite view.
-3. Truth is the spherical step in `GPSData.updatePosition`. Current is zero, so speed over ground equals the water speed used for the step and course over ground equals true heading.
+3. Truth is the spherical step in `GPSData.updatePosition`. When `ExperimentCurrentProgram.driftKnots == 0` (normal sessions), speed over ground equals water speed and course over ground equals true heading; with active current, `simulatedMovement` adds the set/drift vector to water velocity.
 4. Position is integrated from physical motion. The satellite counts are a display model.
 5. No measurement error. `simulatedGPSSignal` fills fix quality, DOP, and satellites from time and position.
 6. `hasGPS`. Off drops the GPS sentences. Position still integrates. `shouldSendGNSS` is stored and unused.
@@ -171,10 +171,10 @@ No settling time or accuracy number is invented. The live gyro field still copie
 4. Primary. None of them enters the wind vector.
 5. Manual mode samples them on `measurementRandomGenerator`. Live weather jitters a forecast. The snapshot stores the instrument fields.
 6. `hasAirTempSensor`, `hasHumidtySensor`, and `hasBarometer` default off.
-7. No sentence. MDA and XDR are not built.
+7. `MDA` and `XDR` sentences emit atmospheric readings (plus water temperature in `MDA`) when enabled and atmospheric sensors are on (`Views/HelpViews/Wind/MDAHelpView.swift`, `XDRHelpView.swift`).
 8. The manual sample is physical replacement, not a sensor error on a fixed truth.
-9. No NMEA, no calibration error.
-10. Add a sentence only when a task asks for it. Do not share their generator with the physical wind stream.
+9. No calibration error or sensor delay.
+10. Keep their random stream separate from the physical wind stream.
 
 ### Values that are not instruments
 
@@ -183,7 +183,7 @@ No settling time or accuracy number is invented. The live gyro field still copie
 | Calculated true wind | Inverse of apparent wind and the log, then the true-heading instrument for direction |
 | VPW | `TWS * cos(TWA)` at sentence time |
 | ROT | Difference of steered true heading |
-| VBW transverse | A component of speed, zero while current is zero and course equals heading |
+| VBW transverse | A component of speed relative to heading, separating water speed from GPS ground track when current is active |
 | VLW | An instrument counter, not `VesselTruth` |
 | Sailing-state label | A band name. It does not enter speed |
 | Wire faults | Damage to bytes after a sentence exists |
@@ -199,4 +199,4 @@ No settling time or accuracy number is invented. The live gyro field still copie
 
 ## Assumptions and limits
 
-The boat frame has no heel. Current is zero, so water-relative and ground-relative headings match. The true-heading instrument and the compass do not feed the steering, the polar, or the position step. **Unverified** against a compass card, a gyrocompass manual, or a masthead instrument.
+The boat frame has no heel. Steady current (`ExperimentCurrentProgram`) separates `SOG`/`COG` from `STW`/`HDT` in experiments, while normal operator sessions run with zero current. The true-heading instrument and the compass do not feed steering, the polar, or the position step. **Unverified** against a compass card, a gyrocompass manual, or a masthead instrument.
