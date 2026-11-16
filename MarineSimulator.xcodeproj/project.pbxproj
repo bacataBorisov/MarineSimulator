@@ -137,6 +137,7 @@
 		0A5C3EAD2FA0000000000002 /* ExperimentDiagnosticsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */; };
 		0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */; };
 		0A5C3EAF2FA0000000000002 /* ExperimentDatasetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EAF2FA0000000000001 /* ExperimentDatasetExporter.swift */; };
+		0A5C3EB02FA0000000000002 /* ParametricPolarGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C3EB02FA0000000000001 /* ParametricPolarGenerator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -291,6 +292,7 @@
 		0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDiagnosticsSession.swift; sourceTree = "<group>"; };
 		0A5C3EAE2FA0000000000001 /* ExperimentDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDiagnosticsView.swift; sourceTree = "<group>"; };
 		0A5C3EAF2FA0000000000001 /* ExperimentDatasetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExperimentDatasetExporter.swift; sourceTree = "<group>"; };
+		0A5C3EB02FA0000000000001 /* ParametricPolarGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParametricPolarGenerator.swift; sourceTree = "<group>"; };
 		33962C04C5CB6F13174882D6 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
 		B04B0DD949D2B477290B74C1 /* AGENT_OS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENT_OS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -589,6 +591,7 @@
 				0A5C3EAC2FA0000000000001 /* ExperimentSensorModel.swift */,
 				0A5C3EAD2FA0000000000001 /* ExperimentDiagnosticsSession.swift */,
 				0A5C3EAF2FA0000000000001 /* ExperimentDatasetExporter.swift */,
+				0A5C3EB02FA0000000000001 /* ParametricPolarGenerator.swift */,
 				06F0F94C2FF9E26A002F752C /* SimulationConfig.swift */,
 			);
 			path = Model;
@@ -931,6 +934,7 @@
 				0A5C3EAD2FA0000000000002 /* ExperimentDiagnosticsSession.swift in Sources */,
 				0A5C3EAE2FA0000000000002 /* ExperimentDiagnosticsView.swift in Sources */,
 				0A5C3EAF2FA0000000000002 /* ExperimentDatasetExporter.swift in Sources */,
+				0A5C3EB02FA0000000000002 /* ParametricPolarGenerator.swift in Sources */,
 				06F0F9512FF9F42C002F752C /* SentenceScheduler.swift in Sources */,
 				06B4B2D82DFCE6D6005DC523 /* MathUtilities.swift in Sources */,
 				06B4B2DC2DFCFEBA005DC523 /* GPSData.swift in Sources */,

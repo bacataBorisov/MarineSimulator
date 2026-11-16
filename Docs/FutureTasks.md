@@ -13,7 +13,7 @@ This is the task pool for work that is planned but not currently active.
 - [ ] Clean up the sensor and sentence domain model so communication features do not live inside sensor-state toggles.
 - [ ] Plan future NMEA 2000 support as a separate PGN/CAN-oriented output path, not as an extension of the current NMEA 0183 sentence builder.
 - [ ] Add DSC / DSE simulation for VHF distress and target-calling workflows.
-- [ ] Add environmental sentences used on sailboats and integrated plotters, especially `XDR`, `MDA`, and `VDR`.
+- [x] Add atmospheric environmental sentences (`XDR`, `MDA`) — implemented; `VDR` (set/drift) remains open.
 - [ ] Add steering and autopilot-facing sentences such as `RSA`, `APB`, `RMB`, `XTE`, `BWC`, and `BWR`.
 - [ ] Add target / tracking sentences such as `TTM` and `TLL` for MARPA / ARPA-style testing.
 - [ ] Add user-defined custom NMEA / proprietary sentence builder (template with `SimulationSnapshot` tokens like `{tws}`, `{hdg}`, `{lat}`, `{lon}`, optional auto-checksum `*hh` or raw framing, per-sentence interval, and enable/disable toggle) so users can test proprietary or non-standard device protocols.

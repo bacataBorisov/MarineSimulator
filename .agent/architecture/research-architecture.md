@@ -1,48 +1,53 @@
 # Research architecture
 
-These components are the target shape of the study. Presence in this diagram is not presence in the repository. Extasy Complete Navigation was not in the workspace. Its internal design is **unverified**.
+These components are the target shape of the study. Extasy Complete Navigation is in a separate repository/workspace and its internal parser/polar code remains **unverified** here.
 
 ```mermaid
 flowchart LR
-  sim["MarineSimulator\nimplemented"]
-  dataset["Experiment dataset\nplanned"]
-  baseline["Farr table baseline\nstored and interpolated"]
-  estimator["Adaptive polar estimator\nplanned"]
-  metrics["Evaluation metrics\nplanned"]
-  viz["Research visualization\nplanned"]
+  sim["MarineSimulator\nM1-M3 implemented"]
+  dataset["ExperimentDatasetExporter\nCSV PoC implemented"]
+  baseline["Farr #354 + ParametricPolarGenerator\nimplemented"]
+  estimator["Adaptive polar estimator\nPoC in tests / Studio planned"]
+  metrics["Evaluation metrics (RMSE)\nPoC in tests / UI planned"]
+  viz["PolarResearchStudio UI\nplanned (M4)"]
   extasy["Extasy Complete Navigation\nunverified"]
 
-  sim -->|"NMEA today"| extasy
-  sim -.->|"truth and measurements\nnot exported"| dataset
-  dataset -.-> estimator
-  baseline -.-> estimator
-  estimator -.-> metrics
+  sim -->|"NMEA 0183"| extasy
+  sim -->|"Estimator & Truth CSV"| dataset
+  dataset -->|"Permitted measurements"| estimator
+  baseline -->|"Reference or geometry prior"| estimator
+  estimator --> metrics
+  dataset -. "Truth CSV (scoring only)" .-> metrics
   metrics -.-> viz
   extasy -.-> viz
 ```
 
-Solid lines exist as NMEA output from this simulator. Dotted lines are the study's intended data, not an interface in this code.
-
 ## Roles
 
-**Experiment dataset.** A future table of one run: scenario identity, seed, timestamps, the measurements the output contract allows, and, in a separate ground-truth section that the estimator cannot see, the hidden polar identity and the physical state. `ExperimentOutputContract` already names the default measurement fields and defaults `permitsGroundTruthExport` to false. There is no file format, no writer, and no reader. Status: **planned**, with the field list **partially implemented** as a struct.
+**Experiment dataset (`Model/ExperimentDatasetExporter.swift`).** Samples `ExperimentDiagnosticsSession` at `sampleIntervalSeconds` and serializes two strictly separated CSV files via `NSSavePanel` (`readwrite` sandbox entitlement):
+- `experiment-measurements.csv`: respects `ExperimentOutputContract.estimatorInput` (`timestamp,trueWindDirection,trueWindSpeed,trueHeading,speedThroughWater` by default, `permitsGroundTruthExport = false`), excluding truth and hidden multipliers.
+- `experiment-truth.csv`: separate ground-truth table (`truthTrueWindDirection`, `truthTrueWindSpeed`, `truthTrueHeading`, `truthSpeedThroughWater`, `truthSpeedOverGround`, `truthCourseOverGround`, `truthLatitude`, `truthLongitude`) for offline validation only.
+- Persistent JSON scenario library and batch replay remain **planned (M4)**.
 
-**PolarResearchCore.** A future library that estimates a speed polar from the measurement section alone. It should accept the reference polar as a starting table and must not be given the hidden polar as an input feature. It does not exist in this repository. Status: **planned**.
+**Extasy baseline & parametric cold-start prior.**
+- **Farr Design #354 baseline:** embedded in `PolarTable` (`Model/BoatProfile.swift`), traced to `Resources/ReferenceDocuments/Extasy/Farr_Design_354_Performance_Prediction.pdf`.
+- **Geometry-only VPP prior (`Model/ParametricPolarGenerator.swift`):** derives a cold-start polar solely from `HullDimensions`, `RigDimensions`, and `SailInventory` without reading Farr #354 (`Total RMSE = 1.082 kn` vs. Farr #354 before adaptation; adapts to `0.547 kn` after 12 minutes of noisy CSV measurements in `ParametricPolarComparisonTests`).
+- **ORC certificates:** PDFs stored for *Extasy* (`ORC_2026_010a-26.pdf`) and *Nimana* (`ORC_2026_009-26.pdf`), not yet parsed into `PolarTable` (**planned**).
 
-**Extasy polar calibration baseline.** The implemented baseline is the Farr Design #354 table embedded in `PolarTable`, traced to `Resources/ReferenceDocuments/Extasy/Farr_Design_354_Performance_Prediction.pdf`. It is a manufacturer VPP for a First 40.7 racing version, not an ORC certificate and not a calibration performed on the water by this project. The ORC Club certificate for the vessel Extasy is a separate PDF in the same folder. Nimana has an ORC certificate and no manufacturer speed table. Status of the table lookup: **implemented**. Status of a calibration that adjusts that table to the real boat: **planned** and **unverified**.
+**Adaptive polar estimator & evaluation metrics.**
+- **Implemented as Proof-of-Concept (`MarineSimulatorTests/PolarRecoveryProofOfConceptTests.swift`, `ParametricPolarComparisonTests.swift`):** median-ratio + Empirical-Bayes sector-shrinkage estimator reading only the exported estimator CSV (`PrototypePolarAdapter`). Recovers hidden multi-factor degradation (`0.85 × 0.92 × 0.96 = 0.7507`) under first-order speed lag, current, wind variation, and sensor noise, reducing grid RMSE from `> 1.5 kn` to `< 0.15 kn`, and demonstrates systematic upward bias (`~0.88` vs `0.80`) under uncalibrated `+0.60 kn` STW bias.
+- **Standalone library & research UI (`PolarResearchCore` / `PolarResearchStudio`):** **planned (M4)** — interactive tables, polar plots (Manufacturer vs. Synthetic vs. Adapted), 2D `(TWS, TWA)` smoothing, and GNSS/STW bias calibration.
 
-**Adaptive polar estimator.** Not implemented. A scientifically usable estimator would consume true wind speed, true wind angle, and speed through water after the measurement model is actually connected, and would publish a table that can be compared with the hidden table offline. No algorithm, gain, or convergence test exists here. Status: **planned**.
+**Extasy Complete Navigation.** External consumer of NMEA 0183 over UDP/TCP; parser and polar internals are **unverified**.
 
-**Evaluation metrics.** Not implemented. A later comparison can use the hidden table because the simulator knows it. That comparison is not available to Extasy. No RMSE, no polar-plot residual, and no experiment log are computed today. Status: **planned**.
+## What the study can rely on today
 
-**Research visualization.** Not implemented. The simulator's map and dashboard show the operator session. They are not a polar-research interface. Status: **planned**.
-
-**Extasy Complete Navigation.** A separate navigation application. This simulator's transport can send it NMEA 0183. `SIMULATOR_ACCURACY.md` and `Docs/FutureTasks.md` mention that product. They do not describe its parser, filters, or polar code. Status of integration: **partial** at the sentence boundary only. Status of Extasy's internals: **unverified**.
-
-## What the study can already rely on
-
-The simulator can hold a hidden Extasy table and a reference Nimana profile, or the reverse, and the track follows the hidden table. Sensor switches do not change that track. A caller can add bias and noise to three channels without writing those errors back, but only if that caller keeps the `ExperimentMeasurement` itself. The chart plotter, today, receives the instrument snapshot, which is the physical sample when the sensor is on and is empty when the sensor is off.
+- Isolated, deterministic (`seed`-controlled) 20 Hz simulation with hidden polar overrides, hidden `PerformanceParameters`, time-varying wind programs, continuous course sweep, and set/drift current kinematics (`SOG`/`COG` distinct from `STW`/`HDT`).
+- Strict boundary enforcement: sensor errors never move `VesselTruth`, and `ExperimentDatasetExporter.estimatorCSV` cannot emit ground truth or hidden polar parameters unless `permitsGroundTruthExport` is explicitly enabled.
+- Verified PoC evidence that both degraded-polar recovery and cold-start geometry-prior adaptation succeed from permitted CSV measurements alone.
 
 ## What the study must not claim yet
 
-It cannot yet say how much of a hidden polar is recoverable from standard NMEA, because the measurement error is not on the sentences, the sentences are not logged beside the truth, and no estimator has been run. It cannot say that the Farr table is the real Extasy. It cannot say what Extasy Complete Navigation does with a sentence after it arrives.
+- Sensor delay, drift, and dropout are not modeled yet (only fixed bias, uniform noise, and boolean availability).
+- Hidden degradation currently scales all true wind angles uniformly; angle-dependent degradation (e.g., upwind-specific fouling/sail loss) is planned for M4.
+- Simulator polars and variation/deviation formulas are not yet validated against real sea-trial logs from *Extasy*.

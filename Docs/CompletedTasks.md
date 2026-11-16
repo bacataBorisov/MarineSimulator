@@ -58,6 +58,10 @@ This file tracks finished work that should not remain in the active queue.
 - [x] Wrap magnetic heading, gyro heading, and true wind direction setpoints through 0°/360° when nudging or editing setpoints.
 - [x] Remove experimental AIS scaffolding; document AIS as far-future only in task docs.
 - [x] Add a dedicated bitmap boat marker asset for the dashboard map (replacing ad hoc drawing where applicable).
+- [x] Add atmospheric NMEA 0183 sentences (`MDA`, `XDR`) with Air Temperature, Humidity, and Barometric Pressure toggles, live readouts, and help views.
+- [x] Complete HIG, responsive layout (`1080×640` minimum, `900 pt` split breakpoint), validation popover, and VoiceOver accessibility pass across Configuration, Dashboard, Console, Sentence pages, and Boat Profile editor.
+- [x] Stabilize navigation and map lifecycles: one shared `ConsolePanelView`, warm retained `DashboardMapSurface`, `GPSSelectorMapResource` (`gps.map_camera` + `dashboard.map_camera` persistence), and retained form hosts (`Manual` ephemeral).
+- [x] Implement M1–M3 research foundations: truth/measurement/snapshot separation, First 40.7 hidden vs. reference polar, `PerformanceParameters`, `ExperimentCurrentProgram` set/drift motion, deterministic wind/course sweep, `ExperimentDiagnosticsView` with persisted inputs, `ExperimentDatasetExporter` (`Export CSV…` / `Export Truth…`), and PoC polar-recovery + geometry-only `ParametricPolarGenerator` validation tests.
 
 ## Verification
 

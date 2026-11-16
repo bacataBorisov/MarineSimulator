@@ -1,6 +1,6 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Proof-of-concept CSV export (`Model/ExperimentDatasetExporter.swift`, `Export CSV…` / `Export Truth…` in `Diagnostics`, `readwrite` sandbox entitlement for `NSSavePanel`) and offline polar-recovery validation (`PolarRecoveryProofOfConceptTests`, reducing degraded polar RMSE from `> 1.5 kn` to `< 0.15 kn` from estimator-only CSV) passed tests and user smoke-testing and are committed. Next: professor proposal review, then M4 (JSON scenario library, replay tests, and thesis methodology).
+**Status:** Direct single-chat workflow active. M3 core + PoC prototypes complete (`ExperimentCurrentProgram` set/drift physics, `PerformanceParameters` hidden multipliers, time-varying wind/course sweep, `Diagnostics` input persistence + CSV export `Export CSV…`/`Export Truth…`, `PolarRecoveryProofOfConceptTests`, and geometry-only `ParametricPolarGenerator` + `ParametricPolarComparisonTests`). Next: professor proposal review, then M4 (JSON scenario library, angle-dependent degradation, `PolarResearchStudio` / estimator integration, replay tests) and M5 (scientific review).
 **Last updated:** 2026-11-16
 
 ## Accepted navigation outcome

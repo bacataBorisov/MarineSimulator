@@ -152,17 +152,24 @@ progress = clamp((t - t0) / duration, 0, 1)
 
 **Validation.** `PolarDynamicsTests` for retention below 1. `ManeuverCommandTests` for heading geometry, not for the sine curve.
 
-## 6. Heading sample and steering
+## 6. Heading sample, course sweep, and steering
 
 **Purpose.** Choose the true heading that steers the boat between maneuvers.
 
-**Kind.** A uniform redraw of magnetic heading, then a heuristic variation. Not a gyrocompass error model and not a yaw ODE.
+**Kind.** Either a continuous kinematic course sweep (`courseSweepDegreesPerSecond` in experiment runs) or a uniform redraw of magnetic heading plus heuristic variation. Not a gyrocompass error model and not a yaw ODE.
 
-**Inputs.** Heading center and offset in degrees. GPS latitude and longitude. Timestamp. The previous true heading between redraws.
+**Inputs.** `courseSweepDegreesPerSecond` (when non-zero), heading center and offset in degrees, GPS latitude and longitude, timestamp, and previous true heading between redraws.
 
 **Outputs.** `VesselTruth.magneticHeading` and `VesselTruth.trueHeading`. Compass and gyro fields are copies, cleared when those sensors are off.
 
-**Algorithm.** Every 1 s, unless a maneuver is driving the heading, `generateRandomValue` draws
+**Algorithm.** When `abs(courseSweepDegreesPerSecond) > 1e-6` and no maneuver is driving the heading, every physics tick advances:
+
+```text
+psi(t + dt) = normalizeAngle(psi(t) + courseSweepDegreesPerSecond * dt)
+magnetic = normalizeAngle(psi - variation)
+```
+
+Otherwise, every 1 s, unless a maneuver is driving the heading, `generateRandomValue` draws
 
 ```text
 heading ~ Uniform[center - offset, center + offset]
@@ -233,41 +240,63 @@ psi_target = normalizeAngle(2 * trueWindDirection - psi_start)
 
 **Purpose.** Move the geographic position from speed over ground and course over ground.
 
-**Kind.** Spherical dead reckoning. The current model is an implemented function that returns zero.
+**Kind.** Spherical dead reckoning with vector addition of steady set-and-drift current.
 
-**Inputs.** Water speed in knots, true heading in degrees, `deltaTime` in seconds. `simulatedCurrent` ignores its arguments and returns east and north components of 0 knots.
+**Inputs.** Water speed in knots, true heading in degrees, `deltaTime` in seconds, and `ExperimentCurrentProgram` (`setDegrees`, `driftKnots`, defaulting to `.none` = zero in normal operator sessions).
 
-**Equations.** `simulatedMovement` forms the water vector along the true heading and adds the current. With a zero current, speed over ground equals the water speed and course over ground equals the true heading.
+**Equations.** `SimulationEngine.simulatedCurrent` (`NMEA/SimulationEngine+Environment.swift`) converts set/drift (toward direction) into east/north knots:
 
-`GPSData.updatePosition` then steps a sphere of radius 6,371,000 m:
+```text
+current_east  = drift * sin(set)
+current_north = drift * cos(set)
+```
+
+`simulatedMovement` forms the water vector along `trueHeading` and adds the current vector:
+
+```text
+east  = waterSpeed * sin(trueHeading) + current_east
+north = waterSpeed * cos(trueHeading) + current_north
+SOG   = hypot(east, north)
+COG   = normalizeAngle(atan2(east, north))
+```
+
+When `deltaTime == 0` (the first tick), `gpsData.speedOverGround` and `gpsData.courseOverGround` are still updated from `simulatedMovement` so tick-0 SOG/COG match vessel truth and current immediately. When `deltaTime > 0`, `GPSData.updatePosition` steps a sphere of radius 6,371,000 m:
 
 ```text
 distance = SOG * 0.514444 * dt
 ```
 
-with `SOG` in knots and `distance` in meters. The next latitude and longitude are the spherical destination along the course. The code constant is `0.514444`, not the `0.514444444` in `Utilities/AppConstants.swift`.
+with `SOG` in knots and `distance` in meters. The next latitude and longitude are the spherical destination along `COG`. The code constant is `0.514444`, not the `0.514444444` in `Utilities/AppConstants.swift`.
 
 **Units.** Knots, degrees, meters, seconds. Latitude and longitude in degrees.
 
-**Update.** One spherical step per physics tick. A new operator coordinate is adopted only when `gpsCoordinateSetpointGeneration` changes. The GPS receiver switch does not stop the step.
+**Update.** One vector sum and spherical step per physics tick. A new operator coordinate is adopted only when `gpsCoordinateSetpointGeneration` changes. The GPS receiver switch does not stop the step.
 
-**Assumptions.** A sphere is enough. No leeway. No tidal current until a future model writes the east and north components. `ExperimentCurrentProgram` is stored and not read here.
+**Assumptions.** A sphere is enough. No leeway. Steady current set/drift when `ExperimentCurrentProgram` is active (`drift > 0`), or zero in normal operator sessions.
 
 **Limitations.** The radius is not WGS84. **Literature reference required** for a geodetic claim. The knot factor is truncated. **Unverified** against a charted track. The voyage log advances only while the speed log is on. That counter is not `VesselTruth`.
 
-**Validation.** `SimulationPhysicsTests.rmcFixesAdvanceAtPublishedSOG` and `gpsPositionAdvancesWhenTheReceiverIsDisabled`.
+**Validation.** `SimulationPhysicsTests.rmcFixesAdvanceAtPublishedSOG`, `gpsPositionAdvancesWhenTheReceiverIsDisabled`, `ExperimentScenarioRunnerTests.currentVectorAddsToWaterVelocityInSOGAndCOG`, and `ExperimentDiagnosticsSessionTests.diagnosticsSessionComputesReferencePolarAndCurrentVectorAccurately`.
 
-## 9. Manual environment redraw
+## 9. Manual environment redraw and wind programs
 
 **Purpose.** Vary wind and the other manual environment channels.
 
-**Kind.** Independent uniform replacement samples. Not a turbulence spectrum.
+**Kind.** Either a deterministic sinusoidal `ExperimentWindProgram` (when present on `EnvironmentTruth.windProgram`) or independent uniform replacement samples. Not a turbulence spectrum.
 
-**Inputs.** Each `SimulatedValue` center and offset. The experiment generator when a scenario enabled it.
+**Inputs.** `ExperimentWindProgram` (`trueWindDirectionDegrees`, `speedKnots`, `directionSwingDegrees`, `speedAmplitudeKnots`, `periodSeconds`) or each `SimulatedValue` center and offset. The experiment generator when a scenario enabled it.
 
 **Outputs.** `EnvironmentTruth` wind, temperatures, humidity, pressure, and depth. The matching instrument field is nil when that sensor is off.
 
-**Algorithm.** One draw per second, in a fixed order on the physical generator: true wind direction, true wind speed, sea temperature, heading, depth, and manual speed when manual mode is evolving. Air, humidity, and pressure use `measurementRandomGenerator` so they do not shift that order.
+**Algorithm.** At 1 Hz (`evolveSensors`), if `windProgram` is set, wind is evaluated deterministically from `t = elapsedSeconds` since `windOriginDate`:
+
+```text
+phase = 2 * pi * (t / periodSeconds)
+TWD(t) = normalizeAngle(baseDirection + directionSwingDegrees * sin(phase))
+TWS(t) = max(0, baseSpeed + speedAmplitudeKnots * sin(phase))
+```
+
+Otherwise, one draw per second runs in a fixed order on the physical generator: true wind direction, true wind speed, sea temperature, heading, depth, and manual speed when manual mode is evolving. Air, humidity, and pressure use `measurementRandomGenerator` so they do not shift that order.
 
 ```text
 x = lower + (upper - lower) * U
@@ -409,7 +438,8 @@ The true-heading instrument does not read this compass. A future HDG heading fie
 | Farr table | Stored PDF and `PolarTable` | The program interpolates that table. It does not validate the real Extasy. |
 | Pinch, 0.96, offset penalty, retention sine | `SimulationEngine`, `BoatProfile` | Heuristic. Literature reference required. |
 | First-order lag | `stepSpeed` | An implemented filter. Not an identified surge model. |
-| Dead reckoning | `GPSData.updatePosition` | Spherical, zero current, truncated knot factor. |
+| Dead reckoning & current | `GPSData.updatePosition`, `SimulationEngine.simulatedCurrent` | Spherical dead reckoning + steady set/drift vector sum; zero current unless an experiment sets `ExperimentCurrentProgram`. |
 | Magnetic variation and deviation | `SimulationEngine` | Cartoon fields. Not a magnetic model. |
 | Apparent wind | `NMEASimulator+WindCalculations` and `ExperimentSensorModel` | The sentence builder and the inverse measurement use one water-relative vector pair. Not a masthead calibration. |
-| Sensor error | `ExperimentSensorModel` | Bias and uniform noise on apparent wind, the log, a true-heading instrument, and a magnetic compass. Heading error moves calculated true wind direction only. Not on the wire. |
+| Sensor error | `ExperimentSensorModel` | Bias and uniform noise on apparent wind, the log, a true-heading instrument, and a magnetic compass. Heading error moves calculated true wind direction only. |
+| Parametric cold-start VPP prior | `ParametricPolarGenerator` | Geometry-only longitudinal force balance from `HullDimensions`, `RigDimensions`, and `SailInventory` (not used on simulation ticks). |
