@@ -34,8 +34,11 @@ final class ExperimentDiagnosticsSession {
     private(set) var runtime: ExperimentRuntime?
 
     var seed: UInt64 = 1
-    var windDirectionDegrees: Double = 90
+    var windDirectionDegrees: Double = 135
     var windSpeedKnots: Double = 12
+    var boatHeadingDegrees: Double = 90
+    var currentSetDegrees: Double = 0
+    var currentDriftKnots: Double = 0
     var durationSeconds: TimeInterval = 1_800
     var errors = SensorErrorConfiguration.zero
     var windInstrument = true
@@ -46,6 +49,7 @@ final class ExperimentDiagnosticsSession {
 
     private var appliedErrors = SensorErrorConfiguration.zero
     private var appliedScenario = ExperimentScenario.extasyBaseline
+    private var appliedBoatHeadingDegrees: Double = 90
     private var loop: Task<Void, Never>?
     private var loopGeneration = 0
     @ObservationIgnored private var sentenceFormatter: NMEASimulator?
@@ -67,10 +71,14 @@ final class ExperimentDiagnosticsSession {
     var configurationChangesArePending: Bool {
         guard phase != .idle else { return false }
         let wind = appliedScenario.windProgram
+        let current = appliedScenario.currentProgram
         return errors != appliedErrors
             || seed != appliedScenario.seed
             || windDirectionDegrees != wind.trueWindDirectionDegrees
             || windSpeedKnots != wind.speedKnots
+            || boatHeadingDegrees != appliedBoatHeadingDegrees
+            || currentSetDegrees != current.setDegrees
+            || currentDriftKnots != current.driftKnots
             || durationSeconds != appliedScenario.durationSeconds
     }
 
@@ -124,6 +132,36 @@ final class ExperimentDiagnosticsSession {
         return true
     }
 
+    func setBoatHeading(_ value: Double) -> Bool {
+        guard value.isFinite else {
+            validationMessage = "Boat heading must be a finite number of degrees."
+            return false
+        }
+        boatHeadingDegrees = normalizeAngle(value)
+        validationMessage = nil
+        return true
+    }
+
+    func setCurrentSet(_ value: Double) -> Bool {
+        guard value.isFinite else {
+            validationMessage = "Current set must be a finite number of degrees."
+            return false
+        }
+        currentSetDegrees = normalizeAngle(value)
+        validationMessage = nil
+        return true
+    }
+
+    func setCurrentDrift(_ value: Double) -> Bool {
+        guard value.isFinite, value >= 0 else {
+            validationMessage = "Current drift must be zero or a positive number of knots."
+            return false
+        }
+        currentDriftKnots = value
+        validationMessage = nil
+        return true
+    }
+
     func setDuration(_ value: Double) -> Bool {
         guard value.isFinite, (1...86_400).contains(value) else {
             validationMessage = "Duration must be between 1 and 86400 seconds."
@@ -157,7 +195,8 @@ final class ExperimentDiagnosticsSession {
     func prepare() {
         stopLoop()
         let scenario = makeScenario()
-        var prepared = ExperimentScenarioRunner.prepare(scenario, from: Self.cleanBaseline())
+        let headingTrue = normalizeAngle(boatHeadingDegrees)
+        var prepared = ExperimentScenarioRunner.prepare(scenario, from: Self.cleanBaseline(boatHeadingDegrees: headingTrue))
         prepared.state.lastSimulationTickDate = Self.origin
         prepared.state.lastSensorEvolutionDate = Self.origin
         prepared.state.experimentInstruments?.errors = errors
@@ -165,6 +204,7 @@ final class ExperimentDiagnosticsSession {
         runtime = prepared
         appliedErrors = errors
         appliedScenario = scenario
+        appliedBoatHeadingDegrees = headingTrue
         stepCount = 0
         phase = .prepared
         validationMessage = nil
@@ -230,6 +270,7 @@ final class ExperimentDiagnosticsSession {
             referencePolarProfile: .beneteauFirst407,
             hiddenPolarProfile: .beneteauFirst407,
             windProgram: .steady(trueWindDirectionDegrees: windDirectionDegrees, speedKnots: windSpeedKnots),
+            currentProgram: ExperimentCurrentProgram(setDegrees: currentSetDegrees, driftKnots: currentDriftKnots),
             durationSeconds: durationSeconds,
             sampleIntervalSeconds: 1
         ).sanitized()
@@ -328,7 +369,7 @@ final class ExperimentDiagnosticsSession {
         loop = nil
     }
 
-    private static func cleanBaseline() -> ExperimentRuntime {
+    private static func cleanBaseline(boatHeadingDegrees: Double = 90) -> ExperimentRuntime {
         let suite = "ExperimentDiagnostics.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
@@ -342,16 +383,18 @@ final class ExperimentDiagnosticsSession {
         simulator.sensorToggles.hasAnemometer = true
         simulator.sensorToggles.hasSpeedLog = true
         simulator.sensorToggles.hasGPS = true
-        simulator.gpsData = GPSData(latitude: 43, longitude: 28, speedOverGround: 6, courseOverGround: 90)
+        let headingTrue = normalizeAngle(boatHeadingDegrees)
+        simulator.gpsData = GPSData(latitude: 43, longitude: 28, speedOverGround: 6, courseOverGround: headingTrue)
         let variation = SimulationEngine.simulatedMagneticVariation(for: simulator.gpsData, at: origin)
-        let magnetic = normalizeAngle(90 - variation)
+        let magnetic = normalizeAngle(headingTrue - variation)
         simulator.heading = SimulatedValue(type: .magneticCompass, center: magnetic, offset: 0, value: magnetic)
-        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: 90, offset: 0, value: 90)
-        simulator.twd = SimulatedValue(type: .windDirection, center: 90, offset: 0, value: 90)
+        simulator.gyroHeading = SimulatedValue(type: .gyroCompass, center: headingTrue, offset: 0, value: headingTrue)
+        simulator.twd = SimulatedValue(type: .windDirection, center: 135, offset: 0, value: 135)
         simulator.tws = SimulatedValue(type: .windSpeed, center: 12, offset: 0, value: 12)
         simulator.speed = SimulatedValue(type: .speedLog, center: 6, offset: 0, value: 6)
         var state = SimulationState(from: simulator)
-        state.vesselTruth.trueHeading = 90
+        state.vesselTruth.trueHeading = headingTrue
+        state.vesselTruth.magneticHeading = magnetic
         state.vesselTruth.speedThroughWaterKnots = 6
         return ExperimentRuntime(state: state, config: simulator.captureSimulationConfig())
     }
@@ -364,6 +407,8 @@ struct ExperimentDiagnosticsReadout: Equatable {
     var durationSeconds: TimeInterval
     var trueWindSpeedKnots: Double?
     var trueWindDirectionDegrees: Double?
+    var currentSetDegrees: Double?
+    var currentDriftKnots: Double?
     var trueHeadingDegrees: Double?
     var speedThroughWaterKnots: Double?
     var speedOverGroundKnots: Double?
@@ -411,6 +456,8 @@ struct ExperimentDiagnosticsReadout: Equatable {
         let vessel = state.vesselTruth
         trueWindSpeedKnots = finite(environment.trueWindSpeedKnots)
         trueWindDirectionDegrees = finite(environment.trueWindDirection)
+        currentSetDegrees = finite(environment.current.setDegrees)
+        currentDriftKnots = finite(environment.current.driftKnots)
         trueHeadingDegrees = finite(vessel.trueHeading)
         speedThroughWaterKnots = finite(vessel.speedThroughWaterKnots)
         speedOverGroundKnots = finite(vessel.speedOverGroundKnots)

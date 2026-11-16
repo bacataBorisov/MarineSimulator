@@ -228,7 +228,8 @@ enum SimulationEngine {
             waterSpeed: waterSpeed,
             trueHeading: boatTrueHeading,
             at: timestamp,
-            gpsData: state.gpsData
+            gpsData: state.gpsData,
+            currentProgram: state.environmentTruth.current
         )
 
         if state.lastAppliedGPSCoordinateGeneration != state.vesselTruth.acceptedCoordinateGeneration {

@@ -32,6 +32,7 @@ enum ExperimentScenarioRunner {
         state.tws.value = speed
         state.environmentTruth.trueWindDirection = direction
         state.environmentTruth.trueWindSpeedKnots = speed
+        state.environmentTruth.current = scenario.currentProgram
         state.vesselObservation.referenceProfile = scenario.referencePolarProfile
 
         let config = baseline.config.configuredForExperiment(

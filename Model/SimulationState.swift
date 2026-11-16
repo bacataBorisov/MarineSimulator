@@ -9,6 +9,7 @@ struct EnvironmentTruth: Equatable {
     var relativeHumidityPercent: Double?
     var airPressureHectopascals: Double?
     var depthMeters: Double?
+    var current: ExperimentCurrentProgram = .none
 }
 
 /// Actual boat motion. Sensor code must not write these.

@@ -64,17 +64,13 @@ struct ExperimentDiagnosticsView: View {
                     }
                     VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
                         HStack(spacing: DesignToken.Spacing.row) {
-                            Button("Prepare") { session.prepare() }
-                            Button("Start") { session.start() }
-                                .disabled(session.phase != .prepared)
-                            Button("Pause") { session.pause() }
-                                .disabled(session.phase != .running)
+                            prepareButton
+                            startButton
+                            pauseButton
                         }
                         HStack(spacing: DesignToken.Spacing.row) {
-                            Button("Resume") { session.resume() }
-                                .disabled(session.phase != .paused)
-                            Button("Reset") { session.reset() }
-                                .disabled(session.phase == .idle)
+                            resumeButton
+                            resetButton
                         }
                     }
                 }
@@ -121,6 +117,45 @@ struct ExperimentDiagnosticsView: View {
                     commit: { commit($0, session.setWindSpeed) }
                 )
                 DiagnosticValueField(
+                    title: "Boat heading",
+                    unit: "°",
+                    value: quantity(session.boatHeadingDegrees, digits: 1),
+                    inputMode: .signedDecimal,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite else {
+                            return "Enter a valid boat heading in degrees."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setBoatHeading) }
+                )
+                DiagnosticValueField(
+                    title: "Current set",
+                    unit: "°",
+                    value: quantity(session.currentSetDegrees, digits: 1),
+                    inputMode: .signedDecimal,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite else {
+                            return "Enter a valid current set in degrees."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setCurrentSet) }
+                )
+                DiagnosticValueField(
+                    title: "Current drift",
+                    unit: "kn",
+                    value: quantity(session.currentDriftKnots, digits: 2),
+                    inputMode: .decimal,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite, v >= 0 else {
+                            return "Current drift must be zero or a positive number of knots."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setCurrentDrift) }
+                )
+                DiagnosticValueField(
                     title: "Duration",
                     unit: "s",
                     value: quantity(session.durationSeconds, digits: 0),
@@ -141,15 +176,80 @@ struct ExperimentDiagnosticsView: View {
 
     @ViewBuilder
     private var controlButtons: some View {
-        Button("Prepare") { session.prepare() }
-        Button("Start") { session.start() }
-            .disabled(session.phase != .prepared)
+        prepareButton
+        startButton
+        pauseButton
+        resumeButton
+        resetButton
+    }
+
+    @ViewBuilder
+    private var prepareButton: some View {
+        if session.phase == .idle {
+            Button("Prepare") {
+                commitFocusedFieldAndRun { session.prepare() }
+            }
+            .buttonStyle(.borderedProminent)
+        } else {
+            Button("Prepare") {
+                commitFocusedFieldAndRun { session.prepare() }
+            }
+            .buttonStyle(.bordered)
+            .tint(.primary)
+        }
+    }
+
+    @ViewBuilder
+    private var startButton: some View {
+        if session.phase == .prepared {
+            Button("Start") {
+                commitFocusedFieldAndRun { session.start() }
+            }
+            .buttonStyle(.borderedProminent)
+        } else {
+            Button("Start") {
+                commitFocusedFieldAndRun { session.start() }
+            }
+            .buttonStyle(.bordered)
+            .tint(.primary)
+            .disabled(true)
+        }
+    }
+
+    private var pauseButton: some View {
         Button("Pause") { session.pause() }
+            .buttonStyle(.bordered)
+            .tint(.primary)
             .disabled(session.phase != .running)
-        Button("Resume") { session.resume() }
-            .disabled(session.phase != .paused)
-        Button("Reset") { session.reset() }
-            .disabled(session.phase == .idle)
+    }
+
+    @ViewBuilder
+    private var resumeButton: some View {
+        if session.phase == .paused {
+            Button("Resume") { session.resume() }
+                .buttonStyle(.borderedProminent)
+        } else {
+            Button("Resume") { session.resume() }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+                .disabled(true)
+        }
+    }
+
+    private var resetButton: some View {
+        Button("Reset") {
+            commitFocusedFieldAndRun { session.reset() }
+        }
+        .buttonStyle(.bordered)
+        .tint(.primary)
+        .disabled(session.phase == .idle)
+    }
+
+    private func commitFocusedFieldAndRun(_ action: @escaping () -> Void) {
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        DispatchQueue.main.async {
+            action()
+        }
     }
 
     private func truthSection(_ readout: ExperimentDiagnosticsReadout) -> some View {
@@ -157,6 +257,8 @@ struct ExperimentDiagnosticsView: View {
             VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
                 labeled("True wind speed", speed(readout.trueWindSpeedKnots))
                 labeled("True wind direction", angle(readout.trueWindDirectionDegrees))
+                labeled("Current set", angle(readout.currentSetDegrees))
+                labeled("Current drift", speed(readout.currentDriftKnots))
                 labeled("True heading", angle(readout.trueHeadingDegrees))
                 labeled("Speed through water", speed(readout.speedThroughWaterKnots))
                 labeled("Speed over ground", speed(readout.speedOverGroundKnots))
@@ -233,11 +335,18 @@ struct ExperimentDiagnosticsView: View {
         SettingsCard(title: "NMEA Output") {
             VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
                 ForEach(readout.sentences, id: \.name) { sentence in
-                    LabeledContent(sentence.name) {
+                    HStack(alignment: .firstTextBaseline, spacing: DesignToken.Spacing.field) {
+                        Text(sentence.name)
+                            .font(DesignToken.Typography.field)
+                            .foregroundStyle(DesignToken.Status.neutral)
+                            .frame(width: 112, alignment: .leading)
                         Text(sentence.text ?? "Unavailable")
                             .font(.system(.body, design: .monospaced))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                             .textSelection(.enabled)
                             .foregroundStyle(sentence.text == nil ? DesignToken.Status.neutral : .primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .accessibilityLabel("\(sentence.name) NMEA sentence")
                             .accessibilityValue(sentence.text ?? "Unavailable")
                     }
@@ -477,9 +586,11 @@ private struct DiagnosticValueField: View {
                     .frame(width: 110)
                     .multilineTextAlignment(.trailing)
                     .focused($isFocused)
+                    .background(ResignFirstResponderOnOutsideClick(isActive: isFocused))
                     .accessibilityLabel(accessibleLabel)
                     .onSubmit {
                         commitAndValidate()
+                        isFocused = false
                     }
 
                 if !unit.isEmpty {

@@ -56,13 +56,14 @@ extension SimulationEngine {
         waterSpeed: Double,
         trueHeading: Double,
         at timestamp: Date,
-        gpsData: GPSData
+        gpsData: GPSData,
+        currentProgram: ExperimentCurrentProgram = .none
     ) -> (speedOverGround: Double, courseOverGround: Double) {
         let headingRadians = toRadians(trueHeading)
         let waterEast = waterSpeed * sin(headingRadians)
         let waterNorth = waterSpeed * cos(headingRadians)
 
-        let current = simulatedCurrent(at: timestamp, gpsData: gpsData)
+        let current = simulatedCurrent(at: timestamp, gpsData: gpsData, currentProgram: currentProgram)
         let east = waterEast + current.eastKnots
         let north = waterNorth + current.northKnots
 
@@ -71,11 +72,22 @@ extension SimulationEngine {
         return (sog, cog)
     }
 
-    static func simulatedCurrent(at timestamp: Date, gpsData: GPSData) -> (eastKnots: Double, northKnots: Double) {
-        // Keep COG aligned with heading until current/drift is exposed as an explicit operator control.
+    static func simulatedCurrent(
+        at timestamp: Date,
+        gpsData: GPSData,
+        currentProgram: ExperimentCurrentProgram = .none
+    ) -> (eastKnots: Double, northKnots: Double) {
         _ = timestamp
         _ = gpsData
-        return (eastKnots: 0, northKnots: 0)
+        let drift = currentProgram.driftKnots
+        guard drift.isFinite, drift > 0 else {
+            return (eastKnots: 0, northKnots: 0)
+        }
+        let setRadians = toRadians(currentProgram.setDegrees)
+        return (
+            eastKnots: drift * sin(setRadians),
+            northKnots: drift * cos(setRadians)
+        )
     }
 
     static func simulatedGPSSignal(for gpsData: GPSData, at timestamp: Date) -> GPSSignalSnapshot {

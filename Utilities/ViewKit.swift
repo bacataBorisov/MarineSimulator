@@ -283,7 +283,7 @@ struct DeferredNumericField: View {
 }
 
 /// macOS often keeps a TextField focused when the click lands on a slider or other non-field control.
-private struct ResignFirstResponderOnOutsideClick: NSViewRepresentable {
+struct ResignFirstResponderOnOutsideClick: NSViewRepresentable {
     var isActive: Bool
 
     func makeNSView(context: Context) -> NSView {
@@ -316,12 +316,12 @@ private struct ResignFirstResponderOnOutsideClick: NSViewRepresentable {
         }
 
         private func resignIfOutside(_ event: NSEvent) {
-            guard let window = view.window ?? event.window else { return }
-            guard let responder = window.firstResponder as? NSView else { return }
+            guard let hostWindow = view.window, event.window === hostWindow else { return }
+            guard let responder = hostWindow.firstResponder as? NSView else { return }
             let point = event.locationInWindow
             let rect = responder.convert(responder.bounds, to: nil)
             guard !rect.contains(point) else { return }
-            window.makeFirstResponder(nil)
+            hostWindow.makeFirstResponder(nil)
         }
 
         deinit {

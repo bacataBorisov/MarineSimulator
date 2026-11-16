@@ -191,10 +191,10 @@ struct ExperimentScenarioRunnerTests {
     }
 
     @Test
-    func declaredCurrentDoesNotMoveTheBoat() {
+    func declaredCurrentMovesTheBoatOverGroundWhileKeepingWaterSpeed() {
         var calm = ExperimentScenarioRunner.prepare(experimentScenario(seed: 9), from: experimentBaseline())
         var drifting = ExperimentScenarioRunner.prepare(
-            experimentScenario(seed: 9, current: ExperimentCurrentProgram(setDegrees: 90, driftKnots: 4)),
+            experimentScenario(seed: 9, current: ExperimentCurrentProgram(setDegrees: 180, driftKnots: 3)),
             from: experimentBaseline()
         )
         let start = Date(timeIntervalSince1970: 1_800_010_000)
@@ -204,11 +204,11 @@ struct ExperimentScenarioRunnerTests {
             tick(&drifting, at: time)
         }
 
-        #expect(drifting.state.vesselTruth.latitude == calm.state.vesselTruth.latitude)
-        #expect(drifting.state.vesselTruth.longitude == calm.state.vesselTruth.longitude)
-        #expect(drifting.state.vesselTruth.speedOverGroundKnots == calm.state.vesselTruth.speedOverGroundKnots)
-        #expect(drifting.state.vesselTruth.courseOverGroundDegrees == calm.state.vesselTruth.courseOverGroundDegrees)
         #expect(drifting.state.vesselTruth.speedThroughWaterKnots == calm.state.vesselTruth.speedThroughWaterKnots)
+        #expect(drifting.state.vesselTruth.trueHeading == calm.state.vesselTruth.trueHeading)
+        #expect(drifting.state.vesselTruth.speedOverGroundKnots != calm.state.vesselTruth.speedOverGroundKnots)
+        #expect(drifting.state.vesselTruth.courseOverGroundDegrees != calm.state.vesselTruth.courseOverGroundDegrees)
+        #expect(drifting.state.vesselTruth.latitude < calm.state.vesselTruth.latitude)
     }
 
     @Test

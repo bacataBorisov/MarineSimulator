@@ -509,6 +509,7 @@ struct FormTextRow: View {
             .font(DesignToken.Typography.field)
             .labelsHidden()
             .focused($isFocused)
+            .background(ResignFirstResponderOnOutsideClick(isActive: isFocused))
             .onSubmit {
                 inputHintMessage = nil
                 let message = validationError?(draftText)

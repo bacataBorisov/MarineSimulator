@@ -4,7 +4,7 @@ Last updated: 2026-11-15
 
 ## Current Objective
 
-All planned UI/HIG, lifecycle, map persistence, atmospheric NMEA (`MDA`/`XDR`), and accessibility label tasks are complete, user-verified, and pushed on `main` (`0641c51`).
+Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). Step M3-A (current set/drift motion in `SimulationEngine` + `ExperimentDiagnosticsView` controls/UI polish) passed user smoke tests and is committed.
 
 ## Constraints
 
@@ -12,4 +12,5 @@ Direct single-chat workflow; user is external smoke-test verifier. `Manual` stay
 
 ## Next
 
-1. Choose next focus: custom/new NMEA sentences, Light Mode polish, or M3/M4 research roadmap (`ROADMAP.md` / `Docs/FutureTasks.md`).
+1. Step M3-B: expose `PerformanceParameters` (hidden hull/sail/trim/sea-state factors) + time-varying wind/heading sweep in `ExperimentScenario` / `Diagnostics` for the proof-of-concept experiment.
+2. Proof-of-concept CSV export + polar recovery check, then draft the plan for professor approval, then M4.
