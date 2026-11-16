@@ -10,6 +10,8 @@ struct EnvironmentTruth: Equatable {
     var airPressureHectopascals: Double?
     var depthMeters: Double?
     var current: ExperimentCurrentProgram = .none
+    var windProgram: ExperimentWindProgram?
+    var windOriginDate: Date?
 }
 
 /// Actual boat motion. Sensor code must not write these.
@@ -70,6 +72,7 @@ struct SimulationState {
     var hiddenPolarOverride: BoatProfile?
     var performance = PerformanceParameters()
     var scheduledPerformanceChanges: [ScheduledPerformanceChange] = []
+    var courseSweepDegreesPerSecond: Double = 0
     var activeManeuver: ActiveManeuver?
     var recoveryStartedAt: Date?
     /// True on a tick whose heading setpoint should follow the maneuver onto the dashboard.
@@ -148,9 +151,16 @@ struct SimulationState {
     }
 }
 
-enum SpeedResponse: String, Equatable, Sendable {
+enum SpeedResponse: String, Codable, CaseIterable, Equatable, Sendable {
     case instant
     case firstOrder
+
+    var displayName: String {
+        switch self {
+        case .instant: return "Instant"
+        case .firstOrder: return "First Order"
+        }
+    }
 }
 
 enum ManeuverKind: String, Equatable, Sendable {
@@ -253,7 +263,7 @@ enum SailPerformanceConsistency {
     }
 }
 
-struct PerformanceParameters: Equatable, Sendable {
+struct PerformanceParameters: Codable, Equatable, Sendable {
     var speedResponse: SpeedResponse = .instant
     var hullFactor: Double = 1
     var sailFactor: Double = 1
@@ -263,6 +273,41 @@ struct PerformanceParameters: Equatable, Sendable {
     var decelerationTimeConstantSeconds: Double = 4
     var tackSpeedRetention: Double = 1
     var gybeSpeedRetention: Double = 1
+
+    init(
+        speedResponse: SpeedResponse = .instant,
+        hullFactor: Double = 1,
+        sailFactor: Double = 1,
+        trimEfficiency: Double = 1,
+        seaStateFactor: Double = 1,
+        accelerationTimeConstantSeconds: Double = 8,
+        decelerationTimeConstantSeconds: Double = 4,
+        tackSpeedRetention: Double = 1,
+        gybeSpeedRetention: Double = 1
+    ) {
+        self.speedResponse = speedResponse
+        self.hullFactor = hullFactor
+        self.sailFactor = sailFactor
+        self.trimEfficiency = trimEfficiency
+        self.seaStateFactor = seaStateFactor
+        self.accelerationTimeConstantSeconds = accelerationTimeConstantSeconds
+        self.decelerationTimeConstantSeconds = decelerationTimeConstantSeconds
+        self.tackSpeedRetention = tackSpeedRetention
+        self.gybeSpeedRetention = gybeSpeedRetention
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        speedResponse = try c.decodeIfPresent(SpeedResponse.self, forKey: .speedResponse) ?? .instant
+        hullFactor = try c.decodeIfPresent(Double.self, forKey: .hullFactor) ?? 1
+        sailFactor = try c.decodeIfPresent(Double.self, forKey: .sailFactor) ?? 1
+        trimEfficiency = try c.decodeIfPresent(Double.self, forKey: .trimEfficiency) ?? 1
+        seaStateFactor = try c.decodeIfPresent(Double.self, forKey: .seaStateFactor) ?? 1
+        accelerationTimeConstantSeconds = try c.decodeIfPresent(Double.self, forKey: .accelerationTimeConstantSeconds) ?? 8
+        decelerationTimeConstantSeconds = try c.decodeIfPresent(Double.self, forKey: .decelerationTimeConstantSeconds) ?? 4
+        tackSpeedRetention = try c.decodeIfPresent(Double.self, forKey: .tackSpeedRetention) ?? 1
+        gybeSpeedRetention = try c.decodeIfPresent(Double.self, forKey: .gybeSpeedRetention) ?? 1
+    }
 
     func sanitized() -> PerformanceParameters {
         var copy = self

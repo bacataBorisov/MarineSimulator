@@ -33,19 +33,54 @@ final class ExperimentDiagnosticsSession {
     private(set) var validationMessage: String?
     private(set) var runtime: ExperimentRuntime?
 
-    var seed: UInt64 = 1
-    var windDirectionDegrees: Double = 135
-    var windSpeedKnots: Double = 12
-    var boatHeadingDegrees: Double = 90
-    var currentSetDegrees: Double = 0
-    var currentDriftKnots: Double = 0
-    var durationSeconds: TimeInterval = 1_800
-    var errors = SensorErrorConfiguration.zero
-    var windInstrument = true
-    var speedLog = true
-    var trueHeadingInstrument = true
-    var magneticCompass = true
+    private struct PersistedInputs: Codable {
+        var seed: UInt64
+        var windDirectionDegrees: Double
+        var windDirectionSwingDegrees: Double
+        var windSpeedKnots: Double
+        var windSpeedAmplitudeKnots: Double
+        var windPeriodSeconds: TimeInterval
+        var boatHeadingDegrees: Double
+        var courseSweepDegreesPerSecond: Double
+        var currentSetDegrees: Double
+        var currentDriftKnots: Double
+        var durationSeconds: TimeInterval
+        var hiddenPerformance: PerformanceParameters
+        var errors: SensorErrorConfiguration
+        var windInstrument: Bool
+        var speedLog: Bool
+        var trueHeadingInstrument: Bool
+        var magneticCompass: Bool
+    }
+
+    private static let persistedInputsKey = "experiment_diagnostics.inputs"
+
+    var seed: UInt64 = 1 { didSet { persistInputsIfNeeded() } }
+    var windDirectionDegrees: Double = 135 { didSet { persistInputsIfNeeded() } }
+    var windDirectionSwingDegrees: Double = 0 { didSet { persistInputsIfNeeded() } }
+    var windSpeedKnots: Double = 12 { didSet { persistInputsIfNeeded() } }
+    var windSpeedAmplitudeKnots: Double = 0 { didSet { persistInputsIfNeeded() } }
+    var windPeriodSeconds: TimeInterval = 120 { didSet { persistInputsIfNeeded() } }
+    var boatHeadingDegrees: Double = 90 { didSet { persistInputsIfNeeded() } }
+    var courseSweepDegreesPerSecond: Double = 0 { didSet { persistInputsIfNeeded() } }
+    var currentSetDegrees: Double = 0 { didSet { persistInputsIfNeeded() } }
+    var currentDriftKnots: Double = 0 { didSet { persistInputsIfNeeded() } }
+    var durationSeconds: TimeInterval = 1_800 { didSet { persistInputsIfNeeded() } }
+    var hiddenPerformance = PerformanceParameters() { didSet { persistInputsIfNeeded() } }
+    var errors = SensorErrorConfiguration.zero { didSet { persistInputsIfNeeded() } }
+    var windInstrument = true { didSet { persistInputsIfNeeded() } }
+    var speedLog = true { didSet { persistInputsIfNeeded() } }
+    var trueHeadingInstrument = true { didSet { persistInputsIfNeeded() } }
+    var magneticCompass = true { didSet { persistInputsIfNeeded() } }
     var allowsWallClockLoop = false
+
+    @ObservationIgnored private let userDefaults: UserDefaults?
+    @ObservationIgnored private var isRestoringPersistedInputs = false
+
+    init(userDefaults: UserDefaults? = nil) {
+        self.userDefaults = userDefaults
+        restorePersistedInputs()
+    }
 
     private var appliedErrors = SensorErrorConfiguration.zero
     private var appliedScenario = ExperimentScenario.extasyBaseline
@@ -73,10 +108,15 @@ final class ExperimentDiagnosticsSession {
         let wind = appliedScenario.windProgram
         let current = appliedScenario.currentProgram
         return errors != appliedErrors
+            || hiddenPerformance != appliedScenario.hiddenPerformance
             || seed != appliedScenario.seed
             || windDirectionDegrees != wind.trueWindDirectionDegrees
+            || windDirectionSwingDegrees != wind.directionSwingDegrees
             || windSpeedKnots != wind.speedKnots
+            || windSpeedAmplitudeKnots != wind.speedAmplitudeKnots
+            || windPeriodSeconds != wind.periodSeconds
             || boatHeadingDegrees != appliedBoatHeadingDegrees
+            || courseSweepDegreesPerSecond != appliedScenario.courseSweepDegreesPerSecond
             || currentSetDegrees != current.setDegrees
             || currentDriftKnots != current.driftKnots
             || durationSeconds != appliedScenario.durationSeconds
@@ -128,6 +168,86 @@ final class ExperimentDiagnosticsSession {
             return false
         }
         windSpeedKnots = value
+        validationMessage = nil
+        return true
+    }
+
+    func setWindDirectionSwing(_ value: Double) -> Bool {
+        guard value.isFinite, (0...180).contains(value) else {
+            validationMessage = "Wind swing must be between 0 and 180 degrees."
+            return false
+        }
+        windDirectionSwingDegrees = value
+        validationMessage = nil
+        return true
+    }
+
+    func setWindSpeedAmplitude(_ value: Double) -> Bool {
+        guard value.isFinite, (0...40).contains(value) else {
+            validationMessage = "Wind speed amplitude must be between 0 and 40 knots."
+            return false
+        }
+        windSpeedAmplitudeKnots = value
+        validationMessage = nil
+        return true
+    }
+
+    func setWindPeriod(_ value: Double) -> Bool {
+        guard value.isFinite, (5...3_600).contains(value) else {
+            validationMessage = "Wind period must be between 5 and 3600 seconds."
+            return false
+        }
+        windPeriodSeconds = value
+        validationMessage = nil
+        return true
+    }
+
+    func setCourseSweep(_ value: Double) -> Bool {
+        guard value.isFinite, (-30...30).contains(value) else {
+            validationMessage = "Course sweep must be between -30 and 30 °/s."
+            return false
+        }
+        courseSweepDegreesPerSecond = value
+        validationMessage = nil
+        return true
+    }
+
+    func setHullFactor(_ value: Double) -> Bool {
+        guard value.isFinite, (0...3).contains(value) else {
+            validationMessage = "Hull factor must be between 0 and 3."
+            return false
+        }
+        hiddenPerformance.hullFactor = value
+        validationMessage = nil
+        return true
+    }
+
+    func setSailFactor(_ value: Double) -> Bool {
+        guard value.isFinite, (0...3).contains(value) else {
+            validationMessage = "Sail factor must be between 0 and 3."
+            return false
+        }
+        hiddenPerformance.sailFactor = value
+        validationMessage = nil
+        return true
+    }
+
+    func setTrimEfficiency(_ value: Double) -> Bool {
+        guard value.isFinite, (0...3).contains(value) else {
+            validationMessage = "Trim efficiency must be between 0 and 3."
+            return false
+        }
+        hiddenPerformance.trimEfficiency = value
+        validationMessage = nil
+        return true
+    }
+
+    func setSeaStateFactor(_ value: Double) -> Bool {
+        guard value.isFinite, (0...3).contains(value) else {
+            validationMessage = "Sea state factor must be between 0 and 3."
+            return false
+        }
+        hiddenPerformance.seaStateFactor = value
         validationMessage = nil
         return true
     }
@@ -269,8 +389,16 @@ final class ExperimentDiagnosticsSession {
             seed: seed,
             referencePolarProfile: .beneteauFirst407,
             hiddenPolarProfile: .beneteauFirst407,
-            windProgram: .steady(trueWindDirectionDegrees: windDirectionDegrees, speedKnots: windSpeedKnots),
+            hiddenPerformance: hiddenPerformance,
+            windProgram: ExperimentWindProgram(
+                trueWindDirectionDegrees: windDirectionDegrees,
+                speedKnots: windSpeedKnots,
+                directionSwingDegrees: windDirectionSwingDegrees,
+                speedAmplitudeKnots: windSpeedAmplitudeKnots,
+                periodSeconds: windPeriodSeconds
+            ),
             currentProgram: ExperimentCurrentProgram(setDegrees: currentSetDegrees, driftKnots: currentDriftKnots),
+            courseSweepDegreesPerSecond: courseSweepDegreesPerSecond,
             durationSeconds: durationSeconds,
             sampleIntervalSeconds: 1
         ).sanitized()
@@ -293,6 +421,60 @@ final class ExperimentDiagnosticsSession {
         case .trueHeading: change(&errors.trueHeading)
         case .magneticCompass: change(&errors.magneticCompass)
         }
+    }
+
+    private func persistInputsIfNeeded() {
+        guard !isRestoringPersistedInputs, let userDefaults else { return }
+        let snapshot = PersistedInputs(
+            seed: seed,
+            windDirectionDegrees: windDirectionDegrees,
+            windDirectionSwingDegrees: windDirectionSwingDegrees,
+            windSpeedKnots: windSpeedKnots,
+            windSpeedAmplitudeKnots: windSpeedAmplitudeKnots,
+            windPeriodSeconds: windPeriodSeconds,
+            boatHeadingDegrees: boatHeadingDegrees,
+            courseSweepDegreesPerSecond: courseSweepDegreesPerSecond,
+            currentSetDegrees: currentSetDegrees,
+            currentDriftKnots: currentDriftKnots,
+            durationSeconds: durationSeconds,
+            hiddenPerformance: hiddenPerformance,
+            errors: errors,
+            windInstrument: windInstrument,
+            speedLog: speedLog,
+            trueHeadingInstrument: trueHeadingInstrument,
+            magneticCompass: magneticCompass
+        )
+        if let data = try? JSONEncoder().encode(snapshot) {
+            userDefaults.set(data, forKey: Self.persistedInputsKey)
+        }
+    }
+
+    private func restorePersistedInputs() {
+        guard let userDefaults,
+              let data = userDefaults.data(forKey: Self.persistedInputsKey),
+              let restored = try? JSONDecoder().decode(PersistedInputs.self, from: data) else {
+            return
+        }
+        isRestoringPersistedInputs = true
+        defer { isRestoringPersistedInputs = false }
+
+        seed = restored.seed
+        windDirectionDegrees = restored.windDirectionDegrees.isFinite ? normalizeAngle(restored.windDirectionDegrees) : 135
+        windDirectionSwingDegrees = restored.windDirectionSwingDegrees.isFinite ? restored.windDirectionSwingDegrees.clamped(to: 0...180) : 0
+        windSpeedKnots = restored.windSpeedKnots.isFinite ? max(0, restored.windSpeedKnots) : 12
+        windSpeedAmplitudeKnots = restored.windSpeedAmplitudeKnots.isFinite ? restored.windSpeedAmplitudeKnots.clamped(to: 0...40) : 0
+        windPeriodSeconds = restored.windPeriodSeconds.isFinite ? restored.windPeriodSeconds.clamped(to: 5...3_600) : 120
+        boatHeadingDegrees = restored.boatHeadingDegrees.isFinite ? normalizeAngle(restored.boatHeadingDegrees) : 90
+        courseSweepDegreesPerSecond = restored.courseSweepDegreesPerSecond.isFinite ? restored.courseSweepDegreesPerSecond.clamped(to: -30...30) : 0
+        currentSetDegrees = restored.currentSetDegrees.isFinite ? normalizeAngle(restored.currentSetDegrees) : 0
+        currentDriftKnots = restored.currentDriftKnots.isFinite ? max(0, restored.currentDriftKnots) : 0
+        durationSeconds = restored.durationSeconds.isFinite ? restored.durationSeconds.clamped(to: 1...86_400) : 1_800
+        hiddenPerformance = restored.hiddenPerformance.sanitized()
+        errors = restored.errors
+        windInstrument = restored.windInstrument
+        speedLog = restored.speedLog
+        trueHeadingInstrument = restored.trueHeadingInstrument
+        magneticCompass = restored.magneticCompass
     }
 
     private func currentSentences() -> [ExperimentDiagnosticSentence] {
@@ -411,6 +593,7 @@ struct ExperimentDiagnosticsReadout: Equatable {
     var currentDriftKnots: Double?
     var trueHeadingDegrees: Double?
     var speedThroughWaterKnots: Double?
+    var referencePolarSpeedKnots: Double?
     var speedOverGroundKnots: Double?
     var courseOverGroundDegrees: Double?
     var latitude: Double?
@@ -460,6 +643,20 @@ struct ExperimentDiagnosticsReadout: Equatable {
         currentDriftKnots = finite(environment.current.driftKnots)
         trueHeadingDegrees = finite(vessel.trueHeading)
         speedThroughWaterKnots = finite(vessel.speedThroughWaterKnots)
+        if let windSpeed = trueWindSpeedKnots,
+           let windDirection = trueWindDirectionDegrees,
+           let heading = trueHeadingDegrees {
+            let twa = ExperimentSensorModel.trueWindAngleDegrees(
+                trueHeading: heading,
+                trueWindDirection: windDirection
+            )
+            referencePolarSpeedKnots = finite(
+                BoatProfile.beneteauFirst407.estimatedBoatSpeed(
+                    trueWindSpeedKnots: windSpeed,
+                    trueWindAngleDegrees: twa
+                )
+            )
+        }
         speedOverGroundKnots = finite(vessel.speedOverGroundKnots)
         courseOverGroundDegrees = finite(vessel.courseOverGroundDegrees)
         latitude = finite(vessel.latitude)

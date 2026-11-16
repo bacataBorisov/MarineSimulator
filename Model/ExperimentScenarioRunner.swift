@@ -20,6 +20,8 @@ enum ExperimentScenarioRunner {
         state.enableExperimentRandomness(seed: scenario.seed)
         state.experimentInstruments = ExperimentInstrumentRuntime(seed: scenario.seed)
         state.hiddenPolarOverride = scenario.hiddenPolarProfile
+        state.performance = scenario.hiddenPerformance
+        state.courseSweepDegreesPerSecond = scenario.courseSweepDegreesPerSecond
         state.latestSnapshot = nil
 
         let direction = scenario.windProgram.trueWindDirectionDegrees
@@ -33,6 +35,8 @@ enum ExperimentScenarioRunner {
         state.environmentTruth.trueWindDirection = direction
         state.environmentTruth.trueWindSpeedKnots = speed
         state.environmentTruth.current = scenario.currentProgram
+        state.environmentTruth.windProgram = scenario.windProgram
+        state.environmentTruth.windOriginDate = nil
         state.vesselObservation.referenceProfile = scenario.referencePolarProfile
 
         let config = baseline.config.configuredForExperiment(

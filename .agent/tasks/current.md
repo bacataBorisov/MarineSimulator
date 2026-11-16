@@ -1,7 +1,7 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. Step M3-A (`ExperimentCurrentProgram` set/drift physics wired into `EnvironmentTruth` + `SimulationEngine.simulatedCurrent`/`simulatedMovement`, plus `Diagnostics` outside-click unfocus/commit, crisp button contrast, single-line `NMEA Output`, default `135°` wind, and `Boat heading` + `Current set`/`drift` controls) passed user smoke tests and is committed. Next: Step M3-B (wire `PerformanceParameters` + wind/course sweep for the proof-of-concept experiment).
-**Last updated:** 2026-11-15
+**Status:** Direct single-chat workflow active. Step M3-B (`PerformanceParameters` hidden polar factors, time-varying wind swing/amplitude/period, continuous course sweep, reference polar STW readout, single-line `NMEA Output`, tick-0 `SOG`/`COG` fix, `Diagnostics` input persistence, and math/physics unit tests) passed user smoke tests and is committed. Next: proof-of-concept CSV export (`ExperimentOutputContract`) + offline polar-recovery test, then professor proposal plan.
+**Last updated:** 2026-11-16
 
 ## Accepted navigation outcome
 

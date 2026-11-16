@@ -4,14 +4,14 @@ import Foundation
 ///
 /// `bias` is added in the channel's own unit. `noiseAmplitude` is the half-width of a
 /// uniform distribution, so each draw is in [-amplitude, +amplitude). Both default to zero.
-struct SensorChannelError: Equatable, Sendable {
+struct SensorChannelError: Codable, Equatable, Sendable {
     var bias: Double = 0
     var noiseAmplitude: Double = 0
 }
 
 /// Errors for the primary instruments. The zero value leaves each reading equal to the
 /// ideal apparent wind or the ideal speed through water.
-struct SensorErrorConfiguration: Equatable, Sendable {
+struct SensorErrorConfiguration: Codable, Equatable, Sendable {
     var apparentWindSpeed = SensorChannelError()
     var apparentWindAngle = SensorChannelError()
     var speedThroughWater = SensorChannelError()

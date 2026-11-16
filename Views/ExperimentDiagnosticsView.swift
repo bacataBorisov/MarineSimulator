@@ -10,6 +10,7 @@ struct ExperimentDiagnosticsView: View {
             VStack(alignment: .leading, spacing: PageChrome.stackSpacing) {
                 statusBanner(readout)
                 controls
+                hiddenPerformanceSection
                 truthSection(readout)
                 measurementSection(readout)
                 navigationSection(readout)
@@ -117,6 +118,45 @@ struct ExperimentDiagnosticsView: View {
                     commit: { commit($0, session.setWindSpeed) }
                 )
                 DiagnosticValueField(
+                    title: "Wind dir swing",
+                    unit: "°",
+                    value: quantity(session.windDirectionSwingDegrees, digits: 1),
+                    inputMode: .decimal,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite, (0...180).contains(v) else {
+                            return "Wind swing must be between 0 and 180 degrees."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setWindDirectionSwing) }
+                )
+                DiagnosticValueField(
+                    title: "Wind speed amp",
+                    unit: "kn",
+                    value: quantity(session.windSpeedAmplitudeKnots, digits: 1),
+                    inputMode: .decimal,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite, (0...40).contains(v) else {
+                            return "Wind amplitude must be between 0 and 40 knots."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setWindSpeedAmplitude) }
+                )
+                DiagnosticValueField(
+                    title: "Wind cycle period",
+                    unit: "s",
+                    value: quantity(session.windPeriodSeconds, digits: 0),
+                    inputMode: .wholeNumber,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite, (5...3_600).contains(v) else {
+                            return "Wind period must be between 5 and 3,600 seconds."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setWindPeriod) }
+                )
+                DiagnosticValueField(
                     title: "Boat heading",
                     unit: "°",
                     value: quantity(session.boatHeadingDegrees, digits: 1),
@@ -128,6 +168,19 @@ struct ExperimentDiagnosticsView: View {
                         return nil
                     },
                     commit: { commit($0, session.setBoatHeading) }
+                )
+                DiagnosticValueField(
+                    title: "Course sweep",
+                    unit: "°/s",
+                    value: quantity(session.courseSweepDegreesPerSecond, digits: 2),
+                    inputMode: .signedDecimal,
+                    validationError: { raw in
+                        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)), v.isFinite, (-30...30).contains(v) else {
+                            return "Course sweep must be between -30 and 30 °/s."
+                        }
+                        return nil
+                    },
+                    commit: { commit($0, session.setCourseSweep) }
                 )
                 DiagnosticValueField(
                     title: "Current set",
@@ -252,6 +305,68 @@ struct ExperimentDiagnosticsView: View {
         }
     }
 
+    private var hiddenPerformanceSection: some View {
+        SettingsCard(title: "Hidden Polar Factors") {
+            VStack(alignment: .leading, spacing: DesignToken.Spacing.row) {
+                Text("Truth-only multipliers and speed lag applied behind the reference polar. Never emitted on NMEA.")
+                    .font(DesignToken.Typography.supporting)
+                    .foregroundStyle(DesignToken.Status.neutral)
+                    .fixedSize(horizontal: false, vertical: true)
+                LabeledContent("Speed response") {
+                    Picker("Speed response", selection: $session.hiddenPerformance.speedResponse) {
+                        ForEach(SpeedResponse.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 220)
+                }
+                DiagnosticValueField(
+                    title: "Hull factor",
+                    unit: "×",
+                    value: quantity(session.hiddenPerformance.hullFactor, digits: 2),
+                    inputMode: .decimal,
+                    validationError: { factorValidation($0, label: "Hull factor") },
+                    commit: { commit($0, session.setHullFactor) }
+                )
+                DiagnosticValueField(
+                    title: "Sail factor",
+                    unit: "×",
+                    value: quantity(session.hiddenPerformance.sailFactor, digits: 2),
+                    inputMode: .decimal,
+                    validationError: { factorValidation($0, label: "Sail factor") },
+                    commit: { commit($0, session.setSailFactor) }
+                )
+                DiagnosticValueField(
+                    title: "Trim efficiency",
+                    unit: "×",
+                    value: quantity(session.hiddenPerformance.trimEfficiency, digits: 2),
+                    inputMode: .decimal,
+                    validationError: { factorValidation($0, label: "Trim efficiency") },
+                    commit: { commit($0, session.setTrimEfficiency) }
+                )
+                DiagnosticValueField(
+                    title: "Sea state factor",
+                    unit: "×",
+                    value: quantity(session.hiddenPerformance.seaStateFactor, digits: 2),
+                    inputMode: .decimal,
+                    validationError: { factorValidation($0, label: "Sea state factor") },
+                    commit: { commit($0, session.setSeaStateFactor) }
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func factorValidation(_ raw: String, label: String) -> String? {
+        guard let v = Double(raw.trimmingCharacters(in: .whitespacesAndNewlines)),
+              v.isFinite, (0...3).contains(v) else {
+            return "\(label) must be between 0 and 3."
+        }
+        return nil
+    }
+
     private func truthSection(_ readout: ExperimentDiagnosticsReadout) -> some View {
         SettingsCard(title: "Physical Truth") {
             VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
@@ -260,7 +375,8 @@ struct ExperimentDiagnosticsView: View {
                 labeled("Current set", angle(readout.currentSetDegrees))
                 labeled("Current drift", speed(readout.currentDriftKnots))
                 labeled("True heading", angle(readout.trueHeadingDegrees))
-                labeled("Speed through water", speed(readout.speedThroughWaterKnots))
+                labeled("Speed through water", waterSpeedSummary(readout))
+                labeled("Reference polar STW", speed(readout.referencePolarSpeedKnots))
                 labeled("Speed over ground", speed(readout.speedOverGroundKnots))
                 labeled("Course over ground", angle(readout.courseOverGroundDegrees))
                 labeled("Latitude", coordinate(readout.latitude))
@@ -336,19 +452,20 @@ struct ExperimentDiagnosticsView: View {
             VStack(alignment: .leading, spacing: DesignToken.Spacing.stacked) {
                 ForEach(readout.sentences, id: \.name) { sentence in
                     HStack(alignment: .firstTextBaseline, spacing: DesignToken.Spacing.field) {
+                        let cleanText = sentence.text?.trimmingCharacters(in: .newlines)
                         Text(sentence.name)
                             .font(DesignToken.Typography.field)
                             .foregroundStyle(DesignToken.Status.neutral)
                             .frame(width: 112, alignment: .leading)
-                        Text(sentence.text ?? "Unavailable")
+                        Text(cleanText ?? "Unavailable")
                             .font(.system(.body, design: .monospaced))
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .textSelection(.enabled)
-                            .foregroundStyle(sentence.text == nil ? DesignToken.Status.neutral : .primary)
+                            .foregroundStyle(cleanText == nil ? DesignToken.Status.neutral : .primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .accessibilityLabel("\(sentence.name) NMEA sentence")
-                            .accessibilityValue(sentence.text ?? "Unavailable")
+                            .accessibilityValue(cleanText ?? "Unavailable")
                     }
                 }
                 Text("Sentences come from the stored sample. Refreshing this page does not draw a new measurement.")
@@ -460,6 +577,15 @@ struct ExperimentDiagnosticsView: View {
     private func speed(_ value: Double?) -> String {
         guard let value else { return "Unavailable" }
         return "\(quantity(value, digits: 2)) kn"
+    }
+
+    private func waterSpeedSummary(_ readout: ExperimentDiagnosticsReadout) -> String {
+        guard let stw = readout.speedThroughWaterKnots else { return "Unavailable" }
+        guard let reference = readout.referencePolarSpeedKnots, reference > 0 else {
+            return "\(quantity(stw, digits: 2)) kn"
+        }
+        let percent = (stw / reference) * 100
+        return "\(quantity(stw, digits: 2)) kn (\(quantity(percent, digits: 1))% of reference)"
     }
 
     private func angle(_ value: Double?) -> String {

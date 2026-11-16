@@ -4,7 +4,7 @@ import AppKit
 struct MainView: View {
     var nmeaManager: NMEASimulator
     @State private var sidebarNavigation = SidebarNavigation()
-    @State private var diagnostics = ExperimentDiagnosticsSession()
+    @State private var diagnostics = ExperimentDiagnosticsSession(userDefaults: .standard)
     @State private var consoleDrag = ConsoleDragTracking()
     @State private var pagePresentation = PagePresentationSession()
     @State private var gpsMapResource = GPSSelectorMapResource()

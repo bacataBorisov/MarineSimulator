@@ -100,11 +100,23 @@ enum SimulationEngine {
             }
             commitEnvironmentTruth(state: &state)
         } else if evolveSensors {
-            state.twd.value = state.twd.generateRandomValue {
-                nextRandomUnitInterval(using: &experimentRandomGenerator)
-            }
-            state.tws.value = state.tws.generateRandomValue {
-                nextRandomUnitInterval(using: &experimentRandomGenerator)
+            if let windProgram = state.environmentTruth.windProgram {
+                let origin = state.environmentTruth.windOriginDate ?? state.lastSimulationTickDate ?? timestamp
+                if state.environmentTruth.windOriginDate == nil {
+                    state.environmentTruth.windOriginDate = origin
+                }
+                let sample = windProgram.sample(elapsedSeconds: timestamp.timeIntervalSince(origin))
+                state.twd.centerValue = sample.directionDegrees
+                state.twd.value = sample.directionDegrees
+                state.tws.centerValue = sample.speedKnots
+                state.tws.value = sample.speedKnots
+            } else {
+                state.twd.value = state.twd.generateRandomValue {
+                    nextRandomUnitInterval(using: &experimentRandomGenerator)
+                }
+                state.tws.value = state.tws.generateRandomValue {
+                    nextRandomUnitInterval(using: &experimentRandomGenerator)
+                }
             }
             state.seaTemp.value = state.seaTemp.generateRandomValue {
                 nextRandomUnitInterval(using: &experimentRandomGenerator)
@@ -128,7 +140,19 @@ enum SimulationEngine {
         // --- Heading ---
         // The heading sample is physical. Compass and gyro switches only decide whether it is published.
         let headingVariation = simulatedMagneticVariation(for: state.gpsData, at: timestamp)
-        if evolveSensors, !config.tackAnimationInProgress, state.activeManeuver?.drivesHeading != true {
+        if abs(state.courseSweepDegreesPerSecond) > 1e-6,
+           !config.tackAnimationInProgress,
+           state.activeManeuver?.drivesHeading != true {
+            let sweptHeading = normalizeAngle(state.vesselTruth.trueHeading + state.courseSweepDegreesPerSecond * deltaTime)
+            let magnetic = normalizeAngle(sweptHeading - headingVariation)
+            state.vesselTruth.trueHeading = sweptHeading
+            state.vesselTruth.magneticHeading = magnetic
+            state.heading.centerValue = magnetic
+            state.heading.value = magnetic
+            if config.sensorToggles.hasGyro {
+                state.gyroHeading.centerValue = sweptHeading.clamped(to: state.gyroHeading.range)
+            }
+        } else if evolveSensors, !config.tackAnimationInProgress, state.activeManeuver?.drivesHeading != true {
             state.heading.value = state.heading.generateRandomValue {
                 nextRandomUnitInterval(using: &experimentRandomGenerator)
             }
@@ -247,6 +271,9 @@ enum SimulationEngine {
                 sog: movement.speedOverGround,
                 cog: movement.courseOverGround
             )
+        } else {
+            state.gpsData.speedOverGround = movement.speedOverGround
+            state.gpsData.courseOverGround = movement.courseOverGround
         }
 
         state.vesselTruth.trueHeading = boatTrueHeading

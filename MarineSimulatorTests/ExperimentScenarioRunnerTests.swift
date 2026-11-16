@@ -204,8 +204,8 @@ struct ExperimentScenarioRunnerTests {
             tick(&drifting, at: time)
         }
 
-        #expect(drifting.state.vesselTruth.speedThroughWaterKnots == calm.state.vesselTruth.speedThroughWaterKnots)
-        #expect(drifting.state.vesselTruth.trueHeading == calm.state.vesselTruth.trueHeading)
+        #expect(abs((drifting.state.vesselTruth.speedThroughWaterKnots ?? 0) - (calm.state.vesselTruth.speedThroughWaterKnots ?? 0)) < 1e-5)
+        #expect(abs(drifting.state.vesselTruth.trueHeading - calm.state.vesselTruth.trueHeading) < 1e-4)
         #expect(drifting.state.vesselTruth.speedOverGroundKnots != calm.state.vesselTruth.speedOverGroundKnots)
         #expect(drifting.state.vesselTruth.courseOverGroundDegrees != calm.state.vesselTruth.courseOverGroundDegrees)
         #expect(drifting.state.vesselTruth.latitude < calm.state.vesselTruth.latitude)
@@ -263,6 +263,83 @@ struct ExperimentScenarioRunnerTests {
         tick(&reused, at: start)
         #expect(repeated.state.vesselTruth == reused.state.vesselTruth)
         #expect(repeated.state.environmentTruth == reused.state.environmentTruth)
+    }
+
+    @Test
+    func hiddenPerformanceFactorsScaleTruthSpeedWithoutChangingReference() {
+        var scenario = experimentScenario(seed: 11, direction: 135, speed: 12)
+        scenario.hiddenPerformance = PerformanceParameters(
+            speedResponse: .instant,
+            hullFactor: 0.85,
+            sailFactor: 1.0,
+            trimEfficiency: 1.0,
+            seaStateFactor: 1.0
+        )
+        var runtime = ExperimentScenarioRunner.prepare(scenario, from: experimentBaseline())
+        tick(&runtime, at: Date(timeIntervalSince1970: 1_800_010_000))
+
+        let reference = BoatProfile.beneteauFirst407.estimatedBoatSpeed(trueWindSpeedKnots: 12, trueWindAngleDegrees: 45) ?? 0
+        let actual = runtime.state.vesselTruth.speedThroughWaterKnots ?? 0
+        #expect(abs(actual - reference * 0.85) < 1e-6)
+        #expect(runtime.state.vesselObservation.referenceProfile == .beneteauFirst407)
+    }
+
+    @Test
+    func timeVaryingWindProgramSweepsDirectionAndSpeedDeterministically() {
+        var scenario = experimentScenario(seed: 12, direction: 135, speed: 12)
+        scenario.windProgram = ExperimentWindProgram(
+            trueWindDirectionDegrees: 135,
+            speedKnots: 12,
+            directionSwingDegrees: 20,
+            speedAmplitudeKnots: 3,
+            periodSeconds: 40
+        )
+        var first = ExperimentScenarioRunner.prepare(scenario, from: experimentBaseline())
+        var second = ExperimentScenarioRunner.prepare(scenario, from: experimentBaseline())
+        let start = Date(timeIntervalSince1970: 1_800_010_000)
+        tick(&first, at: start)
+        tick(&first, at: start.addingTimeInterval(10))
+        tick(&second, at: start)
+        tick(&second, at: start.addingTimeInterval(10))
+
+        #expect(abs((first.state.environmentTruth.trueWindDirection ?? 0) - 155) < 1e-6)
+        #expect(abs((first.state.environmentTruth.trueWindSpeedKnots ?? 0) - 15) < 1e-6)
+        #expect(first.state.environmentTruth == second.state.environmentTruth)
+    }
+
+    @Test
+    func courseSweepRotatesTrueHeadingAcrossWindAngles() {
+        var scenario = experimentScenario(seed: 13, direction: 135, speed: 12)
+        scenario.courseSweepDegreesPerSecond = 2
+        var runtime = ExperimentScenarioRunner.prepare(scenario, from: experimentBaseline())
+        let start = Date(timeIntervalSince1970: 1_800_010_000)
+        tick(&runtime, at: start)
+        #expect(abs(runtime.state.vesselTruth.trueHeading - 90) < 1e-6)
+
+        tick(&runtime, at: start.addingTimeInterval(10))
+        #expect(abs(runtime.state.vesselTruth.trueHeading - 110) < 1e-6)
+    }
+
+    @Test
+    func currentVectorAddsToWaterVelocityInSOGAndCOG() {
+        var scenario = experimentScenario(
+            seed: 14,
+            direction: 135,
+            speed: 12,
+            current: ExperimentCurrentProgram(setDegrees: 180, driftKnots: 2)
+        )
+        scenario.hiddenPerformance.hullFactor = 0.85
+        var runtime = ExperimentScenarioRunner.prepare(scenario, from: experimentBaseline())
+        let start = Date(timeIntervalSince1970: 1_800_010_000)
+        tick(&runtime, at: start)
+
+        let stw = runtime.state.vesselTruth.speedThroughWaterKnots ?? 0
+        // Boat heading 90° (pure East = stw) + Current 180° (pure South = -2 kt North)
+        let expectedSOG = sqrt(stw * stw + 4.0)
+        let expectedCOG = normalizeAngle(toDegrees(atan2(stw, -2.0)))
+
+        #expect(abs(runtime.state.vesselTruth.speedOverGroundKnots - expectedSOG) < 1e-6)
+        #expect(abs(runtime.state.vesselTruth.courseOverGroundDegrees - expectedCOG) < 1e-6)
     }
 }
 

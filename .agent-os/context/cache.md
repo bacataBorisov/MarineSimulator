@@ -1,10 +1,10 @@
 # Session Cache
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
 ## Current Objective
 
-Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). Step M3-A (current set/drift motion in `SimulationEngine` + `ExperimentDiagnosticsView` controls/UI polish) passed user smoke tests and is committed.
+Workflow: direct single-chat execution (explain plan + architectural fit first, implement directly, user smoke-tests). Step M3-B (`PerformanceParameters` hidden polar factors, time-varying wind/course sweep, reference polar STW comparison, single-line NMEA output, tick-0 `SOG`/`COG` fix, `Diagnostics` input persistence, and unit tests) passed user smoke tests and is committed.
 
 ## Constraints
 
@@ -12,5 +12,5 @@ Direct single-chat workflow; user is external smoke-test verifier. `Manual` stay
 
 ## Next
 
-1. Step M3-B: expose `PerformanceParameters` (hidden hull/sail/trim/sea-state factors) + time-varying wind/heading sweep in `ExperimentScenario` / `Diagnostics` for the proof-of-concept experiment.
-2. Proof-of-concept CSV export + polar recovery check, then draft the plan for professor approval, then M4.
+1. Explain and implement proof-of-concept CSV export (`ExperimentOutputContract`) + offline polar-recovery test against a hidden degraded polar.
+2. Draft the professor proposal plan with prototype evidence, then proceed to full M4 (JSON scenario library, CSV export workflow, replay tests).
