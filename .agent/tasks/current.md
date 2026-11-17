@@ -1,7 +1,7 @@
 # Current task
 
-**Status:** Direct single-chat workflow active. M3 core + PoC prototypes complete (`ExperimentCurrentProgram` set/drift physics, `PerformanceParameters` hidden multipliers, time-varying wind/course sweep, `Diagnostics` input persistence + CSV export `Export CSV…`/`Export Truth…`, `PolarRecoveryProofOfConceptTests`, and geometry-only `ParametricPolarGenerator` + `ParametricPolarComparisonTests`). Next: professor proposal review, then M4 (JSON scenario library, angle-dependent degradation, `PolarResearchStudio` / estimator integration, replay tests) and M5 (scientific review).
-**Last updated:** 2026-11-16
+**Status:** Waiting — M3 core + PoC prototypes complete (`ExperimentCurrentProgram`, `PerformanceParameters`, wind/course sweep, `Diagnostics` persistence + CSV export, `PolarRecoveryProofOfConceptTests`, `ParametricPolarGenerator`, `4800/38400` baud-rate limiter, serialized TCP fragmentation, `Docs/Magistarska_Teza_Plan_Rev_0_4.pdf`). Do not start M4 until the professor reviews `Docs/Magistarska_Teza_Plan_Rev_0_4.pdf` and direction is confirmed.
+**Last updated:** 2026-11-17
 
 ## Accepted navigation outcome
 
